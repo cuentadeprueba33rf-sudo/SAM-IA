@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SAM IA - Interfaz Corporativa</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <style>
+      :root {
+        --color-bg-main: #F8F9FA;
+        --color-surface-primary: #FFFFFF;
+        --color-surface-secondary: #F1F3F4;
+        --color-border-subtle: #DADCE0;
+        --color-text-main: #202124;
+        --color-text-secondary: #5F6368;
+        --color-sam-ia: #3c3c3c;
+        --color-accent: #5856D6;
+        --color-accent-blue: #1a73e8;
+        --color-danger: #d93025;
+      }
+      .dark {
+        --color-bg-main: #131314;
+        --color-surface-primary: #1E1F20;
+        --color-surface-secondary: #2C2C2E;
+        --color-border-subtle: #3A3A3C;
+        --color-text-main: #E8EAED;
+        --color-text-secondary: #969BA1;
+        --color-sam-ia: #E0E0E0;
+        --color-accent: #5856D6;
+        --color-accent-blue: #8ab4f8;
+        --color-danger: #f28b82;
+      }
+    </style>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              'bg-main': 'var(--color-bg-main)',
+              'surface-primary': 'var(--color-surface-primary)',
+              'surface-secondary': 'var(--color-surface-secondary)',
+              'border-subtle': 'var(--color-border-subtle)',
+              'text-main': 'var(--color-text-main)',
+              'text-secondary': 'var(--color-text-secondary)',
+              'sam-ia': 'var(--color-sam-ia)',
+              'accent': 'var(--color-accent)',
+              'accent-blue': 'var(--color-accent-blue)',
+              'danger': 'var(--color-danger)',
+            },
+          },
+        },
+      }
+    </script>
+<script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.27.0",
+    "uuid": "https://aistudiocdn.com/uuid@^13.0.0"
+  }
+}
+</script>
+<style>
+  html, body, #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Prevents body scrolling */
+    background-color: var(--color-bg-main);
+    color: var(--color-text-main);
+  }
+</style>
+</head>
+<body class="bg-bg-main text-text-main">
+    
+    <!-- INICIO: BLOQUE DE PANTALLA DE CARGA SAM IA (MANTENER) -->
+    <style>
+        .sam-logo-line {
+            stroke: #ffffff; /* White stroke for the new splash */
+            stroke-width: 2;
+            stroke-dasharray: 200;
+            stroke-dashoffset: 200;
+        }
+        #welcome-box {
+            margin-top: 2.5rem;
+            margin-left: auto;
+            margin-right: auto;
+            padding: 2rem;
+            border-radius: 1rem;
+            transition: all 0.5s ease;
+            transform: scale(.95) translateY(20px);
+            opacity: 0;
+            max-width: 28rem;
+            width: 90%;
+            background-color: rgba(255, 255, 255, 0.05); /* Glassmorphism effect */
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        @keyframes gradient-x {
+          0%, 100% {
+            background-size: 200% 200%;
+            background-position: left center;
+          }
+          50% {
+            background-size: 200% 200%;
+            background-position: right center;
+          }
+        }
+        .animate-gradient-x {
+          animation: gradient-x 15s ease infinite;
+        }
+        @keyframes loading-bar {
+            0% { transform: scaleX(0); }
+            100% { transform: scaleX(1); }
+        }
+        .animate-loading-bar {
+            transform-origin: left;
+            animation: loading-bar 1.5s ease-out 0.5s forwards;
+        }
+         @keyframes char-fade-in {
+          0% {
+            opacity: 0;
+            transform: translateY(20px) scale(0.9);
+            filter: blur(5px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            filter: blur(0);
+          }
+        }
+        .animate-char-fade-in {
+            opacity: 0; /* Starts hidden */
+            animation: char-fade-in 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        #subtitle {
+            opacity: 0;
+            animation: subtitle-fade-in 0.8s ease-out 1.2s forwards;
+        }
+        @keyframes subtitle-fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        #screen-shimmer-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient( to right, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0) 100% );
+            transform: translateX(-150%) skewX(-30deg);
+            animation: screen-shimmer 1.5s ease-in-out 1s forwards;
+            pointer-events: none;
+        }
+        @keyframes screen-shimmer {
+            100% {
+                transform: translateX(150%) skewX(-30deg);
+            }
+        }
+    </style>
+
+    <div id="loading-screen" class="fixed inset-0 bg-black flex flex-col items-center justify-center z-50 overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-r from-red-900/80 via-black to-red-800/70 opacity-80 animate-gradient-x"></div>
+        <div id="screen-shimmer-overlay"></div>
+
+        <div class="relative text-center text-white">
+            <svg id="sam-logo" width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="inline-block">
+                <path class="sam-logo-line" d="M30 20 L70 20 L70 50 L30 50 L30 80 L70 80" stroke-linecap="round"/>
+                <path class="sam-logo-line" d="M10 60 L50 10 L90 60 M25 45 L75 45" stroke-linecap="round"/>
+                <path class="sam-logo-line" d="M50 10 L50 90 M30 30 L50 50 L70 30" stroke-linecap="round"/>
+            </svg>
+             <h1 class="text-6xl font-black tracking-wider uppercase text-white mt-4 overflow-hidden">
+                <span class="inline-block animate-char-fade-in" style="animation-delay: 0.1s">S</span>
+                <span class="inline-block animate-char-fade-in" style="animation-delay: 0.15s">A</span>
+                <span class="inline-block animate-char-fade-in" style="animation-delay: 0.2s">M</span>
+                <span class="inline-block animate-char-fade-in" style="animation-delay: 0.25s">&nbsp;</span>
+                <span class="inline-block animate-char-fade-in" style="animation-delay: 0.3s">I</span>
+                <span class="inline-block animate-char-fade-in" style="animation-delay: 0.35s">A</span>
+            </h1>
+            <p id="subtitle" class="text-xl font-light mt-2 text-white/80">
+                <span>inteligencia</span>
+                &nbsp;
+                <span>pura</span>
+            </p>
+            <div id="welcome-box">
+                <h2 style="text-align:center; color:white; margin-bottom:.5rem;">Bienvenido a SAM IA</h2>
+                <p style="text-align:center; color:rgba(255,255,255,0.7); margin-bottom:1.5rem;">Por favor, dinos tu nombre para comenzar.</p>
+                <input type="text" id="name-input" placeholder="Escribe tu nombre aquí" style="width:100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid rgba(255,255,255,0.2); background-color: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem; text-align: center; font-size: 1rem; outline: none;">
+                <button id="continue-button" style="width:100%; padding: 0.75rem; border-radius: 0.75rem; border: none; background-color: var(--color-accent); color: white; font-weight: 600; cursor: pointer; transition: opacity .2s;">Continuar</button>
+            </div>
+        </div>
+
+        <div class="absolute bottom-10 left-1/4 w-1/2 h-0.5 bg-white/20 overflow-hidden rounded-full">
+            <div class="h-full bg-white animate-loading-bar"></div>
+        </div>
+    </div>
+
+
+    <script>
+        // Immediately set theme from localStorage to prevent flash
+        (function() {
+            try {
+                const settings = JSON.parse(localStorage.getItem('sam_ia_settings'));
+                if (settings && settings.theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                } else {
+                     document.documentElement.classList.remove('dark');
+                }
+            } catch (e) { /* ignore */ }
+        })();
+
+        function animateLogo() {
+            try {
+                if(typeof anime === 'undefined') return Promise.resolve();
+                return anime({
+                    targets: '.sam-logo-line',
+                    strokeDashoffset: [anime.setDashoffset, 0],
+                    easing: 'easeInOutSine',
+                    duration: 1500,
+                    delay: anime.stagger(200),
+                }).finished;
+            } catch (e) {
+                return Promise.resolve();
+            }
+        }
+        
+        function hideLoadingScreen() {
+            const loadingScreen = document.getElementById('loading-screen');
+            if (!loadingScreen) return;
+            loadingScreen.style.transition = 'opacity 0.5s ease-out';
+            loadingScreen.style.opacity = '0';
+            setTimeout(() => {
+                loadingScreen.style.display = 'none';
+                window.dispatchEvent(new CustomEvent('loadingScreenHidden'));
+            }, 500);
+        }
+
+        (function initLoading() {
+            const guestName = localStorage.getItem('sam_ia_guest_name');
+            const welcomeBox = document.getElementById('welcome-box');
+            
+            // Start the logo animation immediately.
+            const logoAnimationPromise = animateLogo();
+
+            if (guestName) {
+                // User is returning. Hide the welcome box.
+                if (welcomeBox) welcomeBox.style.display = 'none';
+                
+                // Wait for the animation to finish, then wait a bit and hide the screen.
+                logoAnimationPromise.then(() => {
+                    setTimeout(hideLoadingScreen, 1200); // Increased delay for animations to finish
+                });
+
+            } else {
+                // First-time user. Show the welcome box after the animation.
+                const nameInput = document.getElementById('name-input');
+                const continueBtn = document.getElementById('continue-button');
+
+                const showNamePrompt = () => {
+                    logoAnimationPromise.then(() => {
+                        if (welcomeBox) {
+                            welcomeBox.style.opacity = '1';
+                            welcomeBox.style.transform = 'scale(1) translateY(0)';
+                        }
+                        if (nameInput) nameInput.focus();
+                    });
+                };
+
+                const handleContinue = () => {
+                    const name = nameInput.value.trim();
+                    if (name) {
+                        localStorage.setItem('sam_ia_guest_name', name);
+                        hideLoadingScreen();
+                    } else {
+                        nameInput.style.borderColor = 'var(--color-danger)';
+                        nameInput.focus();
+                    }
+                };
+                
+                continueBtn.addEventListener('click', handleContinue);
+                nameInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        handleContinue();
+                    }
+                });
+                nameInput.addEventListener('input', () => {
+                    nameInput.style.borderColor = 'rgba(255,255,255,0.2)';
+                });
+                
+                showNamePrompt();
+            }
+        })();
+    </script>
+    <!-- FIN: BLOQUE DE PANTALLA DE CARGA SAM IA (MANTENER) -->
+
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+</body>
+</html>
