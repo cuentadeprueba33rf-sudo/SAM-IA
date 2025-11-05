@@ -113,7 +113,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                         <span>Configuración</span>
                     </button>
                      <div className="px-2 pt-2 text-center text-xs text-text-secondary">
-                        <p>by: Samuel Casseres, Junayfer Palmera & SAM verce</p>
+                        <p>by: Samuel Casseres, Junayfer Palmera, Danny Casseres, Danna Simancas & el equipo de VERCE</p>
                     </div>
                      {showCollaboratorHighlight && (
                         <div className="absolute bottom-10 left-1/2 -translate-x-1/2 text-center pointer-events-none animate-fade-in-and-out">

@@ -16,9 +16,9 @@ const FeatureNotification: React.FC<FeatureNotificationProps> = ({ onDismissPerm
                            <UsersIcon className="w-6 h-6 text-accent" />
                         </div>
                         <div className="flex-1">
-                            <h4 className="font-semibold text-text-main">¡Un nuevo colaborador se ha unido!</h4>
+                            <h4 className="font-semibold text-text-main">¡El equipo crece!</h4>
                             <p className="text-sm text-text-secondary mt-1">
-                                Dale la bienvenida a Junayfer Palmera al equipo de desarrollo de SAM.
+                                Damos la bienvenida a Danny Casseres, Danna Simancas y al equipo de VERCE al desarrollo de SAM.
                             </p>
                         </div>
                     </div>
