@@ -94,6 +94,7 @@ const App: React.FC = () => {
     const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
     const [captureMode, setCaptureMode] = useState<'user' | 'environment'>('user');
     const [showFeatureNotification, setShowFeatureNotification] = useState(false);
+    const [showCollaboratorHighlight, setShowCollaboratorHighlight] = useState(false);
 
     const abortControllerRef = useRef<AbortController | null>(null);
     const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -113,7 +114,7 @@ const App: React.FC = () => {
             setChats(finalChats);
             setCurrentChatId(newChat.id);
             
-            const notifDismissed = localStorage.getItem('sam_ia_feature_notif_dismissed');
+            const notifDismissed = localStorage.getItem('sam_ia_update_notif_dismissed_v1.2.1');
             if (!notifDismissed) {
                 setTimeout(() => {
                     setShowFeatureNotification(true);
@@ -517,7 +518,7 @@ const App: React.FC = () => {
         const mode = MODES.find(m => m.id === modeId);
         if (!mode || !currentChatId) return;
         
-        if (modeId === 'image_generation') {
+        if (mode.disabled) {
             addLocalMessage(currentChatId, {
                 author: MessageAuthor.SYSTEM,
                 text: 'La función de crear o editar imágenes aún no está disponible para tu región.',
@@ -595,6 +596,25 @@ const App: React.FC = () => {
         setIsCameraModalOpen(false);
     };
 
+    const handleShowCollaborator = () => {
+        setShowFeatureNotification(false);
+        localStorage.setItem('sam_ia_update_notif_dismissed_v1.2.1', 'true');
+
+        setIsSidebarOpen(true);
+        setShowCollaboratorHighlight(true);
+        
+        setTimeout(() => {
+            setShowCollaboratorHighlight(false);
+            setIsSidebarOpen(false);
+        }, 5000);
+    };
+
+    const handleDismissNotificationPermanently = () => {
+        localStorage.setItem('sam_ia_update_notif_dismissed_v1.2.1', 'true');
+        setShowFeatureNotification(false);
+    };
+
+
     const renderMessageContent = (message: ChatMessage) => {
         if (message.author === MessageAuthor.SYSTEM) {
             return <p className="text-danger">{message.text}</p>;
@@ -628,6 +648,7 @@ const App: React.FC = () => {
                 onShowUpdates={() => setIsUpdatesModalOpen(true)}
                 onOpenSettings={() => setIsSettingsModalOpen(true)}
                 onShowContextMenu={(chatId, coords) => setContextMenu({ chatId, coords })}
+                showCollaboratorHighlight={showCollaboratorHighlight}
             />
             
             <div className="relative flex-1 flex flex-col h-screen overflow-hidden">
@@ -638,7 +659,7 @@ const App: React.FC = () => {
                     <div className="font-bold text-xl text-sam-ia tracking-wider">SAM</div>
                 </header>
 
-                <main ref={chatContainerRef} className="flex-1 flex flex-col overflow-y-auto p-4 md:p-6 pt-24 pb-28">
+                <main ref={chatContainerRef} className="flex-1 flex flex-col overflow-y-auto p-4 md:p-6 pt-24 pb-32">
                      {messages.length === 0 ? (
                         <div className="flex-1 flex flex-col items-center justify-center text-center -mt-16">
                             <svg width="80" height="80" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-sam-ia">
@@ -677,16 +698,13 @@ const App: React.FC = () => {
                     )}
                 </main>
 
-                <footer className="absolute bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-bg-main via-bg-main/95 to-transparent">
+                <footer className="absolute bottom-4 left-0 right-0 z-10 bg-gradient-to-t from-bg-main via-bg-main/95 to-transparent">
                     {currentMode === 'math' && lastSamMessageWithLogs && <MathConsole logs={lastSamMessageWithLogs.consoleLogs || []} isOpen={isMathConsoleOpen} onToggle={() => setIsMathConsoleOpen(!isMathConsoleOpen)} />}
                     <div className="w-full max-w-3xl mx-auto px-4 py-2">
                         {showFeatureNotification && (
                             <FeatureNotification
-                                onDismiss={() => setShowFeatureNotification(false)}
-                                onDismissPermanently={() => {
-                                    localStorage.setItem('sam_ia_feature_notif_dismissed', 'true');
-                                    setShowFeatureNotification(false);
-                                }}
+                                onDismissPermanently={handleDismissNotificationPermanently}
+                                onShowCollaborator={handleShowCollaborator}
                             />
                         )}
                         <ChatInput onSendMessage={handleSendMessage} onModeAction={handleModeAction} attachment={attachment} onRemoveAttachment={() => setAttachment(null)} disabled={isGenerating} currentMode={currentMode} onResetMode={() => setCurrentMode('normal')} selectedModel={selectedModel} onSetSelectedModel={setSelectedModel} onToggleSidebar={() => setIsSidebarOpen(prev => !prev)} />

@@ -1,5 +1,5 @@
 import React, { Fragment } from 'react';
-import { PencilSquareIcon, WindowIcon, SparklesIcon, Cog6ToothIcon, MagnifyingGlassIcon, EllipsisVerticalIcon } from './icons';
+import { PencilSquareIcon, WindowIcon, SparklesIcon, Cog6ToothIcon, MagnifyingGlassIcon, EllipsisVerticalIcon, ChevronDownIcon } from './icons';
 
 type Chat = {
     id: string;
@@ -16,6 +16,7 @@ interface SidebarProps {
     onShowUpdates: () => void;
     onOpenSettings: () => void;
     onShowContextMenu: (chatId: string, coords: { x: number; y: number }) => void;
+    showCollaboratorHighlight: boolean;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
@@ -28,6 +29,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     onShowUpdates,
     onOpenSettings,
     onShowContextMenu,
+    showCollaboratorHighlight,
 }) => {
 
     let pressTimer: ReturnType<typeof setTimeout> | null = null;
@@ -105,15 +107,37 @@ const Sidebar: React.FC<SidebarProps> = ({
                     </ul>
                 </div>
 
-                <div className="p-4 border-t border-border-subtle flex-shrink-0">
+                <div className="p-4 border-t border-border-subtle flex-shrink-0 relative">
                      <button onClick={onOpenSettings} className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-secondary text-left w-full">
                         <Cog6ToothIcon className="w-6 h-6 text-text-secondary" />
                         <span>Configuración</span>
                     </button>
                      <div className="px-2 pt-2 text-center text-xs text-text-secondary">
-                        <p>by: Samuel casseres , & SAM verce</p>
+                        <p>by: Samuel Casseres, Junayfer Palmera & SAM verce</p>
                     </div>
+                     {showCollaboratorHighlight && (
+                        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 text-center pointer-events-none animate-fade-in-and-out">
+                            <p className="text-accent font-semibold mb-1 text-sm">¡Bienvenido!</p>
+                            <ChevronDownIcon className="w-8 h-8 text-accent animate-bounce" />
+                        </div>
+                     )}
                 </div>
+                <style>{`
+                    @keyframes bounce {
+                        0%, 100% { transform: translateY(-25%); animation-timing-function: cubic-bezier(0.8,0,1,1); }
+                        50% { transform: translateY(0); animation-timing-function: cubic-bezier(0,0,0.2,1); }
+                    }
+                    .animate-bounce { animation: bounce 1s infinite; }
+                    @keyframes fade-in-and-out {
+                        0% { opacity: 0; }
+                        20% { opacity: 1; }
+                        80% { opacity: 1; }
+                        100% { opacity: 0; }
+                    }
+                    .animate-fade-in-and-out {
+                        animation: fade-in-and-out 4.5s ease-in-out forwards;
+                    }
+                `}</style>
             </aside>
         </Fragment>
     );

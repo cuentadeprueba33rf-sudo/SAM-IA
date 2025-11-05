@@ -17,19 +17,17 @@ const MathConsole: React.FC<MathConsoleProps> = ({ logs, isOpen, onToggle }) => 
     }, [logs]);
 
     const formatLog = (log: string) => {
-        if (log.startsWith('[SUCCESS]')) {
-            return <span className="text-green-400">{log}</span>;
-        }
-        if (log.startsWith('[ERROR]') || log.startsWith('[FATAL]')) {
-            return <span className="text-red-400">{log}</span>;
-        }
-        if (log.startsWith('[INFO]') || log.startsWith('[VERIFY]')) {
-            return <span className="text-blue-400">{log}</span>;
-        }
-        if (log.startsWith('[RECV]')) {
-            return <span className="text-purple-400">{log}</span>;
-        }
-        return <span className="text-text-secondary">{log}</span>;
+        const prefixMatch = log.match(/^(\[[A-Z]+\])/);
+        const prefix = prefixMatch ? prefixMatch[1] : '';
+        const message = prefix ? log.substring(prefix.length) : log;
+
+        let colorClass = "text-gray-400";
+        if (prefix === '[SUCCESS]') colorClass = "text-green-400";
+        else if (prefix === '[ERROR]' || prefix === '[FATAL]') colorClass = "text-red-400";
+        else if (prefix === '[INFO]' || prefix === '[VERIFY]') colorClass = "text-blue-400";
+        else if (prefix === '[RECV]') colorClass = "text-purple-400";
+
+        return <><strong className={`font-semibold ${colorClass}`}>{prefix}</strong><span className="text-gray-300">{message}</span></>;
     };
     
     if (!isOpen) {
@@ -62,11 +60,11 @@ const MathConsole: React.FC<MathConsoleProps> = ({ logs, isOpen, onToggle }) => 
                     </div>
                     <ChevronDownIcon className="w-5 h-5 text-text-secondary" />
                 </button>
-                <div ref={logContainerRef} className="h-48 overflow-y-auto p-3 bg-surface-secondary/50">
-                    <pre className="font-mono text-xs whitespace-pre-wrap">
+                <div ref={logContainerRef} className="h-48 overflow-y-auto p-3 bg-[#1E1F20] dark:bg-[#111213]">
+                    <pre className="font-mono text-sm whitespace-pre-wrap">
                         {logs.map((log, index) => (
                             <div key={index} className="flex gap-2">
-                                <span className="select-none text-text-secondary/50">{String(index + 1).padStart(2, ' ')}</span>
+                                <span className="select-none text-gray-600">{String(index + 1).padStart(2, ' ')}</span>
                                 <code className="flex-1">{formatLog(log)}</code>
                             </div>
                         ))}

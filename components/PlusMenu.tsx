@@ -14,7 +14,11 @@ const PlusMenu: React.FC<PlusMenuProps> = ({ onAction }) => {
                     <button
                         key={mode.id}
                         onClick={() => onAction(mode.id, mode.accept, mode.capture)}
-                        className="flex items-center gap-3 text-left p-3 rounded-lg hover:bg-surface-secondary transition-colors focus:outline-none focus:ring-2 focus:ring-accent"
+                        className={`flex items-center gap-3 text-left p-3 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-accent ${
+                            mode.disabled
+                                ? 'opacity-50'
+                                : 'hover:bg-surface-secondary'
+                        }`}
                     >
                         <div className="p-2 bg-surface-secondary rounded-full">
                            <mode.icon className="w-5 h-5 text-accent-blue" />

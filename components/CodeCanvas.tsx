@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { Artifact } from '../types';
-import { XMarkIcon, DocumentDuplicateIcon, WindowIcon, DevicePhoneMobileIcon, DeviceTabletIcon, ComputerDesktopIcon, InformationCircleIcon } from './icons';
+import { XMarkIcon, DocumentDuplicateIcon, WindowIcon, DevicePhoneMobileIcon, DeviceTabletIcon, ComputerDesktopIcon, InformationCircleIcon, ViewColumnsIcon } from './icons';
 
 const highlightCode = (code: string, language: string) => {
   if (language !== 'html') {
@@ -28,8 +28,44 @@ const highlightCode = (code: string, language: string) => {
   return highlighted;
 };
 
+const CodeView: React.FC<{ code: string; highlightedCode: string; }> = ({ code, highlightedCode }) => {
+    const lineNumbers = useMemo(() => code.split('\n').map((_, i) => i + 1), [code]);
+    return (
+        <div className="h-full overflow-auto code-view bg-[#1e1e1e]">
+            <div className="flex font-mono text-sm p-4 sticky top-0">
+                <div className="text-right text-gray-500 select-none pr-4">
+                    {lineNumbers.map(n => <div key={n}>{n}</div>)}
+                </div>
+                <pre className="flex-1 whitespace-pre-wrap break-words">
+                    <code className="text-gray-300" dangerouslySetInnerHTML={{ __html: highlightedCode }} />
+                </pre>
+            </div>
+        </div>
+    );
+};
+
+const PreviewView: React.FC<{ code: string, viewport: 'desktop' | 'tablet' | 'mobile' }> = ({ code, viewport }) => {
+    const viewportSizes = {
+        mobile: 'w-[375px] h-[667px]',
+        tablet: 'w-[768px] h-[1024px]',
+        desktop: 'w-full h-full',
+    };
+    return (
+        <div className="h-full w-full flex items-center justify-center bg-dots p-4">
+            <div className={`bg-white shadow-2xl rounded-lg transition-all duration-300 ease-in-out ${viewportSizes[viewport]}`}>
+                 <iframe
+                    srcDoc={code}
+                    title="Artifact Preview"
+                    className="w-full h-full border-0 rounded-lg"
+                    sandbox="allow-scripts allow-same-origin"
+                />
+            </div>
+        </div>
+    );
+}
+
 const CodeCanvas: React.FC<{ artifact: Artifact; onClose: () => void; }> = ({ artifact, onClose }) => {
-  const [view, setView] = useState<'preview' | 'code' | 'info'>('preview');
+  const [view, setView] = useState<'preview' | 'code' | 'info' | 'split'>('preview');
   const [viewport, setViewport] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [copied, setCopied] = useState(false);
   
@@ -49,14 +85,6 @@ const CodeCanvas: React.FC<{ artifact: Artifact; onClose: () => void; }> = ({ ar
       newWindow.document.close();
     }
   };
-  
-  const viewportSizes = {
-    mobile: 'w-[375px] h-[667px]',
-    tablet: 'w-[768px] h-[1024px]',
-    desktop: 'w-full h-full',
-  };
-
-  const lineNumbers = useMemo(() => artifact.code.split('\n').map((_, i) => i + 1), [artifact.code]);
 
   return (
     <div className="fixed inset-0 bg-bg-main/50 backdrop-blur-sm z-50 flex items-center justify-center p-0 md:p-4 animate-fade-in-up">
@@ -74,6 +102,7 @@ const CodeCanvas: React.FC<{ artifact: Artifact; onClose: () => void; }> = ({ ar
                 <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center bg-surface-secondary p-1 rounded-lg text-sm font-semibold">
                     <button onClick={() => setView('preview')} className={`px-3 py-1 rounded-md transition-colors ${view === 'preview' ? 'bg-accent text-white shadow' : 'text-text-secondary hover:text-text-main'}`}>Preview</button>
                     <button onClick={() => setView('code')} className={`px-3 py-1 rounded-md transition-colors ${view === 'code' ? 'bg-accent text-white shadow' : 'text-text-secondary hover:text-text-main'}`}>Code</button>
+                    <button onClick={() => setView('split')} className={`hidden md:flex items-center gap-1.5 px-3 py-1 rounded-md transition-colors ${view === 'split' ? 'bg-accent text-white shadow' : 'text-text-secondary hover:text-text-main'}`}><ViewColumnsIcon className="w-4 h-4" /> Split</button>
                     <button onClick={() => setView('info')} className={`px-3 py-1 rounded-md transition-colors ${view === 'info' ? 'bg-accent text-white shadow' : 'text-text-secondary hover:text-text-main'}`}>Info</button>
                 </div>
 
@@ -98,26 +127,18 @@ const CodeCanvas: React.FC<{ artifact: Artifact; onClose: () => void; }> = ({ ar
             {/* Main Content */}
             <main className="flex-1 overflow-hidden bg-bg-main relative">
                 {view === 'code' && (
-                    <div className="h-full overflow-auto code-view bg-[#1e1e1e]">
-                        <div className="flex font-mono text-sm p-4 sticky top-0">
-                            <div className="text-right text-gray-500 select-none pr-4">
-                                {lineNumbers.map(n => <div key={n}>{n}</div>)}
-                            </div>
-                            <pre className="flex-1 whitespace-pre-wrap break-words">
-                                <code className="text-gray-300" dangerouslySetInnerHTML={{ __html: highlightedCode }} />
-                            </pre>
-                        </div>
-                    </div>
+                    <CodeView code={artifact.code} highlightedCode={highlightedCode} />
                 )}
                 {view === 'preview' && (
-                    <div className="h-full w-full flex items-center justify-center bg-dots p-4">
-                        <div className={`bg-white shadow-2xl rounded-lg transition-all duration-300 ease-in-out ${viewportSizes[viewport]}`}>
-                             <iframe
-                                srcDoc={artifact.code}
-                                title="Artifact Preview"
-                                className="w-full h-full border-0 rounded-lg"
-                                sandbox="allow-scripts allow-same-origin"
-                            />
+                    <PreviewView code={artifact.code} viewport={viewport} />
+                )}
+                 {view === 'split' && (
+                    <div className="h-full w-full hidden md:flex">
+                        <div className="w-1/2 h-full border-r border-border-subtle">
+                            <CodeView code={artifact.code} highlightedCode={highlightedCode} />
+                        </div>
+                        <div className="w-1/2 h-full">
+                            <PreviewView code={artifact.code} viewport="desktop" />
                         </div>
                     </div>
                 )}
@@ -131,7 +152,7 @@ const CodeCanvas: React.FC<{ artifact: Artifact; onClose: () => void; }> = ({ ar
                              <div className="space-y-3 text-text-secondary">
                                 <p><strong>Título:</strong> <span className="font-mono bg-surface-secondary px-2 py-1 rounded">{artifact.title}</span></p>
                                 <p><strong>Lenguaje:</strong> <span className="font-mono bg-surface-secondary px-2 py-1 rounded">{artifact.language}</span></p>
-                                <p><strong>Líneas de código:</strong> <span className="font-mono bg-surface-secondary px-2 py-1 rounded">{lineNumbers.length}</span></p>
+                                <p><strong>Líneas de código:</strong> <span className="font-mono bg-surface-secondary px-2 py-1 rounded">{artifact.code.split('\n').length}</span></p>
                              </div>
                              <p className="text-sm text-text-secondary mt-6">Este artefacto fue generado por SAM para ser visualizado e interactuado dentro de este entorno de desarrollo.</p>
                         </div>
