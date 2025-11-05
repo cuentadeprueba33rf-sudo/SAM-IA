@@ -9,10 +9,10 @@ import ContextMenu from './components/ContextMenu';
 import UpdatesModal from './components/UpdatesModal';
 import MathConsole from './components/MathConsole';
 import ImagePreviewModal from './components/ImagePreviewModal';
-import EssayCard from './components/EssayComposer';
+import EssayModal from './components/EssayComposer';
 import CameraCaptureModal from './components/CameraCaptureModal';
-import FeatureNotification from './components/FeatureNotification';
 import WelcomeTutorial from './components/WelcomeTutorial';
+import FeatureNotification from './components/FeatureNotification';
 import { CodeBracketIcon, GlobeAltIcon, CalculatorIcon, PhotoIcon, DocumentIcon, XMarkIcon } from './components/icons';
 import type { Chat, ChatMessage, ModeID, Attachment, Settings, Artifact, Essay, ModelType } from './types';
 import { MessageAuthor } from './types';
@@ -116,10 +116,12 @@ const App: React.FC = () => {
     const [contextMenu, setContextMenu] = useState<{ chatId: string; coords: { x: number; y: number; } } | null>(null);
     const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
     const [captureMode, setCaptureMode] = useState<'user' | 'environment'>('user');
-    const [showFeatureNotification, setShowFeatureNotification] = useState(false);
     const [tutorialState, setTutorialState] = useState({ active: false, step: 0 });
     const [tutorialTargetRect, setTutorialTargetRect] = useState<DOMRect | null>(null);
     const [forceOpenVerification, setForceOpenVerification] = useState(false);
+    const [showWelcomeNotification, setShowWelcomeNotification] = useState(false);
+    const [isEssayModalOpen, setIsEssayModalOpen] = useState(false);
+    const [currentEssay, setCurrentEssay] = useState<Essay | null>(null);
 
 
     const abortControllerRef = useRef<AbortController | null>(null);
@@ -132,38 +134,28 @@ const App: React.FC = () => {
     useEffect(() => {
         const name = localStorage.getItem('sam_ia_guest_name');
         const loadedChats = initializeChats(); 
-        const WELCOME_MESSAGE_KEY = 'sam_ia_update_welcome_v1.3.0'; // Version-specific key
 
         if (name) {
             setGuestName(name);
 
-            const hasSeenUpdateWelcome = localStorage.getItem(WELCOME_MESSAGE_KEY);
-            let newChat: Chat;
+            const TUTORIAL_NOTIFICATION_KEY = 'sam_ia_tutorial_notification_seen_v2';
+            const hasSeenTutorialNotification = localStorage.getItem(TUTORIAL_NOTIFICATION_KEY) === 'true';
 
-            if (!hasSeenUpdateWelcome) {
-                const welcomeMessage: ChatMessage = {
-                    id: uuidv4(),
-                    author: MessageAuthor.SAM,
-                    prelude: 'Iniciativa de SAM',
-                    text: `Hola, ¿tú eres ${name.split(' ')[0]}?<br/><br/>*Sabías que* he aprendido un par de trucos nuevos:<ul><li style="margin-left: 1rem; margin-top: 0.5rem;">Puedo activar modos como *Math*, *Search* o *Canvas Dev* automáticamente si me lo pides. ¡Pruébame!</li><li style="margin-left: 1rem; margin-top: 0.5rem;">Ahora usaré *negritas* para resaltar las partes más importantes de mis respuestas.</li></ul><br/>Espero que te sea útil. ¿En qué te puedo ayudar hoy?`,
-                    timestamp: Date.now(),
-                };
-                newChat = { id: uuidv4(), title: "Mensaje de Bienvenida", messages: [welcomeMessage], isTemporary: true };
-                localStorage.setItem(WELCOME_MESSAGE_KEY, 'true');
-            } else {
-                // Standard behavior for returning users
-                newChat = { id: uuidv4(), title: "Nuevo chat", messages: [], isTemporary: true };
+            let finalChats = [...loadedChats];
+            let newChatId = loadedChats.length > 0 ? loadedChats[0].id : null;
+
+            if (loadedChats.length === 0 || loadedChats.every(c => c.messages.length > 0 && !c.isTemporary)) {
+                 const newChat = { id: uuidv4(), title: "Nuevo chat", messages: [], isTemporary: true };
+                 finalChats = [newChat, ...loadedChats];
+                 newChatId = newChat.id;
             }
 
-            const finalChats = [newChat, ...loadedChats.filter(c => !c.isTemporary)];
             setChats(finalChats);
-            setCurrentChatId(newChat.id);
-            
-            const notifDismissed = localStorage.getItem('sam_ia_update_notif_dismissed_v1.2.1');
-            if (!notifDismissed) {
-                setTimeout(() => {
-                    setShowFeatureNotification(true);
-                }, 5000);
+            setCurrentChatId(newChatId);
+
+            if (!hasSeenTutorialNotification) {
+                // Wait a moment for the app to settle before showing notification
+                setTimeout(() => setShowWelcomeNotification(true), 1500);
             }
         } else {
              // New user: load existing chats (or the default one) and set the first as active.
@@ -302,101 +294,35 @@ const App: React.FC = () => {
         }
     };
 
-    const startEssayGeneration = async (topic: string, chatId: string, messageId: string) => {
-        if (abortControllerRef.current?.signal.aborted) return;
-        
-        const extractJson = (text: string) => {
-            const match = text.trim().match(/```json\s*([\s\S]*?)\s*```/);
-            return match ? match[1] : text.trim();
+    const handleSaveEssay = (essay: Essay) => {
+        if (!currentChatId) return;
+        const essayMessageId = uuidv4();
+        const essayMessage: ChatMessage = {
+            id: essayMessageId,
+            author: MessageAuthor.SAM,
+            text: `Aquí está el ensayo completo sobre: *"${essay.topic}"*`,
+            timestamp: Date.now(),
+            essayContent: { ...essay, status: 'complete' },
         };
+        setChats(prev => prev.map(c => 
+            c.id === currentChatId 
+                ? { ...c, messages: [...c.messages, essayMessage] }
+                : c
+        ));
 
-        setIsGenerating(true);
-        const systemInstruction = generateSystemInstruction('essay', settings);
-        
-        const updateEssayState = (updates: Partial<Essay>) => {
-             setChats(prevChats => prevChats.map(chat => {
-                if (chat.id === chatId) {
-                    return {
-                        ...chat,
-                        messages: chat.messages.map(msg => {
-                            if (msg.id === messageId && msg.essayContent) {
-                                return { ...msg, essayContent: { ...msg.essayContent, ...updates } };
-                            }
-                            return msg;
-                        })
-                    };
-                }
-                return chat;
-            }));
-        };
+        // Make temp chat permanent and rename it
+        if (currentChat?.isTemporary) {
+            const newTitle = essay.topic.substring(0, 40) + (essay.topic.length > 40 ? '...' : '');
+            setChats(prev => prev.map(c => 
+                c.id === currentChatId 
+                    ? { ...c, isTemporary: false, title: newTitle } 
+                    : c
+            ));
+        }
 
-        // 1. Generate Outline
-        await streamGenerateContent({
-            prompt: `Generate an outline for the topic: "${topic}"`,
-            systemInstruction,
-            history: [],
-            mode: 'essay',
-            modelName: 'gemini-2.5-pro',
-            onUpdate: () => {},
-            onComplete: async (fullText) => {
-                try {
-                    const outlineJson = JSON.parse(extractJson(fullText));
-                    const outline = outlineJson.outline;
-                    updateEssayState({ outline, status: 'writing' });
-
-                    const allSections = [...outline, { title: "References", points: [] }];
-                    let currentContent: Record<string, string> = {};
-
-                    for (const section of allSections) {
-                         if (abortControllerRef.current?.signal.aborted) throw new Error("Aborted");
-                         
-                         updateEssayState({ currentSection: section.title });
-
-                         let sectionPrompt = section.title === "References"
-                             ? `Generate a list of references or a bibliography for the essay on "${topic}" with the following structure: ${JSON.stringify(outline)}`
-                             : `Write the "${section.title}" section for the essay on "${topic}", following this outline: ${JSON.stringify(outline)}`;
-
-                        await streamGenerateContent({
-                            prompt: sectionPrompt,
-                            systemInstruction,
-                            history: [],
-                            mode: 'essay',
-                            modelName: selectedModel === 'sm-i1' ? 'gemini-2.5-flash' : 'gemini-2.5-pro',
-                            onUpdate: (chunk) => {
-                                currentContent[section.title] = (currentContent[section.title] || '') + chunk;
-                                updateEssayState({ content: { ...currentContent } });
-                            },
-                            onComplete: (fullSectionText) => {
-                                if(section.title === "References") {
-                                    try {
-                                        const refsJson = JSON.parse(extractJson(fullSectionText));
-                                        updateEssayState({ references: refsJson.references, status: 'complete', currentSection: undefined });
-                                    } catch(e) { 
-                                        console.error("Failed to parse references", e); 
-                                        updateEssayState({ status: 'complete', currentSection: undefined }); 
-                                    }
-                                }
-                            },
-                            onError: (e) => { throw e; },
-                            abortSignal: abortControllerRef.current!.signal
-                        });
-                    }
-                } catch (error) {
-                    console.error("Failed to parse outline or generate essay:", error);
-                    updateLocalMessage(chatId, messageId, {
-                        text: "Hubo un error al generar el ensayo. Por favor, intenta de nuevo.",
-                        essayContent: undefined,
-                    });
-                }
-            },
-            onError: (error) => {
-                updateLocalMessage(chatId, messageId, { text: error.message, author: MessageAuthor.SYSTEM, essayContent: undefined });
-            },
-            abortSignal: abortControllerRef.current!.signal,
-        });
-
-        setIsGenerating(false);
-    }
+        setIsEssayModalOpen(false);
+        setCurrentEssay(null);
+    };
 
 
     const handleSendMessage = async (prompt: string, attachedFile?: Attachment) => {
@@ -420,28 +346,6 @@ const App: React.FC = () => {
                 setCurrentMode(detectedMode);
                 wasModeAutoDetected = true;
             }
-        }
-
-
-        const lastMessage = messages[messages.length - 1];
-        if(lastMessage?.text.includes('Por favor, introduce el tema para tu ensayo.')) {
-            addLocalMessage(currentChatId, { author: MessageAuthor.USER, text: prompt, timestamp: Date.now() });
-            updateLocalMessage(currentChatId, lastMessage.id, { text: `Comenzando la redacción del ensayo sobre: *"${prompt}"*` });
-            
-            const essayMessageId = addLocalMessage(currentChatId, {
-                author: MessageAuthor.SAM,
-                text: '',
-                timestamp: Date.now(),
-                essayContent: {
-                    topic: prompt,
-                    outline: [],
-                    content: {},
-                    references: [],
-                    status: 'outlining',
-                },
-            });
-            await startEssayGeneration(prompt, currentChatId, essayMessageId);
-            return;
         }
 
         const userMessage: Omit<ChatMessage, 'id'> = {
@@ -588,11 +492,17 @@ const App: React.FC = () => {
         }
 
         if (mode.actionType === 'modal' && mode.id === 'essay') {
-            addLocalMessage(currentChatId, {
-                author: MessageAuthor.SAM,
-                text: 'Por favor, introduce el tema para tu ensayo.',
-                timestamp: Date.now(),
+            setCurrentEssay({
+                topic: '',
+                academicLevel: 'university',
+                tone: 'formal',
+                wordCountTarget: 1000,
+                outline: [],
+                content: {},
+                references: [],
+                status: 'briefing',
             });
+            setIsEssayModalOpen(true);
             return;
         }
 
@@ -657,9 +567,6 @@ const App: React.FC = () => {
     };
     
     const startTutorial = () => {
-        setShowFeatureNotification(false);
-        localStorage.setItem('sam_ia_update_notif_dismissed_v1.2.1', 'true');
-        
         setTutorialState({ active: true, step: 1 });
         setTutorialTargetRect(null);
 
@@ -687,13 +594,19 @@ const App: React.FC = () => {
             setTutorialState({ active: false, step: 0 });
             setTutorialTargetRect(null);
             setForceOpenVerification(false);
-            setIsSidebarOpen(false);
+            setIsSidebarOpen(window.innerWidth > 768);
         }, 10500);
+    };
+    
+    const handleStartTutorialFromNotification = () => {
+        setShowWelcomeNotification(false);
+        localStorage.setItem('sam_ia_tutorial_notification_seen_v2', 'true');
+        startTutorial();
     };
 
     const handleDismissNotificationPermanently = () => {
-        localStorage.setItem('sam_ia_update_notif_dismissed_v1.2.1', 'true');
-        setShowFeatureNotification(false);
+        setShowWelcomeNotification(false);
+        localStorage.setItem('sam_ia_tutorial_notification_seen_v2', 'true');
     };
 
 
@@ -727,7 +640,12 @@ const App: React.FC = () => {
     
     return (
         <div className={`flex h-screen overflow-hidden font-sans bg-bg-main text-text-main ${settings.theme}`}>
-            {tutorialState.active && <WelcomeTutorial step={tutorialState.step} targetRect={tutorialTargetRect} />}
+            {tutorialState.active && (
+                <WelcomeTutorial
+                    step={tutorialState.step}
+                    targetRect={tutorialTargetRect}
+                />
+            )}
             <Sidebar
                 isOpen={isSidebarOpen}
                 onClose={() => setIsSidebarOpen(false)}
@@ -765,9 +683,6 @@ const App: React.FC = () => {
                     ) : (
                     <div className="space-y-6">
                         {messages.map(msg => (
-                            msg.essayContent ? (
-                                <EssayCard key={msg.id} essay={msg.essayContent} />
-                            ) : (
                             <div key={msg.id} className={`flex gap-4 items-start ${msg.author === MessageAuthor.USER ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`max-w-2xl w-full flex flex-col ${msg.author === MessageAuthor.USER ? 'items-end' : 'items-start'}`}>
                                     <div className={`px-4 py-2.5 rounded-2xl ${
@@ -784,21 +699,23 @@ const App: React.FC = () => {
                                     {msg.author === MessageAuthor.SAM && !msg.prelude && (msg.text || (msg.groundingMetadata && msg.groundingMetadata.length > 0)) && !isGenerating && !msg.generatingArtifact && <MessageActions text={msg.text || ''} groundingMetadata={msg.groundingMetadata} />}
                                 </div>
                             </div>
-                            )
                         ))}
                     </div>
                     )}
                 </main>
 
                 <footer className="absolute bottom-8 left-0 right-0 z-10 bg-gradient-to-t from-bg-main via-bg-main/95 to-transparent">
+                    {showWelcomeNotification && (
+                        <div className="w-full max-w-3xl mx-auto px-4">
+                            <FeatureNotification 
+                                onShowCollaborator={handleStartTutorialFromNotification}
+                                onDismissPermanently={handleDismissNotificationPermanently}
+                            />
+                        </div>
+                    )}
                     {currentMode === 'math' && lastSamMessageWithLogs && <MathConsole logs={lastSamMessageWithLogs.consoleLogs || []} isOpen={isMathConsoleOpen} onToggle={() => setIsMathConsoleOpen(!isMathConsoleOpen)} />}
                     <div className="w-full max-w-3xl mx-auto px-4 py-2">
-                        {showFeatureNotification && (
-                            <FeatureNotification
-                                onDismissPermanently={handleDismissNotificationPermanently}
-                                onShowCollaborator={startTutorial}
-                            />
-                        )}
+                        
                         <ChatInput onSendMessage={handleSendMessage} onModeAction={handleModeAction} attachment={attachment} onRemoveAttachment={() => setAttachment(null)} disabled={isGenerating} currentMode={currentMode} onResetMode={() => setCurrentMode('normal')} selectedModel={selectedModel} onSetSelectedModel={setSelectedModel} onToggleSidebar={() => setIsSidebarOpen(prev => !prev)} />
                         <p className="text-center text-xs text-text-secondary mt-2 px-2">SAM puede cometer errores. Verifica sus respuestas.</p>
                     </div>
@@ -812,6 +729,15 @@ const App: React.FC = () => {
             <ImagePreviewModal image={previewImage} onClose={() => setPreviewImage(null)} />
             {isCameraModalOpen && <CameraCaptureModal onClose={() => setIsCameraModalOpen(false)} onCapture={handleImageCapture} initialFacingMode={captureMode} />}
             <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+            {isEssayModalOpen && currentEssay && (
+                <EssayModal
+                    initialEssay={currentEssay}
+                    onClose={() => { setIsEssayModalOpen(false); setCurrentEssay(null); }}
+                    onSave={handleSaveEssay}
+                    systemInstruction={generateSystemInstruction('essay', settings)}
+                    modelName={selectedModel === 'sm-i1' ? 'gemini-2.5-flash' : 'gemini-2.5-pro'}
+                />
+            )}
 
             <style>{`.prose a { color: var(--color-accent-blue); } .prose strong { color: var(--color-text-main); } .dark .prose code { background-color: #2C2C2E; padding: 2px 4px; border-radius: 4px; } .light .prose code { background-color: #F1F3F4; padding: 2px 4px; border-radius: 4px; } .typing-indicator span { height: 8px; width: 8px; background-color: var(--color-text-secondary); border-radius: 50%; display: inline-block; animation: wave 1.4s infinite ease-in-out; margin: 0 2px; } .typing-indicator span:nth-of-type(1) { animation-delay: -0.4s; } .typing-indicator span:nth-of-type(2) { animation-delay: -0.2s; } @keyframes wave { 0%, 40%, 100% { transform: translateY(0); } 20% { transform: translateY(-6px); } } .code-spinner { font-family: 'Courier New', Courier, monospace; font-size: 1.5rem; font-weight: bold; display: flex; align-items: center; justify-content: center; color: var(--color-accent); position: relative; width: 28px; height: 28px; } .code-spinner .bracket { animation: pulse 1.5s ease-in-out infinite; } .code-spinner .bracket:last-child { animation-delay: 0.2s; } .code-spinner .slash { animation: rotate-slash 3s linear infinite; display: inline-block; } @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.7; } } @keyframes rotate-slash { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } .animate-spin-slow { animation: spin-slow 3s linear infinite; } @keyframes fade-in-up { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } } .animate-fade-in-up { animation: fade-in-up 0.2s ease-out; }`}</style>
         </div>

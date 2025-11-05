@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface WelcomeTutorialProps {
     step: number;
@@ -18,77 +18,104 @@ const Arrow: React.FC = () => (
     </svg>
 );
 
-
 const WelcomeTutorial: React.FC<WelcomeTutorialProps> = ({ step, targetRect }) => {
-    if (step === 0) return null;
+    const [isTransitioning, setIsTransitioning] = useState(false);
+    const [currentRect, setCurrentRect] = useState(targetRect);
 
-    const config = STEPS_CONFIG[step - 1];
-    if (!config) return null;
+    // Effect to handle smooth transitions between steps
+    useEffect(() => {
+        setIsTransitioning(true);
+        const timer = setTimeout(() => {
+            setCurrentRect(targetRect);
+            setIsTransitioning(false);
+        }, 300); // Half of the total transition time for a smooth fade-out/fade-in
+
+        return () => clearTimeout(timer);
+    }, [targetRect]);
     
-    const spotlightStyle: React.CSSProperties = targetRect ? {
+    const currentConfig = STEPS_CONFIG[step - 1];
+    const isSpotlightVisible = step > 0 && !isTransitioning;
+
+    const spotlightStyle: React.CSSProperties = {
         position: 'absolute',
-        left: `${targetRect.left - 8}px`,
-        top: `${targetRect.top - 8}px`,
-        width: `${targetRect.width + 16}px`,
-        height: `${targetRect.height + 16}px`,
+        left: currentRect ? `${currentRect.left - 8}px` : '50%',
+        top: currentRect ? `${currentRect.top - 8}px` : '50%',
+        width: currentRect ? `${currentRect.width + 16}px` : '0px',
+        height: currentRect ? `${currentRect.height + 16}px` : '0px',
+        transform: currentRect ? 'none' : 'translate(-50%, -50%)',
         borderRadius: '12px',
-        boxShadow: '0 0 0 500vmax rgba(0, 0, 0, 0.65)',
-        transition: 'all 0.5s cubic-bezier(0.65, 0, 0.35, 1)',
+        boxShadow: `0 0 0 500vmax rgba(0, 0, 0, ${isSpotlightVisible ? 0.65 : 0})`,
+        transition: 'box-shadow 0.3s ease-in-out, opacity 0.3s ease-in-out, top 0.3s ease-in-out, left 0.3s ease-in-out, width 0.3s ease-in-out, height 0.3s ease-in-out',
+        opacity: isSpotlightVisible ? 1 : 0,
         pointerEvents: 'none',
-    } : {
-        // Default to no spotlight if no target
-        boxShadow: '0 0 0 500vmax rgba(0, 0, 0, 0.65)',
-        opacity: step === 1 ? 1 : 0,
     };
     
-    const getTextPositionStyles = (): React.CSSProperties => {
-        if (config.position === 'center' || !targetRect) {
+    const getWrapperPositionStyles = (): React.CSSProperties => {
+        if (!currentConfig || currentConfig.position === 'center' || !currentRect) {
             return {
                 top: '50%',
                 left: '50%',
                 transform: 'translate(-50%, -50%)',
-                textAlign: 'center',
             };
         }
-        // Position text ABOVE the spotlight
         return {
-            top: `${targetRect.top - 16}px`,
-            left: `${targetRect.left + targetRect.width / 2}px`,
+            top: `${currentRect.top - 16}px`,
+            left: `${currentRect.left + currentRect.width / 2}px`,
             transform: 'translate(-50%, -100%)',
-            textAlign: 'center',
-            minWidth: '280px',
         };
     };
 
+    const isTextVisible = step > 0 && !isTransitioning;
+
+    const wrapperStyles: React.CSSProperties = {
+        ...getWrapperPositionStyles(),
+        position: 'absolute',
+        textAlign: 'center',
+        minWidth: '280px',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        opacity: isTextVisible ? 1 : 0,
+        pointerEvents: 'none',
+    };
+
     return (
-        <div className="fixed inset-0 z-[200] pointer-events-none">
+        <div className="fixed inset-0 z-[200]">
             <div style={spotlightStyle} />
 
-            <div
-                key={step} // Use key to re-trigger animation on step change
-                className="absolute p-4 transition-all duration-500 ease-in-out animate-pop-in"
-                style={getTextPositionStyles()}
-            >
-                <div className="relative flex flex-col items-center">
-                     <p className="text-xl font-semibold text-white drop-shadow-lg">
-                        {config.text}
-                     </p>
-                    {config.arrow && (
-                        <div className="mt-2 animate-arrow-bounce">
-                           <Arrow />
-                        </div>
-                    )}
+            <div style={wrapperStyles}>
+                <div className="relative h-28 flex items-center justify-center overflow-hidden">
+                    {STEPS_CONFIG.map((config, index) => {
+                        const stepIndex = index + 1;
+                        let transform = 'translateY(150%)';
+                        if (stepIndex === step) {
+                            transform = 'translateY(0)';
+                        } else if (stepIndex < step) {
+                            transform = 'translateY(-150%)';
+                        }
+
+                        return (
+                            <div
+                                key={index}
+                                className="absolute transition-transform duration-500 ease-in-out"
+                                style={{ transform, opacity: stepIndex === step ? 1 : 0 }}
+                            >
+                                <div className="flex flex-col items-center">
+                                    <p className="text-xl font-semibold text-white drop-shadow-lg">
+                                        {config.text}
+                                    </p>
+                                    {config.arrow && (
+                                        <div className="mt-2 animate-arrow-bounce">
+                                            <Arrow />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
-             <style>{`
-                @keyframes pop-in {
-                    from { opacity: 0; transform: scale(0.9) translateY(10px); }
-                    to { opacity: 1; transform: scale(1) translateY(0); }
-                }
-                .animate-pop-in { 
-                    animation: pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-                }
-                 @keyframes arrow-bounce {
+
+            <style>{`
+                @keyframes arrow-bounce {
                     0%, 100% { transform: translateY(0); }
                     50% { transform: translateY(8px); }
                 }

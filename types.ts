@@ -71,14 +71,23 @@ export interface Settings {
 }
 
 export interface EssaySection {
+    id: string;
     title: string;
     points: string[];
 }
+
+export type AcademicLevel = 'high_school' | 'university' | 'masters';
+export type EssayTone = 'formal' | 'persuasive' | 'analytical' | 'expository';
+
 export interface Essay {
     topic: string;
+    academicLevel: AcademicLevel;
+    tone: EssayTone;
+    wordCountTarget: number;
     outline: EssaySection[];
-    content: Record<string, string>;
+    content: Record<string, string>; // Maps section.id to its content
     references: string[];
-    status: 'outlining' | 'writing' | 'referencing' | 'complete';
-    currentSection?: string;
+    // New status values for the interactive flow
+    status: 'briefing' | 'outlining' | 'editing_outline' | 'writing' | 'referencing' | 'complete' | 'error';
+    currentSectionId?: string; // Tracks the ID of the section being written
 }
