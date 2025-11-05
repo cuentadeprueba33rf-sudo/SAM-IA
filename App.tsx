@@ -22,6 +22,7 @@ declare global {
     interface Window {
         showNamePrompt: () => void;
         hideLoadingScreen: () => void;
+        renderMath: () => void;
     }
 }
 
@@ -76,7 +77,7 @@ const initializeChats = (): Chat[] => {
 
 const App: React.FC = () => {
     const [guestName, setGuestName] = useState('');
-    const [chats, setChats] = useState<Chat[]>(initializeChats);
+    const [chats, setChats] = useState<Chat[]>([]);
     const [currentChatId, setCurrentChatId] = useState<string | null>(null);
     const [settings, setSettings] = useState<Settings>({ theme: 'dark', personality: 'default', profession: '' });
     const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
@@ -101,37 +102,29 @@ const App: React.FC = () => {
     // Initial load effects
     useEffect(() => {
         const name = localStorage.getItem('sam_ia_guest_name');
+        const loadedChats = initializeChats(); 
+
         if (name) {
             setGuestName(name);
 
-            // Returning user: create a temporary chat
+            // Returning user: create a temporary chat and make it active.
             const newChat: Chat = { id: uuidv4(), title: "Nuevo chat", messages: [], isTemporary: true };
-            setChats(prev => [newChat, ...prev.filter(c => !c.isTemporary)]);
+            const finalChats = [newChat, ...loadedChats.filter(c => !c.isTemporary)];
+            setChats(finalChats);
             setCurrentChatId(newChat.id);
             
-            // Show feature notification after a delay
             const notifDismissed = localStorage.getItem('sam_ia_feature_notif_dismissed');
             if (!notifDismissed) {
                 setTimeout(() => {
                     setShowFeatureNotification(true);
                 }, 5000);
             }
-
         } else {
-             // New user: load existing chats or create a single one
-            const loadedChats = initializeChats();
+             // New user: load existing chats (or the default one) and set the first as active.
             setChats(loadedChats);
             if (loadedChats.length > 0) {
-                 setCurrentChatId(loadedChats[0].id);
+                setCurrentChatId(loadedChats[0].id);
             }
-        }
-
-        const savedChatId = localStorage.getItem('sam_ia_current_chat_id_guest');
-         if (name && savedChatId && chats.some(c => c.id === savedChatId)) {
-            // A returning user may have a saved chat id, but we want to start with a new temp one.
-            // This logic is now handled above.
-        } else if (chats.length > 0 && !currentChatId) {
-            setCurrentChatId(chats[0].id);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -173,12 +166,6 @@ const App: React.FC = () => {
             chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
         }
     }, [chats, currentChatId]);
-    
-    useEffect(() => {
-        if(currentMode === 'math') {
-            setIsMathConsoleOpen(true);
-        }
-    }, [currentMode]);
 
     const currentChat = useMemo(() => {
         return chats.find(c => c.id === currentChatId);
@@ -187,6 +174,21 @@ const App: React.FC = () => {
     const messages = useMemo(() => {
         return currentChat?.messages || [];
     }, [currentChat]);
+    
+    // Render math when messages update
+    useEffect(() => {
+        if (window.renderMath) {
+            // Delay to allow React to paint the DOM
+            setTimeout(() => window.renderMath(), 100);
+        }
+    }, [messages]);
+    
+    useEffect(() => {
+        if(currentMode === 'math') {
+            setIsMathConsoleOpen(true);
+        }
+    }, [currentMode]);
+
 
     const addLocalMessage = (chatId: string, message: Omit<ChatMessage, 'id'>): string => {
         const newMessageId = uuidv4();
@@ -437,11 +439,6 @@ const App: React.FC = () => {
         const history = messages.filter(m => !m.prelude && !m.essayContent) || [];
         const modelName = selectedModel === 'sm-i1' ? 'gemini-2.5-flash' : 'gemini-2.5-pro';
         
-        if (originalMode === 'math') {
-            setIsGenerating(false); 
-            return;
-        }
-
         await streamGenerateContent({
             prompt: prompt,
             systemInstruction,
@@ -470,6 +467,7 @@ const App: React.FC = () => {
                 const match = ARTIFACT_REGEX.exec(fullText);
                 let newArtifact: Artifact | undefined;
                 let finalText = fullText;
+                let newLogs: string[] | undefined;
 
                 if (originalMode === 'canvasdev' && match) {
                     const [, language, filepath, code] = match;
@@ -477,7 +475,29 @@ const App: React.FC = () => {
                     finalText = "He creado un componente interactivo para ti. Puedes verlo en la vista previa.";
                 }
 
-                updateLocalMessage(currentChatId, samMessageId, { text: finalText, groundingMetadata: groundingChunks, artifacts: newArtifact ? [newArtifact] : undefined, generatingArtifact: false, isSearching: false });
+                if (originalMode === 'math') {
+                    const lines = fullText.split('\n');
+                    const logs: string[] = [];
+                    const answerParts: string[] = [];
+                    lines.forEach(line => {
+                        if (line.startsWith('[LOG]')) {
+                            logs.push(line);
+                        } else {
+                            answerParts.push(line);
+                        }
+                    });
+                    finalText = answerParts.join('\n').trim();
+                    newLogs = [`[INFO] Math mode activated. Verifying prompt...`, ...logs];
+                }
+
+                updateLocalMessage(currentChatId, samMessageId, { 
+                    text: finalText, 
+                    groundingMetadata: groundingChunks, 
+                    artifacts: newArtifact ? [newArtifact] : undefined, 
+                    generatingArtifact: false, 
+                    isSearching: false,
+                    consoleLogs: newLogs,
+                });
 
                 if (messages.length < 2 && currentChat?.title === "Nuevo chat") {
                     const newTitle = prompt.substring(0, 40) + (prompt.length > 40 ? '...' : '');

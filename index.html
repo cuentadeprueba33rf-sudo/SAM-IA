@@ -7,6 +7,7 @@
     <title>SAM IA - Interfaz Corporativa</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0KOVEMcApdbeLaiDfGGfnB7VqZEJcgCmcETGcOKqrASBC9yvS1mYe" crossorigin="anonymous">
     <style>
       :root {
         --color-bg-main: #F8F9FA;
@@ -301,6 +302,27 @@
     <!-- FIN: BLOQUE DE PANTALLA DE CARGA SAM IA (MANTENER) -->
 
     <div id="root"></div>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIOOTenSvSAPnRdGO8" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
+    <script>
+        function renderMath() {
+            if (window.renderMathInElement && window.katex) {
+                try {
+                    renderMathInElement(document.getElementById('root'), {
+                        delimiters: [
+                            {left: '$$', right: '$$', display: true},
+                            {left: '$', right: '$', display: false},
+                            {left: '\\(', right: '\\)', display: false},
+                            {left: '\\[', right: '\\]', display: true}
+                        ],
+                        throwOnError : false
+                    });
+                } catch (error) {
+                    console.error("KaTeX rendering error:", error);
+                }
+            }
+        }
+    </script>
     <script type="module" src="/index.tsx"></script>
 </body>
 </html>
