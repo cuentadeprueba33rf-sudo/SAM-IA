@@ -129,7 +129,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
     const modelMenuRef = useRef<HTMLDivElement>(null);
 
     const currentModeData = MODES.find(m => m.id === currentMode);
-    const ModeIcon = currentModeData?.icon;
 
     const handleSend = () => {
         if ((text.trim() || attachment) && !disabled) {
@@ -219,11 +218,20 @@ const ChatInput: React.FC<ChatInputProps> = ({
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                     </button>
                     
-                    {currentMode !== 'normal' && ModeIcon && (
-                        <div className="flex-shrink-0 flex items-center gap-1.5 bg-accent text-white px-2 py-1 rounded-full animate-fade-in self-center">
-                            <ModeIcon className="w-5 h-5" />
-                            <button onClick={onResetMode} className="p-0.5 rounded-full hover:bg-white/20 -mr-1" aria-label="Deactivate mode">
-                                <XMarkIcon className="w-4 h-4" />
+                    {currentMode !== 'normal' && currentModeData && (
+                        <div 
+                            title={`Modo activo: ${currentModeData.title}`} 
+                            className="relative flex-shrink-0 self-center animate-fade-in mx-1"
+                        >
+                            <div className="p-2 bg-accent/10 rounded-full flex items-center justify-center">
+                                <currentModeData.icon className="w-5 h-5 text-accent" />
+                            </div>
+                            <button 
+                                onClick={onResetMode} 
+                                className="absolute -top-1 -right-1 bg-surface-primary rounded-full p-0.5 shadow hover:scale-110 transition-transform border border-border-subtle" 
+                                aria-label={`Desactivar modo ${currentModeData.title}`}
+                            >
+                                <XMarkIcon className="w-3.5 h-3.5 text-text-secondary" />
                             </button>
                         </div>
                     )}

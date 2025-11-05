@@ -74,6 +74,28 @@ const initializeChats = (): Chat[] => {
     return [{ id: uuidv4(), title: "Nuevo chat", messages: [] }];
 };
 
+const detectMode = (prompt: string): ModeID | null => {
+    const lowerPrompt = prompt.toLowerCase();
+
+    // Improved regex: looks for an action verb, then text, then a dev-related noun. Case-insensitive.
+    const canvasDevRegex = /\b(crea|haz|genera|escribe|desarrolla|programa|código para|un componente de|una interfaz)\s.*(botón|formulario|página|web|interfaz|galería|reproductor|html|css|javascript|ui|ux)\b/i;
+    if (canvasDevRegex.test(lowerPrompt)) {
+        return 'canvasdev';
+    }
+
+    const mathRegex = /\b(calcula|resuelve|cuánto es|ecuación|derivada|integral|álgebra|geometría)\b|(\s\d+\s*[\+\-\*\/]\s*\d+)/;
+    if (mathRegex.test(lowerPrompt)) {
+        return 'math';
+    }
+
+    const searchRegex = /\b(busca|quién es|qué es|cuál es la última|noticias sobre|infórmame sobre|encuentra información sobre|investiga)\b/i;
+    if (searchRegex.test(lowerPrompt)) {
+        return 'search';
+    }
+
+    return null;
+};
+
 
 const App: React.FC = () => {
     const [guestName, setGuestName] = useState('');
@@ -365,6 +387,18 @@ const App: React.FC = () => {
         setIsGenerating(true);
         abortControllerRef.current?.abort();
         abortControllerRef.current = new AbortController();
+        
+        let modeForThisMessage = currentMode;
+        let wasModeAutoDetected = false;
+        if (currentMode === 'normal' && !attachedFile) {
+            const detectedMode = detectMode(prompt);
+            if (detectedMode) {
+                modeForThisMessage = detectedMode;
+                setCurrentMode(detectedMode);
+                wasModeAutoDetected = true;
+            }
+        }
+
 
         const lastMessage = messages[messages.length - 1];
         if(lastMessage?.text.includes('Por favor, introduce el tema para tu ensayo.')) {
@@ -401,26 +435,29 @@ const App: React.FC = () => {
             author: MessageAuthor.SAM,
             text: '',
             timestamp: Date.now(),
-            mode: currentMode,
-            generatingArtifact: currentMode === 'canvasdev',
-            isSearching: currentMode === 'search',
-            consoleLogs: currentMode === 'math' ? [`[INFO] Math mode activated. Verifying prompt...`] : undefined,
+            mode: modeForThisMessage,
+            generatingArtifact: modeForThisMessage === 'canvasdev',
+            isSearching: modeForThisMessage === 'search',
+            consoleLogs: modeForThisMessage === 'math' ? [`[INFO] Math mode activated. Verifying prompt...`] : undefined,
         };
         
-        if (currentMode === 'image_generation') {
+        if (wasModeAutoDetected) {
+            const modeData = MODES.find(m => m.id === modeForThisMessage);
+            samMessage.prelude = `Modo ${modeData?.title} Activado Automáticamente`;
+        }
+        
+        if (modeForThisMessage === 'image_generation') {
             samMessage.text = 'Generando imagen...';
         }
         
         setChats(prev => prev.map(c => c.id === currentChatId ? {...c, messages: [...c.messages, samMessage]} : c));
         
-        const originalMode = currentMode;
-        
         setAttachment(null);
-        if (['image', 'document', 'image_generation'].includes(currentMode)) {
+        if (['image', 'document', 'image_generation'].includes(modeForThisMessage) && !wasModeAutoDetected) {
             setCurrentMode('normal');
         }
 
-        if (originalMode === 'image_generation') {
+        if (modeForThisMessage === 'image_generation') {
             try {
                 const generatedImage = await generateImage({ prompt, attachment: attachedFile });
                 updateLocalMessage(currentChatId, samMessageId, {
@@ -436,7 +473,7 @@ const App: React.FC = () => {
             return;
         }
 
-        const systemInstruction = generateSystemInstruction(originalMode, settings);
+        const systemInstruction = generateSystemInstruction(modeForThisMessage, settings);
         const history = messages.filter(m => !m.prelude && !m.essayContent) || [];
         const modelName = selectedModel === 'sm-i1' ? 'gemini-2.5-flash' : 'gemini-2.5-pro';
         
@@ -445,7 +482,7 @@ const App: React.FC = () => {
             systemInstruction,
             attachment: attachedFile,
             history,
-            mode: originalMode,
+            mode: modeForThisMessage,
             modelName,
             onUpdate: (chunk) => {
                 setChats(prevChats => {
@@ -470,13 +507,13 @@ const App: React.FC = () => {
                 let finalText = fullText;
                 let newLogs: string[] | undefined;
 
-                if (originalMode === 'canvasdev' && match) {
+                if (modeForThisMessage === 'canvasdev' && match) {
                     const [, language, filepath, code] = match;
                     newArtifact = { id: uuidv4(), title: filepath || `artifact.${language}`, filepath: filepath || `artifact.${language}`, code: code.trim(), language };
                     finalText = "He creado un componente interactivo para ti. Puedes verlo en la vista previa.";
                 }
 
-                if (originalMode === 'math') {
+                if (modeForThisMessage === 'math') {
                     const lines = fullText.split('\n');
                     const logs: string[] = [];
                     const answerParts: string[] = [];
@@ -631,7 +668,14 @@ const App: React.FC = () => {
         if (message.mode === 'math' && !message.text) return <div className="flex items-center gap-3 text-text-secondary"><CalculatorIcon className="w-5 h-5" /><span className="font-medium">Resolviendo...</span></div>;
         if (message.mode === 'image_generation' && !message.attachment) return <div className="flex items-center gap-3 text-text-secondary animate-pulse"><PhotoIcon className="w-5 h-5" /><span className="font-medium">Generando imagen...</span></div>;
         
-        return <div className="prose prose-sm dark:prose-invert max-w-none break-words" dangerouslySetInnerHTML={{ __html: message.text.replace(/\n/g, '<br />') }} />;
+        const formattedText = message.text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/\*([^\*]+)\*/g, '<strong>$1</strong>')
+            .replace(/\n/g, '<br />');
+
+        return <div className="prose prose-sm dark:prose-invert max-w-none break-words" dangerouslySetInnerHTML={{ __html: formattedText }} />;
     };
 
     const lastSamMessageWithLogs = currentChat?.messages.slice().reverse().find(m => m.author === MessageAuthor.SAM && m.consoleLogs);
@@ -721,7 +765,7 @@ const App: React.FC = () => {
             {isCameraModalOpen && <CameraCaptureModal onClose={() => setIsCameraModalOpen(false)} onCapture={handleImageCapture} initialFacingMode={captureMode} />}
             <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
 
-            <style>{`.prose a { color: var(--color-accent-blue); } .dark .prose code { background-color: #2C2C2E; padding: 2px 4px; border-radius: 4px; } .light .prose code { background-color: #F1F3F4; padding: 2px 4px; border-radius: 4px; } .typing-indicator span { height: 8px; width: 8px; background-color: var(--color-text-secondary); border-radius: 50%; display: inline-block; animation: wave 1.4s infinite ease-in-out; margin: 0 2px; } .typing-indicator span:nth-of-type(1) { animation-delay: -0.4s; } .typing-indicator span:nth-of-type(2) { animation-delay: -0.2s; } @keyframes wave { 0%, 40%, 100% { transform: translateY(0); } 20% { transform: translateY(-6px); } } .code-spinner { font-family: 'Courier New', Courier, monospace; font-size: 1.5rem; font-weight: bold; display: flex; align-items: center; justify-content: center; color: var(--color-accent); position: relative; width: 28px; height: 28px; } .code-spinner .bracket { animation: pulse 1.5s ease-in-out infinite; } .code-spinner .bracket:last-child { animation-delay: 0.2s; } .code-spinner .slash { animation: rotate-slash 3s linear infinite; display: inline-block; } @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.7; } } @keyframes rotate-slash { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } .animate-spin-slow { animation: spin-slow 3s linear infinite; } @keyframes fade-in-up { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } } .animate-fade-in-up { animation: fade-in-up 0.2s ease-out; }`}</style>
+            <style>{`.prose a { color: var(--color-accent-blue); } .prose strong { color: var(--color-text-main); } .dark .prose code { background-color: #2C2C2E; padding: 2px 4px; border-radius: 4px; } .light .prose code { background-color: #F1F3F4; padding: 2px 4px; border-radius: 4px; } .typing-indicator span { height: 8px; width: 8px; background-color: var(--color-text-secondary); border-radius: 50%; display: inline-block; animation: wave 1.4s infinite ease-in-out; margin: 0 2px; } .typing-indicator span:nth-of-type(1) { animation-delay: -0.4s; } .typing-indicator span:nth-of-type(2) { animation-delay: -0.2s; } @keyframes wave { 0%, 40%, 100% { transform: translateY(0); } 20% { transform: translateY(-6px); } } .code-spinner { font-family: 'Courier New', Courier, monospace; font-size: 1.5rem; font-weight: bold; display: flex; align-items: center; justify-content: center; color: var(--color-accent); position: relative; width: 28px; height: 28px; } .code-spinner .bracket { animation: pulse 1.5s ease-in-out infinite; } .code-spinner .bracket:last-child { animation-delay: 0.2s; } .code-spinner .slash { animation: rotate-slash 3s linear infinite; display: inline-block; } @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.7; } } @keyframes rotate-slash { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } .animate-spin-slow { animation: spin-slow 3s linear infinite; } @keyframes fade-in-up { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } } .animate-fade-in-up { animation: fade-in-up 0.2s ease-out; }`}</style>
         </div>
     );
 };
