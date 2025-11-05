@@ -497,6 +497,15 @@ const App: React.FC = () => {
         const mode = MODES.find(m => m.id === modeId);
         if (!mode || !currentChatId) return;
         
+        if (modeId === 'image_generation') {
+            addLocalMessage(currentChatId, {
+                author: MessageAuthor.SYSTEM,
+                text: 'La función de crear o editar imágenes aún no está disponible para tu región.',
+                timestamp: Date.now(),
+            });
+            return;
+        }
+
         if (mode.actionType === 'modal' && mode.id === 'essay') {
             addLocalMessage(currentChatId, {
                 author: MessageAuthor.SAM,

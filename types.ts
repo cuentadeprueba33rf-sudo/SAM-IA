@@ -57,8 +57,6 @@ export interface Mode {
   requires?: 'image' | 'document';
   accept?: string; // for file input
   capture?: 'user' | 'environment'; // for camera
-  category: string;
-  hidden?: boolean;
 }
 
 export type ModelType = 'sm-i1' | 'sm-i3';
