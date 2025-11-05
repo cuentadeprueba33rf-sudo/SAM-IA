@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ChevronDownIcon, CheckBadgeIcon } from './icons';
 
 const collaborators = [
@@ -9,13 +9,16 @@ const collaborators = [
     { name: 'Equipo VERCE', color: '#FFD700' }, // Gold
 ];
 
-const VerificationPanel: React.FC = () => {
-    const [isOpen, setIsOpen] = useState(false);
+interface VerificationPanelProps {
+    isOpen: boolean;
+    onToggle: () => void;
+}
 
+const VerificationPanel: React.FC<VerificationPanelProps> = ({ isOpen, onToggle }) => {
     return (
         <div className="px-4 py-2 border-t border-b border-border-subtle">
             <button
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={onToggle}
                 className="flex items-center justify-between p-2 rounded-lg hover:bg-surface-secondary text-left w-full"
             >
                 <span className="font-semibold text-sm text-text-main">Verificación de Creadores</span>

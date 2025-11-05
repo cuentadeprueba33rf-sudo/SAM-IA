@@ -12,6 +12,7 @@ import ImagePreviewModal from './components/ImagePreviewModal';
 import EssayCard from './components/EssayComposer';
 import CameraCaptureModal from './components/CameraCaptureModal';
 import FeatureNotification from './components/FeatureNotification';
+import WelcomeTutorial from './components/WelcomeTutorial';
 import { CodeBracketIcon, GlobeAltIcon, CalculatorIcon, PhotoIcon, DocumentIcon, XMarkIcon } from './components/icons';
 import type { Chat, ChatMessage, ModeID, Attachment, Settings, Artifact, Essay, ModelType } from './types';
 import { MessageAuthor } from './types';
@@ -116,11 +117,16 @@ const App: React.FC = () => {
     const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
     const [captureMode, setCaptureMode] = useState<'user' | 'environment'>('user');
     const [showFeatureNotification, setShowFeatureNotification] = useState(false);
-    const [showCollaboratorHighlight, setShowCollaboratorHighlight] = useState(false);
+    const [tutorialState, setTutorialState] = useState({ active: false, step: 0 });
+    const [tutorialTargetRect, setTutorialTargetRect] = useState<DOMRect | null>(null);
+    const [forceOpenVerification, setForceOpenVerification] = useState(false);
+
 
     const abortControllerRef = useRef<AbortController | null>(null);
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const creditsRef = useRef<HTMLDivElement>(null);
+    const verificationPanelRef = useRef<HTMLDivElement>(null);
     
     // Initial load effects
     useEffect(() => {
@@ -649,18 +655,40 @@ const App: React.FC = () => {
         }
         setIsCameraModalOpen(false);
     };
-
-    const handleShowCollaborator = () => {
+    
+    const startTutorial = () => {
         setShowFeatureNotification(false);
         localStorage.setItem('sam_ia_update_notif_dismissed_v1.2.1', 'true');
-
-        setIsSidebarOpen(true);
-        setShowCollaboratorHighlight(true);
         
+        setTutorialState({ active: true, step: 1 });
+        setTutorialTargetRect(null);
+
         setTimeout(() => {
-            setShowCollaboratorHighlight(false);
+            setIsSidebarOpen(true);
+            setTimeout(() => {
+                if (creditsRef.current) {
+                    setTutorialTargetRect(creditsRef.current.getBoundingClientRect());
+                    setTutorialState({ active: true, step: 2 });
+                }
+            }, 400); 
+        }, 2500); 
+
+        setTimeout(() => {
+            setForceOpenVerification(true);
+            setTimeout(() => {
+                 if (verificationPanelRef.current) {
+                    setTutorialTargetRect(verificationPanelRef.current.getBoundingClientRect());
+                    setTutorialState({ active: true, step: 3 });
+                }
+            }, 400); 
+        }, 6500);
+
+        setTimeout(() => {
+            setTutorialState({ active: false, step: 0 });
+            setTutorialTargetRect(null);
+            setForceOpenVerification(false);
             setIsSidebarOpen(false);
-        }, 5000);
+        }, 10500);
     };
 
     const handleDismissNotificationPermanently = () => {
@@ -699,6 +727,7 @@ const App: React.FC = () => {
     
     return (
         <div className={`flex h-screen overflow-hidden font-sans bg-bg-main text-text-main ${settings.theme}`}>
+            {tutorialState.active && <WelcomeTutorial step={tutorialState.step} targetRect={tutorialTargetRect} />}
             <Sidebar
                 isOpen={isSidebarOpen}
                 onClose={() => setIsSidebarOpen(false)}
@@ -709,7 +738,9 @@ const App: React.FC = () => {
                 onShowUpdates={() => setIsUpdatesModalOpen(true)}
                 onOpenSettings={() => setIsSettingsModalOpen(true)}
                 onShowContextMenu={(chatId, coords) => setContextMenu({ chatId, coords })}
-                showCollaboratorHighlight={showCollaboratorHighlight}
+                creditsRef={creditsRef}
+                verificationPanelRef={verificationPanelRef}
+                forceOpenVerificationPanel={forceOpenVerification}
             />
             
             <div className="relative flex-1 flex flex-col h-screen overflow-hidden">
@@ -765,7 +796,7 @@ const App: React.FC = () => {
                         {showFeatureNotification && (
                             <FeatureNotification
                                 onDismissPermanently={handleDismissNotificationPermanently}
-                                onShowCollaborator={handleShowCollaborator}
+                                onShowCollaborator={startTutorial}
                             />
                         )}
                         <ChatInput onSendMessage={handleSendMessage} onModeAction={handleModeAction} attachment={attachment} onRemoveAttachment={() => setAttachment(null)} disabled={isGenerating} currentMode={currentMode} onResetMode={() => setCurrentMode('normal')} selectedModel={selectedModel} onSetSelectedModel={setSelectedModel} onToggleSidebar={() => setIsSidebarOpen(prev => !prev)} />
