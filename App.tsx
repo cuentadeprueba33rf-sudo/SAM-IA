@@ -126,12 +126,29 @@ const App: React.FC = () => {
     useEffect(() => {
         const name = localStorage.getItem('sam_ia_guest_name');
         const loadedChats = initializeChats(); 
+        const WELCOME_MESSAGE_KEY = 'sam_ia_update_welcome_v1.3.0'; // Version-specific key
 
         if (name) {
             setGuestName(name);
 
-            // Returning user: create a temporary chat and make it active.
-            const newChat: Chat = { id: uuidv4(), title: "Nuevo chat", messages: [], isTemporary: true };
+            const hasSeenUpdateWelcome = localStorage.getItem(WELCOME_MESSAGE_KEY);
+            let newChat: Chat;
+
+            if (!hasSeenUpdateWelcome) {
+                const welcomeMessage: ChatMessage = {
+                    id: uuidv4(),
+                    author: MessageAuthor.SAM,
+                    prelude: 'Iniciativa de SAM',
+                    text: `Hola, ¿tú eres ${name.split(' ')[0]}?<br/><br/>*Sabías que* he aprendido un par de trucos nuevos:<ul><li style="margin-left: 1rem; margin-top: 0.5rem;">Puedo activar modos como *Math*, *Search* o *Canvas Dev* automáticamente si me lo pides. ¡Pruébame!</li><li style="margin-left: 1rem; margin-top: 0.5rem;">Ahora usaré *negritas* para resaltar las partes más importantes de mis respuestas.</li></ul><br/>Espero que te sea útil. ¿En qué te puedo ayudar hoy?`,
+                    timestamp: Date.now(),
+                };
+                newChat = { id: uuidv4(), title: "Mensaje de Bienvenida", messages: [welcomeMessage], isTemporary: true };
+                localStorage.setItem(WELCOME_MESSAGE_KEY, 'true');
+            } else {
+                // Standard behavior for returning users
+                newChat = { id: uuidv4(), title: "Nuevo chat", messages: [], isTemporary: true };
+            }
+
             const finalChats = [newChat, ...loadedChats.filter(c => !c.isTemporary)];
             setChats(finalChats);
             setCurrentChatId(newChat.id);

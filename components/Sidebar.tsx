@@ -1,5 +1,6 @@
 import React, { Fragment } from 'react';
 import { PencilSquareIcon, WindowIcon, SparklesIcon, Cog6ToothIcon, MagnifyingGlassIcon, EllipsisVerticalIcon, ChevronDownIcon } from './icons';
+import VerificationPanel from './VerificationPanel';
 
 type Chat = {
     id: string;
@@ -74,6 +75,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                         <span>Actualizaciones</span>
                     </button>
                 </div>
+
+                <VerificationPanel />
                 
                 <div className="flex-1 overflow-y-auto px-4">
                     <h3 className="text-text-secondary font-semibold text-sm mb-2">Recientes</h3>
