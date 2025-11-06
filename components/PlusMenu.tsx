@@ -7,18 +7,26 @@ interface PlusMenuProps {
 }
 
 const PlusMenu: React.FC<PlusMenuProps> = ({ onAction }) => {
+    // Exclude voice mode from the grid, as it will be handled by a dedicated button
+    const gridModes = MODES.filter(mode => mode.id !== 'voice' && mode.id !== 'image_generation');
+
+    // FIX: A complex expression like a function call cannot be used directly as a component type in JSX.
+    // It must be assigned to a capitalized variable first.
+    const VoiceIcon = MODES.find(m => m.id === 'voice')!.icon;
+
     return (
         <div className="absolute bottom-full mb-3 w-full max-w-lg bg-surface-primary rounded-xl border border-border-subtle shadow-2xl animate-fade-in-up p-2">
             <div className="grid grid-cols-2 gap-2">
-                {MODES.map((mode) => (
+                {gridModes.map((mode) => (
                     <button
                         key={mode.id}
                         onClick={() => onAction(mode.id, mode.accept, mode.capture)}
                         className={`flex items-center gap-3 text-left p-3 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-accent ${
                             mode.disabled
-                                ? 'opacity-50'
+                                ? 'opacity-50 cursor-not-allowed'
                                 : 'hover:bg-surface-secondary'
                         }`}
+                        disabled={mode.disabled}
                     >
                         <div className="p-2 bg-surface-secondary rounded-full">
                            <mode.icon className="w-5 h-5 text-accent-blue" />
@@ -29,6 +37,21 @@ const PlusMenu: React.FC<PlusMenuProps> = ({ onAction }) => {
                         </div>
                     </button>
                 ))}
+            </div>
+            <div className="p-1">
+                 <button
+                    key="voice"
+                    onClick={() => onAction('voice')}
+                    className="flex w-full items-center gap-3 text-left p-3 rounded-lg transition-colors hover:bg-surface-secondary focus:outline-none focus:ring-2 focus:ring-accent"
+                >
+                    <div className="p-2 bg-surface-secondary rounded-full">
+                        <VoiceIcon className="w-5 h-5 text-accent-blue" />
+                    </div>
+                    <div>
+                        <p className="font-semibold text-text-main text-sm">Voz</p>
+                        <p className="text-text-secondary text-xs">Habla con SAM en tiempo real</p>
+                    </div>
+                </button>
             </div>
             <style>{`
                 @keyframes fade-in-up {

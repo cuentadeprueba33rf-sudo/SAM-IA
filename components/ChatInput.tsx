@@ -3,7 +3,7 @@ import PlusMenu from './PlusMenu';
 import FilePreview from './FilePreview';
 import type { Attachment, ModeID, ModelType } from '../types';
 import { MODES } from '../constants';
-import { ArrowUpIcon, XMarkIcon, ChevronDownIcon, SparklesIcon, PlusIcon, AdjustmentsHorizontalIcon, PhotoIcon, Bars3Icon } from './icons';
+import { ArrowUpIcon, XMarkIcon, ChevronDownIcon, SparklesIcon, PlusIcon, AdjustmentsHorizontalIcon, PhotoIcon, Bars3Icon, MicrophoneIcon } from './icons';
 
 interface ChatInputProps {
     onSendMessage: (message: string, attachment?: Attachment) => void;
@@ -16,7 +16,27 @@ interface ChatInputProps {
     selectedModel: ModelType;
     onSetSelectedModel: (model: ModelType) => void;
     onToggleSidebar: () => void;
+    isVoiceMode: boolean;
+    onEndVoiceSession: () => void;
 }
+
+const VoiceInput: React.FC<{ onEndSession: () => void }> = ({ onEndSession }) => {
+    return (
+        <div className="bg-surface-primary p-3 rounded-2xl border border-border-subtle shadow-lg w-full transition-all flex flex-col items-center gap-4">
+            <div className="flex items-center gap-2 text-text-secondary">
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                <span>Escuchando...</span>
+            </div>
+            <button
+                onClick={onEndSession}
+                className="px-4 py-2 bg-danger/10 text-danger text-sm font-semibold rounded-lg hover:bg-danger/20"
+            >
+                Finalizar Sesión
+            </button>
+        </div>
+    );
+};
+
 
 const ImageGenInput: React.FC<{
     onSend: (prompt: string, attachment?: Attachment) => void;
@@ -121,6 +141,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
     selectedModel,
     onSetSelectedModel,
     onToggleSidebar,
+    isVoiceMode,
+    onEndVoiceSession,
 }) => {
     const [text, setText] = useState('');
     const [isPlusMenuOpen, setIsPlusMenuOpen] = useState(false);
@@ -169,10 +191,14 @@ const ChatInput: React.FC<ChatInputProps> = ({
     }, [text, adjustTextareaHeight]);
     
     useEffect(() => {
-        if(!disabled && textareaRef.current) {
+        if(!disabled && textareaRef.current && !isVoiceMode) {
             textareaRef.current.focus();
         }
-    }, [disabled]);
+    }, [disabled, isVoiceMode]);
+
+    if (isVoiceMode) {
+        return <VoiceInput onEndSession={onEndVoiceSession} />;
+    }
 
     if (currentMode === 'image_generation') {
         return (

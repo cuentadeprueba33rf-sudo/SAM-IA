@@ -2,6 +2,7 @@
   "name": "SAM IA - Interfaz Corporativa Premium",
   "description": "Una interfaz de chat de IA avanzada para productividad, desarrollo y análisis, con modos de operación especializados y el potente motor de IA de SAM.",
   "requestFramePermissions": [
-    "camera"
+    "camera",
+    "microphone"
   ]
 }

@@ -1,6 +1,7 @@
 import React, { Fragment, useState, useEffect, RefObject } from 'react';
-import { PencilSquareIcon, WindowIcon, SparklesIcon, Cog6ToothIcon, MagnifyingGlassIcon, EllipsisVerticalIcon } from './icons';
+import { PencilSquareIcon, WindowIcon, SparklesIcon, Cog6ToothIcon, MagnifyingGlassIcon, EllipsisVerticalIcon, ViewColumnsIcon, MegaphoneIcon } from './icons';
 import VerificationPanel from './VerificationPanel';
+import type { ViewID } from '../types';
 
 type Chat = {
     id: string;
@@ -20,6 +21,8 @@ interface SidebarProps {
     creditsRef: RefObject<HTMLDivElement>;
     verificationPanelRef: RefObject<HTMLDivElement>;
     forceOpenVerificationPanel: boolean;
+    activeView: ViewID;
+    onSelectView: (view: ViewID) => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
@@ -35,6 +38,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     creditsRef,
     verificationPanelRef,
     forceOpenVerificationPanel,
+    activeView,
+    onSelectView,
 }) => {
 
     const [isVerificationOpen, setIsVerificationOpen] = useState(false);
@@ -60,6 +65,11 @@ const Sidebar: React.FC<SidebarProps> = ({
       }
     };
 
+    const handleSelectChat = (id: string) => {
+        onSelectView('chat');
+        onSelectChat(id);
+    };
+
     return (
         <Fragment>
             <div 
@@ -81,9 +91,13 @@ const Sidebar: React.FC<SidebarProps> = ({
                             <WindowIcon className="w-6 h-6 text-text-secondary" />
                         </button>
                     </div>
-                    <button onClick={onShowUpdates} className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-secondary text-left w-full">
-                        <SparklesIcon className="w-6 h-6 text-text-secondary" />
-                        <span>Actualizaciones</span>
+                    <button onClick={() => onSelectView('canvas')} className={`flex items-center gap-3 p-2 rounded-lg text-left w-full transition-colors ${activeView === 'canvas' ? 'bg-accent/10 text-accent' : 'hover:bg-surface-secondary'}`}>
+                        <ViewColumnsIcon className="w-6 h-6 text-text-secondary" />
+                        <span>Canvas</span>
+                    </button>
+                     <button onClick={() => onSelectView('insights')} className={`flex items-center gap-3 p-2 rounded-lg text-left w-full transition-colors ${activeView === 'insights' ? 'bg-accent/10 text-accent' : 'hover:bg-surface-secondary'}`}>
+                        <MegaphoneIcon className="w-6 h-6 text-text-secondary" />
+                        <span>Insights</span>
                     </button>
                 </div>
 
@@ -101,7 +115,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                             <li key={chat.id} className="group relative">
                                 <a 
                                     href="#"
-                                    onClick={(e) => { e.preventDefault(); onSelectChat(chat.id); }}
+                                    onClick={(e) => { e.preventDefault(); handleSelectChat(chat.id); }}
                                     onContextMenu={(e) => {
                                         e.preventDefault();
                                         onShowContextMenu(chat.id, { x: e.clientX, y: e.clientY });
@@ -111,13 +125,13 @@ const Sidebar: React.FC<SidebarProps> = ({
                                     onMouseLeave={handlePressEnd}
                                     onTouchStart={(e) => handlePressStart(e, chat.id)}
                                     onTouchEnd={handlePressEnd}
-                                    className={`block w-full text-left truncate pr-8 px-3 py-2 rounded-lg transition-colors ${currentChatId === chat.id ? 'bg-accent text-white' : 'hover:bg-surface-secondary'}`}
+                                    className={`block w-full text-left truncate pr-8 px-3 py-2 rounded-lg transition-colors ${activeView === 'chat' && currentChatId === chat.id ? 'bg-accent text-white' : 'hover:bg-surface-secondary'}`}
                                 >
                                     {chat.title}
                                 </a>
                                 <button
                                     onClick={(e) => onShowContextMenu(chat.id, { x: e.clientX, y: e.clientY })}
-                                    className={`absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded-full text-text-secondary hover:bg-surface-primary ${currentChatId === chat.id ? 'text-white' : 'group-hover:opacity-100 opacity-0'}`}
+                                    className={`absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded-full text-text-secondary hover:bg-surface-primary ${activeView === 'chat' && currentChatId === chat.id ? 'text-white' : 'group-hover:opacity-100 opacity-0'}`}
                                 >
                                     <EllipsisVerticalIcon className="w-5 h-5" />
                                 </button>
@@ -130,6 +144,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                      <button onClick={onOpenSettings} className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-secondary text-left w-full">
                         <Cog6ToothIcon className="w-6 h-6 text-text-secondary" />
                         <span>Configuración</span>
+                    </button>
+                     <button onClick={onShowUpdates} className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-secondary text-left w-full">
+                        <SparklesIcon className="w-6 h-6 text-text-secondary" />
+                        <span>Actualizaciones</span>
                     </button>
                      <div className="px-2 pt-2 text-center text-xs text-text-secondary">
                         <p>by: Samuel Casseres, Junayfer Palmera, Danny Casseres, Danna Simancas & el equipo de VERCE</p>

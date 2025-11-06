@@ -1,18 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { DocumentDuplicateIcon, CheckIcon, GlobeAltIcon } from './icons';
+import { DocumentDuplicateIcon, CheckIcon, GlobeAltIcon, PinIcon } from './icons';
+import type { ChatMessage } from '../types';
 
 interface MessageActionsProps {
+    message: ChatMessage;
+    onPin: () => void;
     text: string;
     groundingMetadata?: any[];
 }
 
-const MessageActions: React.FC<MessageActionsProps> = ({ text, groundingMetadata }) => {
+const MessageActions: React.FC<MessageActionsProps> = ({ message, onPin, text, groundingMetadata }) => {
     const [copied, setCopied] = useState(false);
     const [showSources, setShowSources] = useState(false);
     const sourcesRef = useRef<HTMLDivElement>(null);
     const iconClasses = "w-5 h-5 text-text-secondary group-hover:text-text-main transition-colors";
 
     const hasSources = groundingMetadata && groundingMetadata.length > 0 && groundingMetadata.some(c => c.web);
+    const isPinnable = message.artifacts && message.artifacts.length > 0;
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -36,6 +40,15 @@ const MessageActions: React.FC<MessageActionsProps> = ({ text, groundingMetadata
     
     return (
         <div ref={sourcesRef} className="relative flex items-center gap-3 mt-3">
+            {isPinnable && (
+                <button 
+                    onClick={onPin} 
+                    aria-label="Anclar al Canvas" 
+                    className="p-1 focus:outline-none focus:ring-2 focus:ring-accent rounded group"
+                >
+                    <PinIcon className={iconClasses} />
+                </button>
+            )}
             {text && (
                 <button 
                     onClick={handleCopy} 

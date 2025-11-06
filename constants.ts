@@ -10,6 +10,7 @@ import {
     ArrowUpTrayIcon,
     CameraIcon,
     AcademicCapIcon,
+    MicrophoneIcon,
 } from './components/icons';
 
 export const MODES: Mode[] = [
@@ -40,6 +41,13 @@ export const MODES: Mode[] = [
         description: 'Find info',
         icon: MagnifyingGlassIcon,
         actionType: 'mode_change',
+    },
+    {
+        id: 'voice',
+        title: 'Voz',
+        description: 'Habla con SAM',
+        icon: MicrophoneIcon,
+        actionType: 'voice_input',
     },
     {
         id: 'image_generation',
@@ -113,6 +121,7 @@ const BASE_SYSTEM_INSTRUCTIONS: Record<ModeID, string> = {
 1.  **Outline Generation**: When given a topic, academic level, tone, and word count, you MUST generate a detailed outline. Your response MUST be ONLY a JSON object. The JSON object should have a single key 'outline' which is an array of objects. Each object must have a unique 'id' (string), a 'title' (string), and 'points' (array of strings). Do NOT add any other text or markdown formatting.
 2.  **Content Generation**: When given an essay topic, the full outline, and a specific section's title and points, you MUST write the content for ONLY that section. Your response should be plain text, focusing on academic rigor and adhering to the provided tone.
 3.  **Reference Generation**: When asked, you MUST generate a list of references or a bibliography in APA format. Your response MUST be ONLY a JSON object with a single key 'references' which is an array of strings.`,
+    voice: "You are Sam, a conversational AI. You are in a real-time voice conversation. Keep your responses concise and natural, as if you were speaking to someone. The user's input is a transcription of their speech.",
     photo_upload: "",
     camera_capture: "",
 };
@@ -135,6 +144,7 @@ export const generateSystemInstruction = (mode: ModeID, settings: Settings): str
     instruction += "- **Canvas Dev Mode**: Write, debug, and generate live, interactive web components (HTML/CSS/JS) in a split-view canvas.\n";
     instruction += "- **Crear Ensayo Mode**: Collaboratively generate university-level academic essays with an interactive outline and per-section controls.\n";
     instruction += "- **Search Mode**: Access Google Search to provide up-to-date, real-time information from the web and cite your sources.\n";
+    instruction += "- **Voice Mode**: Engage in a real-time voice conversation for a hands-free experience.\n";
     instruction += "- **Image Generation Mode**: Generate new images from text prompts or edit existing ones (Note: This feature may be disabled).\n";
     instruction += "- **Image Analysis Mode**: Understand, describe, and answer questions about images uploaded by the user.\n";
     instruction += "- **Document Mode**: Analyze text from uploaded documents to summarize or extract key information.\n";

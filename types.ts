@@ -46,14 +46,14 @@ export interface Chat {
   isTemporary?: boolean; // For ephemeral chats on app load
 }
 
-export type ModeID = 'normal' | 'math' | 'canvasdev' | 'search' | 'image' | 'document' | 'guide' | 'photo_upload' | 'camera_capture' | 'image_generation' | 'essay';
+export type ModeID = 'normal' | 'math' | 'canvasdev' | 'search' | 'image' | 'document' | 'guide' | 'photo_upload' | 'camera_capture' | 'image_generation' | 'essay' | 'voice';
 
 export interface Mode {
   id: ModeID;
   title: string;
   description: string;
   icon: ComponentType<{ className?: string }>;
-  actionType: 'mode_change' | 'file_upload' | 'capture' | 'modal';
+  actionType: 'mode_change' | 'file_upload' | 'capture' | 'modal' | 'voice_input';
   requires?: 'image' | 'document';
   accept?: string; // for file input
   capture?: 'user' | 'environment'; // for camera
@@ -90,4 +90,18 @@ export interface Essay {
     // New status values for the interactive flow
     status: 'briefing' | 'outlining' | 'editing_outline' | 'writing' | 'referencing' | 'complete' | 'error';
     currentSectionId?: string; // Tracks the ID of the section being written
+}
+
+export type ViewID = 'chat' | 'canvas' | 'insights';
+
+export interface Insight {
+    id: string;
+    icon: ComponentType<{ className?: string }>;
+    title: string;
+    description: string;
+    actions: { 
+        label: string; 
+        type: 'navigate' | 'new_chat_with_prompt'; 
+        data: ViewID | { title: string; prompt: string };
+    }[];
 }

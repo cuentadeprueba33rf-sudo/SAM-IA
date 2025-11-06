@@ -13,11 +13,11 @@ import EssayModal from './components/EssayComposer';
 import CameraCaptureModal from './components/CameraCaptureModal';
 import WelcomeTutorial from './components/WelcomeTutorial';
 import FeatureNotification from './components/FeatureNotification';
-import { CodeBracketIcon, GlobeAltIcon, CalculatorIcon, PhotoIcon, DocumentIcon, XMarkIcon } from './components/icons';
-import type { Chat, ChatMessage, ModeID, Attachment, Settings, Artifact, Essay, ModelType } from './types';
+import { CodeBracketIcon, GlobeAltIcon, CalculatorIcon, PhotoIcon, DocumentIcon, XMarkIcon, ViewColumnsIcon, MegaphoneIcon, BookOpenIcon, TrashIcon } from './components/icons';
+import type { Chat, ChatMessage, ModeID, Attachment, Settings, Artifact, Essay, ModelType, ViewID, Insight } from './types';
 import { MessageAuthor } from './types';
 import { MODES, generateSystemInstruction } from './constants';
-import { streamGenerateContent, generateImage } from './services/geminiService';
+import { streamGenerateContent, generateImage, startVoiceSession } from './services/geminiService';
 
 declare global {
     interface Window {
@@ -26,6 +26,80 @@ declare global {
         renderMath: () => void;
     }
 }
+
+// --- Nuevos Componentes de Vista ---
+
+const CanvasView: React.FC<{ widgets: ChatMessage[], onUnpin: (widgetId: string) => void, onActivateArtifact: (artifact: Artifact) => void }> = ({ widgets, onUnpin, onActivateArtifact }) => {
+    if (widgets.length === 0) {
+        return (
+             <div className="flex-1 flex flex-col items-center justify-center text-center p-8 -mt-16">
+                <ViewColumnsIcon className="w-16 h-16 text-text-secondary/50 mb-4" />
+                <h2 className="text-2xl font-semibold mt-4 text-text-main">Tu Canvas está vacío</h2>
+                <p className="text-text-secondary max-w-md mt-2">Ancla artefactos de tus conversaciones para verlos aquí. Busca el ícono de pin en los mensajes que contengan código.</p>
+            </div>
+        )
+    }
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
+            {widgets.map(widget => (
+                <div key={widget.id} className="bg-surface-primary rounded-xl border border-border-subtle shadow-md flex flex-col animate-fade-in-up">
+                    <div className="p-4 border-b border-border-subtle">
+                        <p className="text-sm text-text-secondary truncate">{new Date(widget.timestamp).toLocaleString()}</p>
+                    </div>
+                    <div className="p-4 flex-1">
+                        {widget.artifacts && widget.artifacts.map(artifact => (
+                            <div key={artifact.id}>
+                                <h4 className="font-semibold text-text-main mb-2">{artifact.title}</h4>
+                                <pre className="bg-surface-secondary p-3 rounded-lg text-xs overflow-x-auto max-h-48">
+                                    <code>{artifact.code.substring(0, 200)}{artifact.code.length > 200 ? '...' : ''}</code>
+                                </pre>
+                                <button onClick={() => onActivateArtifact(artifact)} className="mt-3 text-sm font-semibold text-accent hover:underline">Ver componente completo</button>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="p-2 border-t border-border-subtle">
+                        <button onClick={() => onUnpin(widget.id)} className="w-full text-center text-sm text-danger hover:bg-danger/10 p-1.5 rounded-md">Desanclar</button>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+};
+
+const InsightsView: React.FC<{ insights: Insight[], onAction: (action: Insight['actions'][0]) => void }> = ({ insights, onAction }) => {
+     if (insights.length === 0) {
+        return (
+             <div className="flex-1 flex flex-col items-center justify-center text-center p-8 -mt-16">
+                <MegaphoneIcon className="w-16 h-16 text-text-secondary/50 mb-4" />
+                <h2 className="text-2xl font-semibold mt-4 text-text-main">No hay nuevos Insights</h2>
+                <p className="text-text-secondary max-w-md mt-2">SAM analizará tus conversaciones y te ofrecerá sugerencias proactivas aquí a medida que uses la aplicación.</p>
+            </div>
+        )
+    }
+    return (
+        <div className="p-6 space-y-4">
+            {insights.map(insight => (
+                <div key={insight.id} className="bg-surface-primary rounded-xl border border-border-subtle shadow-md p-5 flex items-start gap-4 animate-fade-in-up">
+                    <div className="flex-shrink-0 p-2.5 bg-accent/10 rounded-full mt-1">
+                        <insight.icon className="w-6 h-6 text-accent" />
+                    </div>
+                    <div className="flex-1">
+                        <h3 className="font-semibold text-text-main">{insight.title}</h3>
+                        <p className="text-sm text-text-secondary mt-1">{insight.description}</p>
+                        <div className="flex items-center gap-2 mt-4">
+                            {insight.actions.map(action => (
+                                <button key={action.label} onClick={() => onAction(action)} className="text-sm font-semibold text-white bg-accent px-4 py-1.5 rounded-lg hover:opacity-90">
+                                    {action.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+};
+
 
 const GeneratingArtifactIndicator: React.FC = () => {
     const [status, setStatus] = useState("Inicializando compilación...");
@@ -122,6 +196,13 @@ const App: React.FC = () => {
     const [showWelcomeNotification, setShowWelcomeNotification] = useState(false);
     const [isEssayModalOpen, setIsEssayModalOpen] = useState(false);
     const [currentEssay, setCurrentEssay] = useState<Essay | null>(null);
+    const [isVoiceMode, setIsVoiceMode] = useState(false);
+    const [voiceSession, setVoiceSession] = useState<any>(null);
+    const [userTranscription, setUserTranscription] = useState('');
+    const [samTranscription, setSamTranscription] = useState('');
+    const [activeView, setActiveView] = useState<ViewID>('chat');
+    const [widgets, setWidgets] = useState<ChatMessage[]>([]);
+    const [insights, setInsights] = useState<Insight[]>([]);
 
 
     const abortControllerRef = useRef<AbortController | null>(null);
@@ -164,12 +245,23 @@ const App: React.FC = () => {
                 setCurrentChatId(loadedChats[0].id);
             }
         }
+         // Load Widgets & Insights
+        try {
+            const savedWidgets = localStorage.getItem('sam_ia_canvas_widgets');
+            if(savedWidgets) setWidgets(JSON.parse(savedWidgets));
+        } catch (e) { console.error("Could not load widgets", e); }
+        
+        // Placeholder for Insights logic
+        setInsights([
+            { id: 'insight-1', icon: BookOpenIcon, title: 'Continúa tu investigación', description: 'Parece que has estado investigando sobre "React Hooks". ¿Quieres continuar esa conversación?', actions: [{ label: 'Ir al Chat', type: 'navigate', data: 'chat' }]},
+            { id: 'insight-2', icon: CodeBracketIcon, title: 'Crea una plantilla de componente', description: 'He notado que a menudo creas componentes de botón. ¿Quieres que genere una plantilla base para acelerar tu trabajo?', actions: [{ label: 'Crear plantilla', type: 'new_chat_with_prompt', data: { title: 'Plantilla de Botón', prompt: 'Crea un componente de botón reutilizable y moderno con HTML, CSS y JS. Debe tener estados de hover y active.' } }]},
+        ]);
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
     
-    // Persist chats to localStorage
+    // Persist chats, widgets to localStorage
     useEffect(() => {
-        // Filter out any unsaved temporary chats before saving
         const chatsToSave = chats.filter(c => !(c.isTemporary && c.messages.length === 0));
         if (chatsToSave.length > 0) {
             localStorage.setItem('sam_ia_chats_guest', JSON.stringify(chatsToSave));
@@ -177,6 +269,10 @@ const App: React.FC = () => {
             localStorage.removeItem('sam_ia_chats_guest');
         }
     }, [chats]);
+
+     useEffect(() => {
+        localStorage.setItem('sam_ia_canvas_widgets', JSON.stringify(widgets));
+    }, [widgets]);
     
     useEffect(() => {
         if (currentChatId) {
@@ -203,7 +299,7 @@ const App: React.FC = () => {
         if (chatContainerRef.current) {
             chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
         }
-    }, [chats, currentChatId]);
+    }, [chats, currentChatId, userTranscription, samTranscription]);
 
     const currentChat = useMemo(() => {
         return chats.find(c => c.id === currentChatId);
@@ -216,7 +312,6 @@ const App: React.FC = () => {
     // Render math when messages update
     useEffect(() => {
         if (window.renderMath) {
-            // Delay to allow React to paint the DOM
             setTimeout(() => window.renderMath(), 100);
         }
     }, [messages]);
@@ -257,6 +352,7 @@ const App: React.FC = () => {
         setChats(prev => [newChat, ...prev]);
         if(switchView) {
             setCurrentChatId(newChatId);
+            setActiveView('chat');
             setCurrentMode('normal');
             setAttachment(null);
         }
@@ -290,9 +386,33 @@ const App: React.FC = () => {
             setChats([newChat]);
             setCurrentChatId(newChatId);
             localStorage.removeItem('sam_ia_chats_guest');
-            setIsSettingsModalOpen(false); // Close modal after action
+            setIsSettingsModalOpen(false);
         }
     };
+    
+     const handlePinMessage = (message: ChatMessage) => {
+        setWidgets(prev => {
+            if (prev.some(w => w.id === message.id)) return prev;
+            return [message, ...prev];
+        });
+    };
+
+    const handleUnpinWidget = (widgetId: string) => {
+        setWidgets(prev => prev.filter(w => w.id !== widgetId));
+    };
+
+     const handleInsightAction = (action: Insight['actions'][0]) => {
+        if (action.type === 'navigate') {
+            setActiveView(action.data as ViewID);
+        } else if (action.type === 'new_chat_with_prompt') {
+            const { title, prompt } = action.data as { title: string; prompt: string };
+            const newChatId = handleNewChat(true);
+            handleRenameChat(newChatId, title);
+            // Wait for state to update then send message
+            setTimeout(() => handleSendMessage(prompt), 100);
+        }
+    };
+
 
     const handleSaveEssay = (essay: Essay) => {
         if (!currentChatId) return;
@@ -322,6 +442,117 @@ const App: React.FC = () => {
 
         setIsEssayModalOpen(false);
         setCurrentEssay(null);
+    };
+
+    const handleEndVoiceSession = () => {
+        voiceSession?.close();
+        setVoiceSession(null);
+        setIsVoiceMode(false);
+        setUserTranscription('');
+        setSamTranscription('');
+    };
+
+    const handleModeAction = async (modeId: ModeID) => {
+        const mode = MODES.find(m => m.id === modeId);
+        if (!mode || !currentChatId) return;
+        
+        if (mode.actionType === 'voice_input') {
+            try {
+                const session = await startVoiceSession(
+                    generateSystemInstruction('voice', settings),
+                    (isUser, text) => {
+                        if (isUser) {
+                            setUserTranscription(text);
+                        } else {
+                            setSamTranscription(text);
+                        }
+                    },
+                    (userInput, samOutput) => {
+                        if (currentChatId) {
+                            addLocalMessage(currentChatId, {
+                                author: MessageAuthor.USER,
+                                text: userInput,
+                                timestamp: Date.now(),
+                                mode: 'voice',
+                            });
+                             addLocalMessage(currentChatId, {
+                                author: MessageAuthor.SAM,
+                                text: samOutput,
+                                timestamp: Date.now(),
+                                mode: 'voice',
+                            });
+                        }
+                        setUserTranscription('');
+                        setSamTranscription('');
+                    },
+                    (error) => {
+                        addLocalMessage(currentChatId, {
+                            author: MessageAuthor.SYSTEM,
+                            text: error.message,
+                            timestamp: Date.now(),
+                        });
+                        handleEndVoiceSession();
+                    }
+                );
+                setVoiceSession(session);
+                setIsVoiceMode(true);
+            } catch (err) {
+                console.error("Failed to start voice session:", err);
+                addLocalMessage(currentChatId, {
+                    author: MessageAuthor.SYSTEM,
+                    text: 'No se pudo iniciar el modo de voz. Asegúrate de tener un micrófono y de haber otorgado los permisos necesarios.',
+                    timestamp: Date.now(),
+                });
+            }
+            return;
+        }
+
+        if (mode.disabled) {
+            addLocalMessage(currentChatId, {
+                author: MessageAuthor.SYSTEM,
+                text: 'La función de crear o editar imágenes aún no está disponible para tu región.',
+                timestamp: Date.now(),
+            });
+            return;
+        }
+
+        if (mode.actionType === 'modal' && mode.id === 'essay') {
+            setCurrentEssay({
+                topic: '',
+                academicLevel: 'university',
+                tone: 'formal',
+                wordCountTarget: 1000,
+                outline: [],
+                content: {},
+                references: [],
+                status: 'briefing',
+            });
+            setIsEssayModalOpen(true);
+            return;
+        }
+
+        if (mode.actionType === 'mode_change') {
+            setCurrentMode(modeId);
+            if (modeId === 'canvasdev') {
+                addLocalMessage(currentChatId, {
+                    author: MessageAuthor.SAM,
+                    prelude: 'Modo Canvas Dev Activado',
+                    text: "Puedo generar componentes interactivos con HTML, CSS y JavaScript. Describe lo que quieres construir. Por ejemplo: <em>'Crea un formulario de inicio de sesión con un botón de pulso'</em>.",
+                    timestamp: Date.now(),
+                });
+            }
+
+            if (mode.requires && fileInputRef.current) {
+                fileInputRef.current.accept = mode.accept || (mode.requires === 'image' ? 'image/*' : '*/*');
+                fileInputRef.current.click();
+            }
+        } else if (mode.actionType === 'file_upload' && fileInputRef.current) {
+            fileInputRef.current.accept = mode.accept || '*/*';
+            fileInputRef.current.click();
+        } else if (mode.actionType === 'capture') {
+            setCaptureMode(mode.capture || 'user');
+            setIsCameraModalOpen(true);
+        }
     };
 
 
@@ -478,58 +709,6 @@ const App: React.FC = () => {
         });
     };
 
-    const handleModeAction = (modeId: ModeID) => {
-        const mode = MODES.find(m => m.id === modeId);
-        if (!mode || !currentChatId) return;
-        
-        if (mode.disabled) {
-            addLocalMessage(currentChatId, {
-                author: MessageAuthor.SYSTEM,
-                text: 'La función de crear o editar imágenes aún no está disponible para tu región.',
-                timestamp: Date.now(),
-            });
-            return;
-        }
-
-        if (mode.actionType === 'modal' && mode.id === 'essay') {
-            setCurrentEssay({
-                topic: '',
-                academicLevel: 'university',
-                tone: 'formal',
-                wordCountTarget: 1000,
-                outline: [],
-                content: {},
-                references: [],
-                status: 'briefing',
-            });
-            setIsEssayModalOpen(true);
-            return;
-        }
-
-        if (mode.actionType === 'mode_change') {
-            setCurrentMode(modeId);
-            if (modeId === 'canvasdev') {
-                addLocalMessage(currentChatId, {
-                    author: MessageAuthor.SAM,
-                    prelude: 'Modo Canvas Dev Activado',
-                    text: "Puedo generar componentes interactivos con HTML, CSS y JavaScript. Describe lo que quieres construir. Por ejemplo: <em>'Crea un formulario de inicio de sesión con un botón de pulso'</em>.",
-                    timestamp: Date.now(),
-                });
-            }
-
-            if (mode.requires && fileInputRef.current) {
-                fileInputRef.current.accept = mode.accept || (mode.requires === 'image' ? 'image/*' : '*/*');
-                fileInputRef.current.click();
-            }
-        } else if (mode.actionType === 'file_upload' && fileInputRef.current) {
-            fileInputRef.current.accept = mode.accept || '*/*';
-            fileInputRef.current.click();
-        } else if (mode.actionType === 'capture') {
-            setCaptureMode(mode.capture || 'user');
-            setIsCameraModalOpen(true);
-        }
-    };
-
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
@@ -638,6 +817,12 @@ const App: React.FC = () => {
 
     const lastSamMessageWithLogs = currentChat?.messages.slice().reverse().find(m => m.author === MessageAuthor.SAM && m.consoleLogs);
     
+    const getHeaderTitle = () => {
+        if (activeView === 'canvas') return 'Canvas';
+        if (activeView === 'insights') return 'Insights';
+        return currentChat?.title || 'Chat';
+    }
+
     return (
         <div className={`flex h-screen overflow-hidden font-sans bg-bg-main text-text-main ${settings.theme}`}>
             {tutorialState.active && (
@@ -654,72 +839,104 @@ const App: React.FC = () => {
                 onNewChat={handleNewChat}
                 onSelectChat={(id) => {setCurrentChatId(id);}}
                 onShowUpdates={() => setIsUpdatesModalOpen(true)}
-                onOpenSettings={() => setIsSettingsModalOpen(true)}
+                onOpenSettings={() => setIsSettingsModalOpen(false)}
                 onShowContextMenu={(chatId, coords) => setContextMenu({ chatId, coords })}
                 creditsRef={creditsRef}
                 verificationPanelRef={verificationPanelRef}
                 forceOpenVerificationPanel={forceOpenVerification}
+                activeView={activeView}
+                onSelectView={setActiveView}
             />
             
             <div className="relative flex-1 flex flex-col h-screen overflow-hidden">
                 <header className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 z-20 bg-bg-main/80 backdrop-blur-sm">
                     <div className="flex items-center gap-2">
-                        <h1 className="text-lg font-semibold truncate text-text-main">{currentChat?.title || 'Chat'}</h1>
+                        <h1 className="text-lg font-semibold truncate text-text-main">{getHeaderTitle()}</h1>
                     </div>
                     <div className="font-bold text-xl text-sam-ia tracking-wider">SAM</div>
                 </header>
 
-                <main ref={chatContainerRef} className="flex-1 flex flex-col overflow-y-auto p-4 md:p-6 pt-24 pb-40">
-                     {messages.length === 0 ? (
-                        <div className="flex-1 flex flex-col items-center justify-center text-center -mt-16">
-                            <svg width="80" height="80" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-sam-ia">
-                                <path d="M30 20 L70 20 L70 50 L30 50 L30 80 L70 80" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                                <path d="M10 60 L50 10 L90 60 M25 45 L75 45" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                                <path d="M50 10 L50 90 M30 30 L50 50 L70 30" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                            </svg>
-                            <h2 className="text-2xl font-semibold mt-4 text-text-main">Hola, {guestName.split(' ')[0] || 'Invitado'}</h2>
-                            <p className="text-text-secondary">¿Cómo puedo ayudarte hoy?</p>
-                        </div>
-                    ) : (
-                    <div className="space-y-6">
-                        {messages.map(msg => (
-                            <div key={msg.id} className={`flex gap-4 items-start ${msg.author === MessageAuthor.USER ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-2xl w-full flex flex-col ${msg.author === MessageAuthor.USER ? 'items-end' : 'items-start'}`}>
-                                    <div className={`px-4 py-2.5 rounded-2xl ${
-                                        msg.author === MessageAuthor.USER 
-                                        ? 'bg-surface-secondary text-text-main rounded-br-none' 
-                                        : msg.prelude ? 'bg-surface-primary border border-border-subtle' : ''
-                                    }`}>
-                                        {msg.prelude && <div className="flex items-center gap-2 mb-2 text-text-main"><CodeBracketIcon className="w-5 h-5 text-accent"/><p className="font-semibold text-sm">{msg.prelude}</p></div>}
-                                        {msg.attachment && (msg.attachment.type.startsWith('image/') ? <img src={msg.attachment.data} alt={msg.attachment.name} className="max-w-xs max-h-48 rounded-lg mb-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setPreviewImage(msg.attachment)}/> : <div className="mb-2 p-3 bg-surface-secondary rounded-lg flex items-center gap-3 text-text-main max-w-xs"><DocumentIcon className="w-6 h-6 text-text-secondary flex-shrink-0" /><span className="text-sm truncate">{msg.attachment.name}</span></div>)}
-                                        {(msg.text || msg.generatingArtifact || msg.isSearching || (msg.mode === 'math' && !msg.text) || (msg.mode === 'image_generation' && !msg.attachment)) && renderMessageContent(msg)}
-                                        {isGenerating && msg.id === messages[messages.length -1]?.id && !msg.text && !msg.generatingArtifact && !msg.isSearching && msg.mode !== 'math' && msg.mode !== 'image_generation' && <div className="typing-indicator"><span></span><span></span><span></span></div>}
-                                        {msg.artifacts && <div className="mt-2">{msg.artifacts.map(artifact => <button key={artifact.id} onClick={() => setActiveArtifact(artifact)} className="bg-surface-secondary hover:bg-border-subtle text-text-main font-medium py-2 px-3 rounded-lg inline-flex items-center gap-2 text-sm"><CodeBracketIcon className="w-5 h-5" /><span>{artifact.title}</span></button>)}</div>}
-                                    </div>
-                                    {msg.author === MessageAuthor.SAM && !msg.prelude && (msg.text || (msg.groundingMetadata && msg.groundingMetadata.length > 0)) && !isGenerating && !msg.generatingArtifact && <MessageActions text={msg.text || ''} groundingMetadata={msg.groundingMetadata} />}
+                <main ref={chatContainerRef} className="flex-1 flex flex-col overflow-y-auto pt-20">
+                     {activeView === 'chat' && (
+                        <>
+                            {messages.length === 0 && !isVoiceMode ? (
+                                <div className="flex-1 flex flex-col items-center justify-center text-center -mt-16">
+                                    <svg width="80" height="80" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-sam-ia">
+                                        <path d="M30 20 L70 20 L70 50 L30 50 L30 80 L70 80" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                                        <path d="M10 60 L50 10 L90 60 M25 45 L75 45" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                                        <path d="M50 10 L50 90 M30 30 L50 50 L70 30" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                                    </svg>
+                                    <h2 className="text-2xl font-semibold mt-4 text-text-main">Hola, {guestName.split(' ')[0] || 'Invitado'}</h2>
+                                    <p className="text-text-secondary">¿Cómo puedo ayudarte hoy?</p>
                                 </div>
+                            ) : (
+                            <div className="space-y-6 p-4 md:p-6 pb-40">
+                                {messages.map(msg => (
+                                    <div key={msg.id} className={`flex gap-4 items-start ${msg.author === MessageAuthor.USER ? 'justify-end' : 'justify-start'}`}>
+                                        <div className={`max-w-2xl w-full flex flex-col ${msg.author === MessageAuthor.USER ? 'items-end' : 'items-start'}`}>
+                                            <div className={`px-4 py-2.5 rounded-2xl ${
+                                                msg.author === MessageAuthor.USER 
+                                                ? 'bg-surface-secondary text-text-main rounded-br-none' 
+                                                : msg.prelude ? 'bg-surface-primary border border-border-subtle' : ''
+                                            }`}>
+                                                {msg.prelude && <div className="flex items-center gap-2 mb-2 text-text-main"><CodeBracketIcon className="w-5 h-5 text-accent"/><p className="font-semibold text-sm">{msg.prelude}</p></div>}
+                                                {msg.attachment && (msg.attachment.type.startsWith('image/') ? <img src={msg.attachment.data} alt={msg.attachment.name} className="max-w-xs max-h-48 rounded-lg mb-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setPreviewImage(msg.attachment)}/> : <div className="mb-2 p-3 bg-surface-secondary rounded-lg flex items-center gap-3 text-text-main max-w-xs"><DocumentIcon className="w-6 h-6 text-text-secondary flex-shrink-0" /><span className="text-sm truncate">{msg.attachment.name}</span></div>)}
+                                                {(msg.text || msg.generatingArtifact || msg.isSearching || (msg.mode === 'math' && !msg.text) || (msg.mode === 'image_generation' && !msg.attachment)) && renderMessageContent(msg)}
+                                                {isGenerating && msg.id === messages[messages.length -1]?.id && !msg.text && !msg.generatingArtifact && !msg.isSearching && msg.mode !== 'math' && msg.mode !== 'image_generation' && <div className="typing-indicator"><span></span><span></span><span></span></div>}
+                                                {msg.artifacts && <div className="mt-2">{msg.artifacts.map(artifact => <button key={artifact.id} onClick={() => setActiveArtifact(artifact)} className="bg-surface-secondary hover:bg-border-subtle text-text-main font-medium py-2 px-3 rounded-lg inline-flex items-center gap-2 text-sm"><CodeBracketIcon className="w-5 h-5" /><span>{artifact.title}</span></button>)}</div>}
+                                            </div>
+                                            {msg.author === MessageAuthor.SAM && !msg.prelude && (msg.text || (msg.groundingMetadata && msg.groundingMetadata.length > 0)) && !isGenerating && !msg.generatingArtifact && <MessageActions message={msg} onPin={() => handlePinMessage(msg)} text={msg.text || ''} groundingMetadata={msg.groundingMetadata} />}
+                                        </div>
+                                    </div>
+                                ))}
+                                {isVoiceMode && (
+                                    <>
+                                        {userTranscription && (
+                                            <div className="flex gap-4 items-start justify-end">
+                                                <div className="max-w-2xl w-full flex flex-col items-end">
+                                                    <div className="px-4 py-2.5 rounded-2xl bg-surface-secondary text-text-main rounded-br-none opacity-60">
+                                                        {userTranscription}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {samTranscription && (
+                                            <div className="flex gap-4 items-start justify-start">
+                                                <div className="max-w-2xl w-full flex flex-col items-start">
+                                                    <div className="px-4 py-2.5 rounded-2xl opacity-60">
+                                                        {samTranscription}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
                             </div>
-                        ))}
-                    </div>
-                    )}
+                            )}
+                        </>
+                     )}
+                     {activeView === 'canvas' && <CanvasView widgets={widgets} onUnpin={handleUnpinWidget} onActivateArtifact={setActiveArtifact} />}
+                     {activeView === 'insights' && <InsightsView insights={insights} onAction={handleInsightAction} />}
                 </main>
 
-                <footer className="absolute bottom-8 left-0 right-0 z-10 bg-gradient-to-t from-bg-main via-bg-main/95 to-transparent">
-                    {showWelcomeNotification && (
-                        <div className="w-full max-w-3xl mx-auto px-4">
-                            <FeatureNotification 
-                                onShowCollaborator={handleStartTutorialFromNotification}
-                                onDismissPermanently={handleDismissNotificationPermanently}
-                            />
+                {activeView === 'chat' && (
+                    <footer className="absolute bottom-8 left-0 right-0 z-10 bg-gradient-to-t from-bg-main via-bg-main/95 to-transparent">
+                        {showWelcomeNotification && (
+                            <div className="w-full max-w-3xl mx-auto px-4">
+                                <FeatureNotification 
+                                    onShowCollaborator={handleStartTutorialFromNotification}
+                                    onDismissPermanently={handleDismissNotificationPermanently}
+                                />
+                            </div>
+                        )}
+                        {currentMode === 'math' && lastSamMessageWithLogs && <MathConsole logs={lastSamMessageWithLogs.consoleLogs || []} isOpen={isMathConsoleOpen} onToggle={() => setIsMathConsoleOpen(!isMathConsoleOpen)} />}
+                        <div className="w-full max-w-3xl mx-auto px-4 py-2">
+                            
+                            <ChatInput onSendMessage={handleSendMessage} onModeAction={handleModeAction} attachment={attachment} onRemoveAttachment={() => setAttachment(null)} disabled={isGenerating} currentMode={currentMode} onResetMode={() => setCurrentMode('normal')} selectedModel={selectedModel} onSetSelectedModel={setSelectedModel} onToggleSidebar={() => setIsSidebarOpen(prev => !prev)} isVoiceMode={isVoiceMode} onEndVoiceSession={handleEndVoiceSession}/>
+                            <p className="text-center text-xs text-text-secondary mt-2 px-2">SAM puede cometer errores. Verifica sus respuestas.</p>
                         </div>
-                    )}
-                    {currentMode === 'math' && lastSamMessageWithLogs && <MathConsole logs={lastSamMessageWithLogs.consoleLogs || []} isOpen={isMathConsoleOpen} onToggle={() => setIsMathConsoleOpen(!isMathConsoleOpen)} />}
-                    <div className="w-full max-w-3xl mx-auto px-4 py-2">
-                        
-                        <ChatInput onSendMessage={handleSendMessage} onModeAction={handleModeAction} attachment={attachment} onRemoveAttachment={() => setAttachment(null)} disabled={isGenerating} currentMode={currentMode} onResetMode={() => setCurrentMode('normal')} selectedModel={selectedModel} onSetSelectedModel={setSelectedModel} onToggleSidebar={() => setIsSidebarOpen(prev => !prev)} />
-                        <p className="text-center text-xs text-text-secondary mt-2 px-2">SAM puede cometer errores. Verifica sus respuestas.</p>
-                    </div>
-                </footer>
+                    </footer>
+                )}
             </div>
 
             {activeArtifact && <CodeCanvas artifact={activeArtifact} onClose={() => setActiveArtifact(null)} />}
