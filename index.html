@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg width='100' height='100' viewBox='0 0 100 100' fill='none' xmlns='http://www.w3.org/2000/svg'><path d='M30 20 L70 20 L70 50 L30 50 L30 80 L70 80' stroke='%233c3c3c' stroke-width='8' stroke-linecap='round'/><path d='M10 60 L50 10 L90 60 M25 45 L75 45' stroke='%233c3c3c' stroke-width='8' stroke-linecap='round'/><path d='M50 10 L50 90 M30 30 L50 50 L70 30' stroke='%233c3c3c' stroke-width='8' stroke-linecap='round'/></svg>" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="manifest" href="/manifest.json" />
     <title>SAM IA - Interfaz Corporativa</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
@@ -168,7 +169,7 @@
     </style>
 
     <div id="loading-screen" class="fixed inset-0 bg-black flex flex-col items-center justify-center z-50 overflow-hidden">
-        <div class="absolute inset-0 bg-gradient-to-r from-red-900/80 via-black to-red-800/70 opacity-80 animate-gradient-x"></div>
+        <div class="absolute inset-0 bg-gradient-to-r from-purple-900/80 via-black to-purple-800/70 opacity-80 animate-gradient-x"></div>
         <div id="screen-shimmer-overlay"></div>
 
         <div class="relative text-center text-white">
@@ -324,5 +325,16 @@
         }
     </script>
     <script type="module" src="/index.tsx"></script>
+    <script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').then(registration => {
+                console.log('ServiceWorker registration successful with scope: ', registration.scope);
+            }, err => {
+                console.log('ServiceWorker registration failed: ', err);
+            });
+        });
+    }
+    </script>
 </body>
 </html>

@@ -131,9 +131,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                 <span>Instalar SAM en el dispositivo</span>
                             </button>
                         ) : (
-                            <p className="text-sm text-text-secondary p-3 bg-surface-secondary rounded-lg">
-                                La aplicación ya está instalada o tu navegador no es compatible con la instalación.
-                            </p>
+                            <div className="text-sm text-text-secondary p-3 bg-surface-secondary rounded-lg">
+                                <p className="font-semibold text-text-main">No se encontró el botón de instalación automática.</p>
+                                <p className="mt-2">
+                                    Aun así, puedes instalar SAM en tu dispositivo. Busca el ícono de instalación <ArrowDownTrayIcon className="w-4 h-4 inline-block -mt-1 mx-1" /> en la barra de direcciones de tu navegador, o busca la opción "Instalar aplicación" o "Añadir a la pantalla de inicio" en el menú de Chrome.
+                                </p>
+                            </div>
                         )}
                     </div>
                 );
