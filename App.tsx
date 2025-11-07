@@ -11,6 +11,7 @@ import MathConsole from './components/MathConsole';
 import ImagePreviewModal from './components/ImagePreviewModal';
 import EssayModal from './components/EssayComposer';
 import CameraCaptureModal from './components/CameraCaptureModal';
+import PremiumNotification from './components/PremiumNotification';
 import { CodeBracketIcon, GlobeAltIcon, CalculatorIcon, PhotoIcon, DocumentIcon, XMarkIcon, ViewColumnsIcon, MegaphoneIcon, BookOpenIcon, TrashIcon } from './components/icons';
 import type { Chat, ChatMessage, ModeID, Attachment, Settings, Artifact, Essay, ModelType, ViewID, Insight } from './types';
 import { MessageAuthor } from './types';
@@ -205,6 +206,7 @@ const App: React.FC = () => {
     const [widgets, setWidgets] = useState<ChatMessage[]>([]);
     const [insights, setInsights] = useState<Insight[]>([]);
     const [installPromptEvent, setInstallPromptEvent] = useState<any>(null);
+    const [showPremiumNotification, setShowPremiumNotification] = useState(false);
 
 
     const abortControllerRef = useRef<AbortController | null>(null);
@@ -331,6 +333,14 @@ const App: React.FC = () => {
         document.documentElement.className = settings.theme;
     }, [settings]);
     
+    // Effect for the premium unlock notification
+    useEffect(() => {
+        const hasDismissed = localStorage.getItem('sam_ia_premium_notification_dismissed');
+        if (!hasDismissed && !settings.isPremiumUnlocked) {
+            setShowPremiumNotification(true);
+        }
+    }, [settings.isPremiumUnlocked]);
+
     useEffect(() => {
         if (chatContainerRef.current) {
             chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
@@ -449,6 +459,15 @@ const App: React.FC = () => {
         }
     };
 
+    const handleDismissPremiumNotification = () => {
+        setShowPremiumNotification(false);
+        localStorage.setItem('sam_ia_premium_notification_dismissed', 'true');
+    };
+
+    const handleGoToSettingsFromNotification = () => {
+        handleDismissPremiumNotification();
+        setIsSettingsModalOpen(true);
+    };
 
     const handleSaveEssay = (essay: Essay) => {
         if (!currentChatId) return;
@@ -949,6 +968,14 @@ const App: React.FC = () => {
                     <footer className="absolute bottom-8 left-0 right-0 z-10 bg-gradient-to-t from-bg-main via-bg-main/95 to-transparent">
                         {currentMode === 'math' && lastSamMessageWithLogs && <MathConsole logs={lastSamMessageWithLogs.consoleLogs || []} isOpen={isMathConsoleOpen} onToggle={() => setIsMathConsoleOpen(!isMathConsoleOpen)} />}
                         <div className="w-full max-w-3xl mx-auto px-4 py-2">
+                             {showPremiumNotification && (
+                                <div className="mb-2">
+                                    <PremiumNotification
+                                        onDismiss={handleDismissPremiumNotification}
+                                        onGoToSettings={handleGoToSettingsFromNotification}
+                                    />
+                                </div>
+                            )}
                             <ChatInput onSendMessage={handleSendMessage} onModeAction={handleModeAction} attachment={attachment} onRemoveAttachment={() => setAttachment(null)} disabled={isGenerating} currentMode={currentMode} onResetMode={() => setCurrentMode('normal')} selectedModel={selectedModel} onSetSelectedModel={setSelectedModel} onToggleSidebar={() => setIsSidebarOpen(prev => !prev)} isVoiceMode={isVoiceMode} onEndVoiceSession={handleEndVoiceSession} settings={settings} />
                             <p className="text-center text-xs text-text-secondary mt-2 px-2">SAM puede cometer errores. Verifica sus respuestas.</p>
                         </div>

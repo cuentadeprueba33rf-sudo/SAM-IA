@@ -8,6 +8,16 @@ interface UpdatesModalProps {
 
 const updates = [
   {
+    version: "v1.4.0",
+    date: "23 de Julio, 2024",
+    changes: [
+      "¡Desbloqueo del Modelo Premium SM-I3! Activa el modo premium en la configuración usando tu código de acceso único.",
+      "Nuevas capacidades en SM-I3: respuestas más elaboradas, chat de voz en tiempo real y acceso a moderación.",
+      "Añadida notificación en la pantalla de chat para guiar a los usuarios hacia la activación del modo premium.",
+      "Soporte completo para HTML, CSS, y JavaScript en Canvas Dev ahora exclusivo para el modelo SM-I3.",
+    ],
+  },
+  {
     version: "v1.3.0",
     date: "22 de Julio, 2024",
     changes: [
