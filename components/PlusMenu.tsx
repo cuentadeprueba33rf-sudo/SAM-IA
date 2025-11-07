@@ -1,18 +1,23 @@
 import React from 'react';
 import { MODES } from '../constants';
-import type { ModeID } from '../types';
+import type { ModeID, Settings } from '../types';
 
 interface PlusMenuProps {
     onAction: (mode: ModeID, accept?: string, capture?: string) => void;
+    settings: Settings;
 }
 
-const PlusMenu: React.FC<PlusMenuProps> = ({ onAction }) => {
+const PlusMenu: React.FC<PlusMenuProps> = ({ onAction, settings }) => {
     // Exclude voice mode from the grid, as it will be handled by a dedicated button
     const gridModes = MODES.filter(mode => mode.id !== 'voice' && mode.id !== 'image_generation');
+    const voiceMode = MODES.find(m => m.id === 'voice');
+    
+    // This should always be found, but good practice to check
+    if (!voiceMode) return null; 
 
     // FIX: A complex expression like a function call cannot be used directly as a component type in JSX.
     // It must be assigned to a capitalized variable first.
-    const VoiceIcon = MODES.find(m => m.id === 'voice')!.icon;
+    const VoiceIcon = voiceMode.icon;
 
     return (
         <div className="absolute bottom-full mb-3 w-full max-w-lg bg-surface-primary rounded-xl border border-border-subtle shadow-2xl animate-fade-in-up p-2">
@@ -42,14 +47,17 @@ const PlusMenu: React.FC<PlusMenuProps> = ({ onAction }) => {
                  <button
                     key="voice"
                     onClick={() => onAction('voice')}
-                    className="flex w-full items-center gap-3 text-left p-3 rounded-lg transition-colors hover:bg-surface-secondary focus:outline-none focus:ring-2 focus:ring-accent"
+                    disabled={!settings.isPremiumUnlocked}
+                    className={`flex w-full items-center gap-3 text-left p-3 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-accent ${!settings.isPremiumUnlocked ? 'opacity-60 cursor-not-allowed' : 'hover:bg-surface-secondary'}`}
                 >
                     <div className="p-2 bg-surface-secondary rounded-full">
                         <VoiceIcon className="w-5 h-5 text-accent-blue" />
                     </div>
                     <div>
                         <p className="font-semibold text-text-main text-sm">Voz</p>
-                        <p className="text-text-secondary text-xs">Habla con SAM en tiempo real</p>
+                        <p className="text-text-secondary text-xs">
+                             {settings.isPremiumUnlocked ? 'Habla con SAM en tiempo real' : 'Función premium (SM-I3)'}
+                        </p>
                     </div>
                 </button>
             </div>

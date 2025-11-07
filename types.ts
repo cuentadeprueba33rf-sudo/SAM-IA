@@ -69,6 +69,8 @@ export interface Settings {
     personality: Personality;
     profession: string;
     defaultModel: ModelType;
+    isPremiumUnlocked: boolean;
+    accessCode: string;
 }
 
 export interface EssaySection {

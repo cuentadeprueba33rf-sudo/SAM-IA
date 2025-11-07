@@ -174,7 +174,14 @@ const App: React.FC = () => {
     const [guestName, setGuestName] = useState('');
     const [chats, setChats] = useState<Chat[]>([]);
     const [currentChatId, setCurrentChatId] = useState<string | null>(null);
-    const [settings, setSettings] = useState<Settings>({ theme: 'dark', personality: 'default', profession: '', defaultModel: 'sm-i1' });
+    const [settings, setSettings] = useState<Settings>({ 
+        theme: 'dark', 
+        personality: 'default', 
+        profession: '', 
+        defaultModel: 'sm-i1',
+        isPremiumUnlocked: false,
+        accessCode: '' 
+    });
     const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
     const [isGenerating, setIsGenerating] = useState(false);
     const [currentMode, setCurrentMode] = useState<ModeID>('normal');
@@ -285,14 +292,36 @@ const App: React.FC = () => {
     useEffect(() => {
         try {
             const savedSettings = localStorage.getItem('sam-settings');
+            const name = localStorage.getItem('sam_ia_guest_name') || 'GUEST';
+            let currentSettings: Settings;
+
             if (savedSettings) {
-                const parsedSettings: Settings = JSON.parse(savedSettings);
-                 if (!parsedSettings.defaultModel) {
-                    parsedSettings.defaultModel = 'sm-i1';
-                }
-                setSettings(parsedSettings);
-                setSelectedModel(parsedSettings.defaultModel);
+                currentSettings = JSON.parse(savedSettings);
+            } else {
+                 currentSettings = { 
+                    theme: 'dark', 
+                    personality: 'default', 
+                    profession: '', 
+                    defaultModel: 'sm-i1',
+                    isPremiumUnlocked: false,
+                    accessCode: '' 
+                };
             }
+            
+            if (!currentSettings.accessCode) {
+                 const userCode = `SAM-${name.slice(0, 4).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+                 currentSettings.accessCode = userCode;
+            }
+
+            if (currentSettings.isPremiumUnlocked && !currentSettings.defaultModel) {
+                currentSettings.defaultModel = 'sm-i3';
+            } else if (!currentSettings.defaultModel) {
+                 currentSettings.defaultModel = 'sm-i1';
+            }
+
+            setSettings(currentSettings);
+            setSelectedModel(currentSettings.defaultModel);
+
         } catch(e) { console.error(e); }
     }, []);
 
@@ -464,6 +493,14 @@ const App: React.FC = () => {
         if (!mode || !currentChatId) return;
         
         if (mode.actionType === 'voice_input') {
+            if (!settings.isPremiumUnlocked) {
+                 addLocalMessage(currentChatId, {
+                    author: MessageAuthor.SYSTEM,
+                    text: 'El chat de voz es una función exclusiva del modelo SM-I3. Puedes activarlo en la configuración con tu código de acceso.',
+                    timestamp: Date.now(),
+                });
+                return;
+            }
             try {
                 const session = await startVoiceSession(
                     generateSystemInstruction('voice', settings),
@@ -912,7 +949,7 @@ const App: React.FC = () => {
                     <footer className="absolute bottom-8 left-0 right-0 z-10 bg-gradient-to-t from-bg-main via-bg-main/95 to-transparent">
                         {currentMode === 'math' && lastSamMessageWithLogs && <MathConsole logs={lastSamMessageWithLogs.consoleLogs || []} isOpen={isMathConsoleOpen} onToggle={() => setIsMathConsoleOpen(!isMathConsoleOpen)} />}
                         <div className="w-full max-w-3xl mx-auto px-4 py-2">
-                            <ChatInput onSendMessage={handleSendMessage} onModeAction={handleModeAction} attachment={attachment} onRemoveAttachment={() => setAttachment(null)} disabled={isGenerating} currentMode={currentMode} onResetMode={() => setCurrentMode('normal')} selectedModel={selectedModel} onSetSelectedModel={setSelectedModel} onToggleSidebar={() => setIsSidebarOpen(prev => !prev)} isVoiceMode={isVoiceMode} onEndVoiceSession={handleEndVoiceSession}/>
+                            <ChatInput onSendMessage={handleSendMessage} onModeAction={handleModeAction} attachment={attachment} onRemoveAttachment={() => setAttachment(null)} disabled={isGenerating} currentMode={currentMode} onResetMode={() => setCurrentMode('normal')} selectedModel={selectedModel} onSetSelectedModel={setSelectedModel} onToggleSidebar={() => setIsSidebarOpen(prev => !prev)} isVoiceMode={isVoiceMode} onEndVoiceSession={handleEndVoiceSession} settings={settings} />
                             <p className="text-center text-xs text-text-secondary mt-2 px-2">SAM puede cometer errores. Verifica sus respuestas.</p>
                         </div>
                     </footer>

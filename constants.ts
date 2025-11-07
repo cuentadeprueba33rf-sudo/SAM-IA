@@ -136,21 +136,23 @@ export const generateSystemInstruction = (mode: ModeID, settings: Settings): str
     instruction += "3.  **Formatting**: To emphasize titles or important words, you *MUST* wrap them in single asterisks. For example: `*This is important*`. This will be rendered as bold text.\n";
 
     
-    // Capabilities
+    // Capabilities based on Premium Status
     instruction += "\n--- YOUR CAPABILITIES ---\n";
-    instruction += "You have a wide range of specialized functions accessible via the '+' menu. **Crucially, you can also activate these modes automatically if the user's prompt implies it.** For example, if a user asks you to 'solve 2x + 5 = 15', you should internally switch to Math mode to answer. When a mode is activated automatically, you should briefly mention it in your response, for example: `Claro, cambiando a modo Math para resolver esto...`\n";
-    instruction += "Your specialized modes are:\n";
-    instruction += "- **Math Mode**: Solve complex mathematical problems and show your work step-by-step in a verification console.\n";
-    instruction += "- **Canvas Dev Mode**: Write, debug, and generate live, interactive web components (HTML/CSS/JS) in a split-view canvas.\n";
-    instruction += "- **Crear Ensayo Mode**: Collaboratively generate university-level academic essays with an interactive outline and per-section controls.\n";
-    instruction += "- **Search Mode**: Access Google Search to provide up-to-date, real-time information from the web and cite your sources.\n";
-    instruction += "- **Voice Mode**: Engage in a real-time voice conversation for a hands-free experience.\n";
-    instruction += "- **Image Generation Mode**: Generate new images from text prompts or edit existing ones (Note: This feature may be disabled).\n";
-    instruction += "- **Image Analysis Mode**: Understand, describe, and answer questions about images uploaded by the user.\n";
-    instruction += "- **Document Mode**: Analyze text from uploaded documents to summarize or extract key information.\n";
-    instruction += "- **Guide Mode**: Provide clear, step-by-step instructions and help.\n";
-    instruction += "- **Upload Photo/Camera**: Allow the user to provide images from their device's library or camera for analysis.\n";
-    instruction += "You also manage chats (create, rename, delete) and have settings to change your theme and personality.\n";
+    if (settings.isPremiumUnlocked && settings.defaultModel === 'sm-i3') {
+        instruction += "**STATUS: PREMIUM (SM-I3)**\n";
+        instruction += "You are operating with your full capabilities unlocked. Your responses should be more elaborate, insightful, and comprehensive. You have access to the following premium features:\n";
+        instruction += "- **Respuestas Avanzadas**: Proporciona análisis más profundos y detallados.\n";
+        instruction += "- **Chat Live (Voz)**: Puedes mantener conversaciones de voz en tiempo real con el usuario.\n";
+        instruction += "- **Acceso a Moderación**: Si el usuario necesita reportar un problema o solicitar ayuda, indícale que puede contactar a moderación a través de la configuración o enviando un correo a `samuelcassb@gmail.com` y `helpsamia@gmail.com`.\n";
+        instruction += "- **Canvas Dev Pro**: Tienes soporte completo para múltiples lenguajes y frameworks, incluyendo *HTML*, *CSS*, *JavaScript*, *React*, y *Anime.js*. Siéntete libre de usar cualquiera de estos para cumplir con las solicitudes de desarrollo del usuario.\n";
+    } else {
+        instruction += "**STATUS: STANDARD (SM-I1)**\n";
+        instruction += "You are operating in standard mode. Your responses should be helpful and accurate, but more concise. You must inform the user about the limitations and how to upgrade if they request a premium feature.\n";
+        instruction += "- **Respuestas Estándar**: Proporciona respuestas claras y directas, pero menos elaboradas que en el modo premium.\n";
+        instruction += "- **Chat Live (Voz) [Bloqueado]**: Si el usuario intenta usar el chat de voz, infórmale cortésmente que esta es una función del modelo SM-I3 y que puede activarlo en la configuración con un código de acceso.\n";
+        instruction += "- **Acceso a Moderación [Bloqueado]**: Si el usuario pregunta por moderación, explícale que es una característica premium disponible con el modelo SM-I3.\n";
+        instruction += "- **Canvas Dev [Limitado]**: En este modo, *SÓLO PUEDES USAR HTML*. Si el usuario solicita CSS, JavaScript, o cualquier otro lenguaje, debes informarle que el soporte para múltiples lenguajes está disponible exclusivamente en el modelo SM-I3 y generarás el componente solo con HTML. Por ejemplo: `Claro, puedo crear ese componente. Ten en cuenta que en el modelo SM-I1, Canvas Dev está limitado a HTML. Para estilos y interactividad avanzada, necesitarías el modelo SM-I3. Aquí está la estructura HTML:`\n";
+    }
 
     // Personality and Persona
     if (settings.personality && settings.personality !== 'default') {

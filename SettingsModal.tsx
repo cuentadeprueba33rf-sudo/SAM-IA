@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Settings } from './types';
-import { XMarkIcon, SunIcon, ChatBubbleLeftRightIcon, UsersIcon, TrashIcon, CheckIcon, SparklesIcon, ArrowDownTrayIcon } from './components/icons';
+import { XMarkIcon, SunIcon, ChatBubbleLeftRightIcon, UsersIcon, TrashIcon, CheckIcon, SparklesIcon, ArrowDownTrayIcon, ShieldCheckIcon, DocumentDuplicateIcon } from './components/icons';
 import { PERSONALITIES } from './constants';
 
 interface SettingsModalProps {
@@ -24,17 +24,44 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     onInstallApp,
     installPromptEvent 
 }) => {
-    const [activeSection, setActiveSection] = useState('appearance');
+    const [activeSection, setActiveSection] = useState('model_access');
+    const [codeInput, setCodeInput] = useState("");
+    const [error, setError] = useState("");
+    const [copied, setCopied] = useState(false);
 
     if (!isOpen) return null;
 
     const handleSettingChange = <K extends keyof Settings>(key: K, value: Settings[K]) => {
-        onSave({ ...settings, [key]: value });
+        const newSettings = { ...settings, [key]: value };
+        // If user unlocks premium, set their default model to sm-i3
+        if (key === 'isPremiumUnlocked' && value === true) {
+            newSettings.defaultModel = 'sm-i3';
+        }
+        onSave(newSettings);
+    };
+    
+    const handleVerifyCode = () => {
+        if (codeInput.trim() === settings.accessCode) {
+            handleSettingChange('isPremiumUnlocked', true);
+            setError("");
+            setCodeInput("");
+        } else {
+            setError("El código no coincide. Asegúrate de usar tu código único.");
+        }
+    };
+
+    const handleCopyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        });
     };
 
     const sections = {
+        model_access: { title: 'Modelo y Acceso', icon: SparklesIcon },
+        personalization: { title: 'Personalización', icon: ChatBubbleLeftRightIcon },
+        moderation: { title: 'Moderación', icon: ShieldCheckIcon },
         appearance: { title: 'Apariencia', icon: SunIcon },
-        personalization: { title: 'Personalización de IA', icon: ChatBubbleLeftRightIcon },
         account: { title: 'Perfil', icon: UsersIcon },
         application: { title: 'Aplicación', icon: ArrowDownTrayIcon },
         data: { title: 'Gestión de Datos', icon: TrashIcon },
@@ -42,6 +69,87 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     
     const renderSectionContent = () => {
         switch (activeSection) {
+             case 'model_access':
+                return (
+                    <div>
+                        <h4 className="font-semibold text-text-main text-lg mb-2">Modelo y Acceso Premium</h4>
+                        <p className="text-sm text-text-secondary mb-6">Gestiona tu nivel de acceso y las capacidades de la IA.</p>
+                        
+                        <div className={`p-4 rounded-lg border-2 ${settings.isPremiumUnlocked ? 'border-green-500' : 'border-border-subtle'}`}>
+                            <div className="flex justify-between items-center">
+                                <span className="font-semibold text-text-main">Estado Actual</span>
+                                {settings.isPremiumUnlocked ? (
+                                    <span className="flex items-center gap-1.5 text-sm font-semibold bg-green-500/10 text-green-500 px-2 py-0.5 rounded-full">
+                                        <CheckIcon className="w-4 h-4" /> Premium Activo
+                                    </span>
+                                ) : (
+                                     <span className="text-sm font-semibold bg-surface-secondary px-2 py-0.5 rounded-full">Estándar</span>
+                                )}
+                            </div>
+                             <p className="text-xs text-text-secondary mt-1">
+                                {settings.isPremiumUnlocked 
+                                    ? "Disfrutas de todas las funcionalidades avanzadas." 
+                                    : "Estás usando el modelo estándar con funciones limitadas."}
+                            </p>
+                        </div>
+
+                        {!settings.isPremiumUnlocked && (
+                            <div className="mt-6">
+                                <h5 className="font-semibold text-text-main mb-2">Activar Premium</h5>
+                                <p className="text-sm text-text-secondary mb-3">Para confirmar tu acceso, ingresa tu código único que se muestra a continuación.</p>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="text"
+                                        value={codeInput}
+                                        onChange={(e) => { setCodeInput(e.target.value); setError(""); }}
+                                        placeholder="Ingresa tu código único aquí"
+                                        className="flex-1 bg-surface-secondary border border-border-subtle rounded-lg px-3 py-2 text-text-main placeholder:text-text-secondary focus:ring-accent focus:border-accent outline-none"
+                                    />
+                                    <button onClick={handleVerifyCode} className="bg-accent text-white font-semibold px-4 py-2 rounded-lg hover:opacity-90 transition-opacity">
+                                        Activar
+                                    </button>
+                                </div>
+                                {error && <p className="text-xs text-danger mt-1.5">{error}</p>}
+                            </div>
+                        )}
+                        
+                        <div className="mt-6">
+                             <h5 className="font-semibold text-text-main mb-2">Tu Código de Acceso Único</h5>
+                              <p className="text-sm text-text-secondary mb-3">Este es tu código personal. {!settings.isPremiumUnlocked && "Úsalo para activar las funciones premium."}</p>
+                             <div className="flex items-center gap-2 p-2 bg-surface-secondary rounded-lg border border-border-subtle">
+                                <span className="font-mono text-text-main px-2">{settings.accessCode}</span>
+                                <button onClick={() => handleCopyToClipboard(settings.accessCode)} className="ml-auto p-2 rounded-md hover:bg-border-subtle">
+                                    {copied ? <CheckIcon className="w-4 h-4 text-green-500" /> : <DocumentDuplicateIcon className="w-4 h-4 text-text-secondary" />}
+                                </button>
+                             </div>
+                        </div>
+
+                    </div>
+                );
+            case 'moderation':
+                 return (
+                    <div>
+                        <h4 className="font-semibold text-text-main text-lg mb-2">Moderación y Soporte</h4>
+                        <p className="text-sm text-text-secondary mb-4">Contacta con el equipo si encuentras un problema o necesitas ayuda.</p>
+                         {settings.isPremiumUnlocked ? (
+                            <div>
+                                <p className="text-sm text-text-main mb-3">Como usuario premium, tienes acceso directo al equipo de moderación. Usa el siguiente enlace para enviar un correo electrónico.</p>
+                                <a
+                                    href="mailto:samuelcassb@gmail.com,helpsamia@gmail.com?subject=Soporte%20SAM%20IA%20Premium"
+                                    className="w-full flex items-center justify-center gap-2 text-left text-sm font-semibold text-text-main bg-surface-secondary hover:bg-border-subtle px-4 py-2 rounded-lg transition-colors"
+                                >
+                                    <ShieldCheckIcon className="w-5 h-5 text-accent" />
+                                    <span>Contactar a Moderación</span>
+                                </a>
+                            </div>
+                        ) : (
+                             <div className="text-sm text-text-secondary p-4 bg-surface-secondary rounded-lg border border-border-subtle">
+                                <p className="font-semibold text-text-main mb-2">Función Premium</p>
+                                <p>El acceso directo a moderación es una ventaja del modelo SM-I3. Activa tu acceso premium para usar esta función.</p>
+                            </div>
+                        )}
+                    </div>
+                );
             case 'appearance':
                 return (
                     <div>
@@ -83,15 +191,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                             <div>
                                 <label className="block text-sm font-medium text-text-secondary mb-2">Modelo por Defecto</label>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <button onClick={() => handleSettingChange('defaultModel', 'sm-i1')} className={`relative text-left p-3 rounded-lg border-2 ${settings.defaultModel === 'sm-i1' ? 'border-accent' : 'border-border-subtle hover:border-text-secondary/50'}`}>
+                                     <button onClick={() => handleSettingChange('defaultModel', 'sm-i1')} className={`relative text-left p-3 rounded-lg border-2 ${settings.defaultModel === 'sm-i1' ? 'border-accent' : 'border-border-subtle hover:border-text-secondary/50'}`}>
                                         {settings.defaultModel === 'sm-i1' && <CheckIcon className="absolute top-2 right-2 w-4 h-4 text-accent" />}
-                                        <div className="flex items-center gap-2 font-semibold text-text-main"><SparklesIcon className="w-5 h-5 text-yellow-400" /> SM-I1</div>
+                                        <div className="font-semibold text-text-main">SM-I1</div>
                                         <p className="text-xs text-text-secondary mt-1">Rápido y eficiente para tareas diarias.</p>
                                     </button>
-                                     <button onClick={() => handleSettingChange('defaultModel', 'sm-i3')} className={`relative text-left p-3 rounded-lg border-2 ${settings.defaultModel === 'sm-i3' ? 'border-accent' : 'border-border-subtle hover:border-text-secondary/50'}`}>
+                                     <button onClick={() => { if(settings.isPremiumUnlocked) handleSettingChange('defaultModel', 'sm-i3')}} disabled={!settings.isPremiumUnlocked} className={`relative text-left p-3 rounded-lg border-2 ${settings.defaultModel === 'sm-i3' ? 'border-accent' : 'border-border-subtle'} ${settings.isPremiumUnlocked ? 'hover:border-text-secondary/50' : 'opacity-60 cursor-not-allowed'}`}>
                                         {settings.defaultModel === 'sm-i3' && <CheckIcon className="absolute top-2 right-2 w-4 h-4 text-accent" />}
-                                        <div className="font-semibold text-text-main">SM-I3</div>
+                                        <div className="flex items-center gap-2 font-semibold text-text-main"><SparklesIcon className="w-5 h-5 text-yellow-400" /> SM-I3</div>
                                         <p className="text-xs text-text-secondary mt-1">Más potente para tareas complejas.</p>
+                                        {!settings.isPremiumUnlocked && <span className="text-xs text-accent mt-1">Requiere Premium</span>}
                                     </button>
                                 </div>
                             </div>
@@ -183,12 +292,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 </header>
                 
                 <main className="flex-1 flex flex-col md:flex-row gap-6 lg:gap-8 p-4 md:p-6 overflow-hidden">
-                    <nav className="flex flex-row md:flex-col gap-1 md:border-r md:border-border-subtle md:pr-6 -ml-2 overflow-x-auto md:overflow-x-visible">
+                    <nav className="flex flex-row md:flex-col gap-1 md:border-r md:border-border-subtle md:pr-6 -ml-2 overflow-x-auto md:overflow-x-visible md:custom-scrollbar-thin">
                        {Object.entries(sections).map(([key, { title, icon: Icon }]) => (
                            <button 
                                 key={key} 
                                 onClick={() => setActiveSection(key)} 
-                                className={`flex items-center gap-3 p-2 rounded-lg text-left w-full md:w-40 transition-colors text-sm font-medium ${activeSection === key ? 'bg-accent/10 text-accent' : 'text-text-main hover:bg-surface-secondary'}`}
+                                className={`flex items-center gap-3 p-2 rounded-lg text-left w-full md:w-48 transition-colors text-sm font-medium ${activeSection === key ? 'bg-accent/10 text-accent' : 'text-text-main hover:bg-surface-secondary'}`}
                            >
                                <Icon className="w-5 h-5 flex-shrink-0" />
                                <span className="whitespace-nowrap">{title}</span>
@@ -213,6 +322,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 .md\\:custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
                 .md\\:custom-scrollbar::-webkit-scrollbar-thumb { background-color: var(--color-border-subtle); border-radius: 20px; }
                 .md\\:custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: var(--color-text-secondary); }
+                .md\\:custom-scrollbar-thin::-webkit-scrollbar { width: 4px; }
+                .md\\:custom-scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+                .md\\:custom-scrollbar-thin::-webkit-scrollbar-thumb { background-color: transparent; }
+                .md\\:custom-scrollbar-thin:hover::-webkit-scrollbar-thumb { background-color: var(--color-border-subtle); }
+
             `}</style>
         </div>
     );

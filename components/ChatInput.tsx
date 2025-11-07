@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import PlusMenu from './PlusMenu';
 import FilePreview from './FilePreview';
-import type { Attachment, ModeID, ModelType } from '../types';
+import type { Attachment, ModeID, ModelType, Settings } from '../types';
 import { MODES } from '../constants';
 import { ArrowUpIcon, XMarkIcon, ChevronDownIcon, SparklesIcon, PlusIcon, AdjustmentsHorizontalIcon, PhotoIcon, Bars3Icon, MicrophoneIcon } from './icons';
 
@@ -18,6 +18,7 @@ interface ChatInputProps {
     onToggleSidebar: () => void;
     isVoiceMode: boolean;
     onEndVoiceSession: () => void;
+    settings: Settings;
 }
 
 const VoiceInput: React.FC<{ onEndSession: () => void }> = ({ onEndSession }) => {
@@ -143,6 +144,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
     onToggleSidebar,
     isVoiceMode,
     onEndVoiceSession,
+    settings,
 }) => {
     const [text, setText] = useState('');
     const [isPlusMenuOpen, setIsPlusMenuOpen] = useState(false);
@@ -218,7 +220,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
             {isPlusMenuOpen && <PlusMenu onAction={(mode, accept, capture) => {
                 onModeAction(mode, accept, capture);
                 setIsPlusMenuOpen(false);
-            }} />}
+            }} settings={settings} />}
             
             {attachment && (
                 <div className="mb-2 transition-all">
@@ -268,29 +270,30 @@ const ChatInput: React.FC<ChatInputProps> = ({
                         <div ref={modelMenuRef} className="relative">
                             <button onClick={() => setIsModelMenuOpen(prev => !prev)} className="flex items-center gap-1 text-sm font-semibold text-text-secondary hover:text-text-main transition-colors">
                                 {selectedModel === 'sm-i1' ? (
+                                    <span>SM-I1</span>
+                                ) : (
                                     <>
                                         <SparklesIcon className="w-4 h-4 text-yellow-400"/>
-                                        <span>SM-I1</span>
+                                        <span>SM-I3</span>
                                     </>
-                                ) : (
-                                    <span>SM-I3</span>
                                 )}
                                 <ChevronDownIcon className="w-4 h-4" />
                             </button>
                             {isModelMenuOpen && (
-                                <div className="absolute bottom-full mb-2 bg-surface-secondary p-1 rounded-lg shadow-xl border border-border-subtle w-40 animate-fade-in-up-sm">
+                                <div className="absolute bottom-full mb-2 bg-surface-secondary p-1 rounded-lg shadow-xl border border-border-subtle w-48 animate-fade-in-up-sm">
                                     <button
-                                        onClick={() => { onSetSelectedModel('sm-i3'); setIsModelMenuOpen(false); }}
+                                        onClick={() => { onSetSelectedModel('sm-i1'); setIsModelMenuOpen(false); }}
                                         className="w-full text-left px-3 py-1.5 text-sm rounded-md hover:bg-border-subtle"
                                     >
-                                        SM-I3
+                                        SM-I1
                                     </button>
                                      <button
-                                        onClick={() => { onSetSelectedModel('sm-i1'); setIsModelMenuOpen(false); }}
-                                        className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-sm rounded-md hover:bg-border-subtle"
+                                        onClick={() => { onSetSelectedModel('sm-i3'); setIsModelMenuOpen(false); }}
+                                        disabled={!settings.isPremiumUnlocked}
+                                        className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-sm rounded-md hover:bg-border-subtle disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         <SparklesIcon className="w-4 h-4 text-yellow-400"/>
-                                        <span>SM-I1</span>
+                                        <span>SM-I3 (Premium)</span>
                                     </button>
                                 </div>
                             )}
