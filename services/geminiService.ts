@@ -2,6 +2,19 @@ import { GoogleGenAI, Modality, LiveServerMessage, Blob, Type } from "@google/ge
 import type { Attachment, ChatMessage, ModeID, ModelType, EssaySection } from '../types';
 import { MessageAuthor } from '../types';
 
+// --- GESTIÓN DE LA CLAVE API ---
+// ADVERTENCIA DE SEGURIDAD GRAVE:
+// A petición explícita del usuario, la clave de API se ha insertado directamente en el código.
+// Esta práctica es EXTREMADAMENTE PELIGROSA y expone la clave a cualquier persona que utilice la aplicación,
+// ya que será visible en el código fuente del navegador.
+//
+// CUALQUIER PERSONA PODRÁ ROBAR Y UTILIZAR ESTA CLAVE, LO QUE PUEDE GENERAR COSTOS SIGNIFICATIVOS EN TU CUENTA.
+//
+// Se recomienda ENCARECIDAMENTE revertir este cambio y utilizar variables de entorno (`process.env.API_KEY`)
+// antes de distribuir o desplegar esta aplicación en cualquier entorno.
+const GEMINI_API_KEY = "AIzaSyDB-CXyCAp6CrquNDM7uMq_SoKDITRA9zI"; // ¡¡¡CLAVE EXPUESTA - RIESGO DE SEGURIDAD ALTO!!!
+
+
 const MODEL_MAP: Record<ModelType, string> = {
     'sm-i1': 'gemini-2.5-flash',
     'sm-i3': 'gemini-2.5-pro',
@@ -74,7 +87,7 @@ export const startVoiceSession = async (
     onTurnComplete: (userInput: string, samOutput: string) => void,
     onError: (error: Error) => void
 ) => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
     let currentInputTranscription = '';
     let currentOutputTranscription = '';
@@ -185,7 +198,7 @@ export const generateImage = async ({
     prompt: string;
     attachment?: Attachment;
 }): Promise<Attachment> => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
     try {
         const parts: any[] = [{ text: prompt }];
         if (attachment) {
@@ -249,7 +262,7 @@ export const streamGenerateContent = async ({
     onError,
     abortSignal,
 }: StreamGenerateContentParams) => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
     const geminiModelName = MODEL_MAP[modelName] || 'gemini-2.5-flash';
 
     try {
@@ -346,7 +359,7 @@ export const generateEssayOutline = async ({
     systemInstruction: string;
     modelName: ModelType;
 }): Promise<Omit<EssaySection, 'id'>[]> => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
     const geminiModelName = MODEL_MAP[modelName] || 'gemini-2.5-flash';
 
     try {
@@ -401,7 +414,7 @@ export const streamEssaySection = async ({
     onUpdate: (chunk: string) => void;
     abortSignal: AbortSignal;
 }) => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
     const geminiModelName = MODEL_MAP[modelName] || 'gemini-2.5-flash';
 
     try {
