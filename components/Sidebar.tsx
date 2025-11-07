@@ -1,5 +1,5 @@
 import React, { Fragment, useState, useEffect, RefObject } from 'react';
-import { PencilSquareIcon, WindowIcon, SparklesIcon, Cog6ToothIcon, MagnifyingGlassIcon, EllipsisVerticalIcon, ViewColumnsIcon, MegaphoneIcon } from './icons';
+import { PencilSquareIcon, WindowIcon, SparklesIcon, Cog6ToothIcon, MagnifyingGlassIcon, EllipsisVerticalIcon, ViewColumnsIcon, MegaphoneIcon, UsersIcon } from './icons';
 import VerificationPanel from './VerificationPanel';
 import type { ViewID } from '../types';
 
@@ -25,6 +25,18 @@ interface SidebarProps {
     onSelectView: (view: ViewID) => void;
 }
 
+const creators = [
+    { name: 'Samuel Casseres', color: '#FFD700' }, 
+    { name: 'Equipo VERCE', color: '#FFD700' },
+];
+
+const collaborators = [
+    { name: 'Junayfer Palmera', color: '#3B82F6' },
+    { name: 'Danny Casseres', color: '#3B82F6' },
+    { name: 'Danna Simancas', color: '#3B82F6' },
+];
+
+
 const Sidebar: React.FC<SidebarProps> = ({ 
     isOpen, 
     onClose, 
@@ -36,16 +48,18 @@ const Sidebar: React.FC<SidebarProps> = ({
     onOpenSettings,
     onShowContextMenu,
     creditsRef,
-    verificationPanelRef,
+    verificationPanelRef, // This ref might be obsolete or need rethinking
     forceOpenVerificationPanel,
     activeView,
     onSelectView,
 }) => {
 
-    const [isVerificationOpen, setIsVerificationOpen] = useState(false);
+    const [isCreatorsOpen, setIsCreatorsOpen] = useState(forceOpenVerificationPanel);
+    const [isCollaboratorsOpen, setIsCollaboratorsOpen] = useState(forceOpenVerificationPanel);
 
     useEffect(() => {
-        setIsVerificationOpen(forceOpenVerificationPanel);
+        setIsCreatorsOpen(forceOpenVerificationPanel);
+        setIsCollaboratorsOpen(forceOpenVerificationPanel);
     }, [forceOpenVerificationPanel]);
 
 
@@ -101,14 +115,24 @@ const Sidebar: React.FC<SidebarProps> = ({
                     </button>
                 </div>
 
-                <div ref={verificationPanelRef}>
+                <div className="px-2 space-y-2">
                     <VerificationPanel
-                        isOpen={isVerificationOpen}
-                        onToggle={() => setIsVerificationOpen(!isVerificationOpen)}
+                        title="Creadores Principales"
+                        icon={SparklesIcon}
+                        collaborators={creators}
+                        isOpen={isCreatorsOpen}
+                        onToggle={() => setIsCreatorsOpen(!isCreatorsOpen)}
+                    />
+                    <VerificationPanel
+                        title="Colaboradores Clave"
+                        icon={UsersIcon}
+                        collaborators={collaborators}
+                        isOpen={isCollaboratorsOpen}
+                        onToggle={() => setIsCollaboratorsOpen(!isCollaboratorsOpen)}
                     />
                 </div>
                 
-                <div className="flex-1 overflow-y-auto px-4">
+                <div className="flex-1 overflow-y-auto px-4 mt-4">
                     <h3 className="text-text-secondary font-semibold text-sm mb-2">Recientes</h3>
                     <ul className="space-y-1">
                         {chats.map(chat => (
