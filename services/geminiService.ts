@@ -66,7 +66,7 @@ function createBlob(data: Float32Array): Blob {
   };
 }
 
-export const startVoiceSession = (
+export const startVoiceSession = async (
     systemInstruction: string,
     onTranscriptionUpdate: (isUser: boolean, text: string) => void,
     onTurnComplete: (userInput: string, samOutput: string) => void,
@@ -82,11 +82,25 @@ export const startVoiceSession = (
     outputNode.connect(outputAudioContext.destination);
     const sources = new Set<AudioBufferSourceNode>();
 
+    const inputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
     const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
         callbacks: {
             onopen: () => {
                 console.log('Voice session opened.');
+                const source = inputAudioContext.createMediaStreamSource(stream);
+                const scriptProcessor = inputAudioContext.createScriptProcessor(4096, 1, 1);
+                scriptProcessor.onaudioprocess = (audioProcessingEvent) => {
+                    const inputData = audioProcessingEvent.inputBuffer.getChannelData(0);
+                    const pcmBlob = createBlob(inputData);
+                    sessionPromise.then((session) => {
+                        session.sendRealtimeInput({ media: pcmBlob });
+                    });
+                };
+                source.connect(scriptProcessor);
+                scriptProcessor.connect(inputAudioContext.destination);
             },
             onmessage: async (message: LiveServerMessage) => {
                 // Handle Transcription
@@ -138,6 +152,13 @@ export const startVoiceSession = (
             },
             onclose: (e: CloseEvent) => {
                 console.log('Voice session closed.');
+                stream.getTracks().forEach(track => track.stop());
+                if (inputAudioContext.state !== 'closed') {
+                    inputAudioContext.close();
+                }
+                if (outputAudioContext.state !== 'closed') {
+                    outputAudioContext.close();
+                }
             },
         },
         config: {
