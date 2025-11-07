@@ -460,7 +460,7 @@ const App: React.FC = () => {
             />
             <main className="flex-1 flex flex-col relative overflow-hidden bg-bg-main">
                 {activeView === 'chat' && currentChat && (
-                     <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                     <div className="flex-1 overflow-y-auto p-4">
                         {currentChat.messages.map(msg => (
                             <ChatMessageItem 
                                 key={msg.id} 
@@ -475,7 +475,11 @@ const App: React.FC = () => {
                 )}
                 {activeView === 'chat' && !currentChat && (
                     <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
-                        <img src="/logo512.png" alt="SAM Logo" className="w-24 h-24 rounded-full mb-4" />
+                        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-24 h-24 mb-4 text-text-secondary">
+                            <path d="M30 20 L70 20 L70 50 L30 50 L30 80 L70 80" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+                            <path d="M10 60 L50 10 L90 60 M25 45 L75 45" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+                            <path d="M50 10 L50 90 M30 30 L50 50 L70 30" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+                        </svg>
                         <h1 className="text-3xl font-bold">SAM</h1>
                         <p className="text-text-secondary mt-2">Tu asistente de IA amigable y servicial.</p>
                     </div>

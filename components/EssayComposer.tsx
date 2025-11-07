@@ -1,9 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import type { Essay, EssaySection } from '../types';
-// Fix: Removed non-existent 'PencilIcon' from imports.
 import { AcademicCapIcon, DocumentDuplicateIcon, ArrowDownTrayIcon, ClipboardDocumentCheckIcon, ChevronDownIcon, SparklesIcon, XMarkIcon, TrashIcon, PlusIcon, ArrowPathIcon } from './icons';
 import { v4 as uuidv4 } from 'uuid';
-import { GoogleGenAI, Type } from '@google/genai';
+import { generateEssayOutline, streamEssaySection } from '../services/geminiService';
 
 interface EssayModalProps {
     initialEssay: Essay;
@@ -261,45 +260,12 @@ const EssayModal: React.FC<EssayModalProps> = ({ initialEssay, onClose, onSave, 
         
         const prompt = `Topic: "${essay.topic}", Level: ${essay.academicLevel}, Tone: ${essay.tone}, Word Count: ~${essay.wordCountTarget}`;
         
-        // Fix: Replaced mocked fetch with a real Gemini API call for generating the outline.
-        // FIX: Use process.env.API_KEY instead of hardcoded key.
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
         try {
-            const response = await ai.models.generateContent({
-                model: modelName,
-                contents: prompt,
-                config: {
-                    systemInstruction,
-                    responseMimeType: 'application/json',
-                    responseSchema: {
-                        type: Type.OBJECT,
-                        properties: {
-                            outline: {
-                                type: Type.ARRAY,
-                                description: "The essay outline, with each object being a section.",
-                                items: {
-                                    type: Type.OBJECT,
-                                    properties: {
-                                        title: { type: Type.STRING, description: "The title of the essay section." },
-                                        points: {
-                                            type: Type.ARRAY,
-                                            description: "An array of strings, where each string is a key point to cover in this section.",
-                                            items: { type: Type.STRING }
-                                        },
-                                    },
-                                    required: ['title', 'points'],
-                                },
-                            },
-                        },
-                        required: ['outline'],
-                    },
-                },
+            const outlineFromApi = await generateEssayOutline({
+                prompt,
+                systemInstruction,
+                modelName: modelName as any,
             });
-
-            const result = JSON.parse(response.text);
-            const outlineFromApi: Omit<EssaySection, 'id'>[] = result.outline;
-            
             updateEssay({ outline: outlineFromApi.map(s => ({...s, id: uuidv4()})), status: 'editing_outline' });
         } catch (e) {
              console.error("Error generating outline:", e);
@@ -317,10 +283,6 @@ const EssayModal: React.FC<EssayModalProps> = ({ initialEssay, onClose, onSave, 
         updateEssay({ status: 'writing' });
         abortControllerRef.current = new AbortController();
         
-        // Fix: Replaced simulated writing with a real streaming Gemini API call.
-        // FIX: Use process.env.API_KEY instead of hardcoded key.
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
         for (const section of essay.outline) {
             if (abortControllerRef.current.signal.aborted) break;
             updateEssay({ currentSectionId: section.id });
@@ -328,31 +290,25 @@ const EssayModal: React.FC<EssayModalProps> = ({ initialEssay, onClose, onSave, 
             const prompt = `Essay Topic: "${essay.topic}"\nFull Outline: ${JSON.stringify(essay.outline)}\n\nCurrent Section to Write: "${section.title}"\nKey Points for this section: ${section.points.join(', ')}`;
             
             try {
-                const resultStream = await ai.models.generateContentStream({
-                    model: modelName,
-                    contents: prompt,
-                    config: { systemInstruction },
-                });
-
-                if (abortControllerRef.current.signal.aborted) break;
-
                 let currentText = '';
-                for await (const chunk of resultStream) {
-                    if (abortControllerRef.current.signal.aborted) break;
-                    const chunkText = chunk.text;
-                    if (chunkText) {
-                        currentText += chunkText;
+                await streamEssaySection({
+                    prompt,
+                    systemInstruction,
+                    modelName: modelName as any,
+                    abortSignal: abortControllerRef.current.signal,
+                    onUpdate: (chunk) => {
+                        currentText += chunk;
                         setEssay(prev => ({
                             ...prev,
                             content: { ...prev.content, [section.id]: currentText }
                         }));
                     }
-                }
+                });
             } catch (e) {
                 console.error(`Error generating content for section ${section.title}:`, e);
                 setEssay(prev => ({
                      ...prev,
-                     content: { ...prev.content, [section.id]: "Error generating content for this section." }
+                     content: { ...prev.content, [section.id]: "Error al generar el contenido de esta sección." }
                  }));
             }
         }

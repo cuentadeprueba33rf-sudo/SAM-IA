@@ -1,6 +1,11 @@
-import { GoogleGenAI, Modality, LiveServerMessage, Blob } from "@google/genai";
-import type { Attachment, ChatMessage, ModeID } from '../types';
+import { GoogleGenAI, Modality, LiveServerMessage, Blob, Type } from "@google/genai";
+import type { Attachment, ChatMessage, ModeID, ModelType, EssaySection } from '../types';
 import { MessageAuthor } from '../types';
+
+const MODEL_MAP: Record<ModelType, string> = {
+    'sm-i1': 'gemini-2.5-flash',
+    'sm-i3': 'gemini-2.5-pro',
+};
 
 const fileToGenerativePart = async (attachment: Attachment) => {
     return {
@@ -69,7 +74,6 @@ export const startVoiceSession = async (
     onTurnComplete: (userInput: string, samOutput: string) => void,
     onError: (error: Error) => void
 ) => {
-    // FIX: Use process.env.API_KEY instead of hardcoded key.
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     let currentInputTranscription = '';
@@ -181,7 +185,6 @@ export const generateImage = async ({
     prompt: string;
     attachment?: Attachment;
 }): Promise<Attachment> => {
-    // FIX: Use process.env.API_KEY instead of hardcoded key.
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
         const parts: any[] = [{ text: prompt }];
@@ -227,7 +230,7 @@ interface StreamGenerateContentParams {
     attachment?: Attachment;
     history: ChatMessage[];
     mode: ModeID;
-    modelName: string;
+    modelName: ModelType;
     onUpdate: (chunk: string) => void;
     onComplete: (fullText: string, groundingChunks?: any[]) => void;
     onError: (error: Error) => void;
@@ -246,8 +249,9 @@ export const streamGenerateContent = async ({
     onError,
     abortSignal,
 }: StreamGenerateContentParams) => {
-    // FIX: Use process.env.API_KEY instead of hardcoded key.
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const geminiModelName = MODEL_MAP[modelName] || 'gemini-2.5-flash';
+
     try {
         const contents = await Promise.all(history
             .filter(msg => msg.author === MessageAuthor.USER || msg.author === MessageAuthor.SAM)
@@ -279,7 +283,7 @@ export const streamGenerateContent = async ({
         }
 
         const resultStream = await ai.models.generateContentStream({
-            model: modelName,
+            model: geminiModelName,
             contents: contents,
             config,
         });
@@ -332,3 +336,97 @@ export const streamGenerateContent = async ({
         }
     }
 };
+
+export const generateEssayOutline = async ({
+    prompt,
+    systemInstruction,
+    modelName,
+}: {
+    prompt: string;
+    systemInstruction: string;
+    modelName: ModelType;
+}): Promise<Omit<EssaySection, 'id'>[]> => {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const geminiModelName = MODEL_MAP[modelName] || 'gemini-2.5-flash';
+
+    try {
+        const response = await ai.models.generateContent({
+            model: geminiModelName,
+            contents: prompt,
+            config: {
+                systemInstruction,
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        outline: {
+                            type: Type.ARRAY,
+                            description: "The essay outline, with each object being a section.",
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    title: { type: Type.STRING, description: "The title of the essay section." },
+                                    points: {
+                                        type: Type.ARRAY,
+                                        description: "An array of strings, where each string is a key point to cover in this section.",
+                                        items: { type: Type.STRING }
+                                    },
+                                },
+                                required: ['title', 'points'],
+                            },
+                        },
+                    },
+                    required: ['outline'],
+                },
+            },
+        });
+        const result = JSON.parse(response.text);
+        return result.outline;
+    } catch (error) {
+        console.error("Error generating essay outline:", error);
+        throw error; // Re-throw to be handled by the component
+    }
+};
+
+export const streamEssaySection = async ({
+    prompt,
+    systemInstruction,
+    modelName,
+    onUpdate,
+    abortSignal
+}: {
+    prompt: string;
+    systemInstruction: string;
+    modelName: ModelType;
+    onUpdate: (chunk: string) => void;
+    abortSignal: AbortSignal;
+}) => {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const geminiModelName = MODEL_MAP[modelName] || 'gemini-2.5-flash';
+
+    try {
+        const resultStream = await ai.models.generateContentStream({
+            model: geminiModelName,
+            contents: prompt,
+            config: { systemInstruction },
+        });
+
+        if (abortSignal.aborted) return;
+        
+        for await (const chunk of resultStream) {
+            if (abortSignal.aborted) {
+                console.log("Stream reading aborted.");
+                return;
+            }
+            const chunkText = chunk.text;
+            if (chunkText) {
+                onUpdate(chunkText);
+            }
+        }
+    } catch (error) {
+        if (error instanceof Error && error.name !== 'AbortError' && !abortSignal.aborted) {
+            console.error("Error streaming essay section:", error);
+            throw error; // Re-throw to be handled by the component
+        }
+    }
+}
