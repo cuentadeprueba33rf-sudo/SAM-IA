@@ -1,0 +1,162 @@
+import React, { useEffect, useState } from 'react';
+// FIX: MessageAuthor is an enum used as a value, so it cannot be imported with 'import type'.
+import { MessageAuthor } from '../types';
+import type { ChatMessage, Attachment, Artifact } from '../types';
+import MessageActions from './MessageActions';
+import { SparklesIcon, DocumentTextIcon, GlobeAltIcon, CodeBracketIcon, AcademicCapIcon } from './icons';
+
+// A more robust markdown parser that handles code blocks separately to prevent nested parsing.
+const parseMarkdown = (text: string) => {
+    const escapeHtml = (unsafe: string) => {
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    };
+
+    const codeBlocks: string[] = [];
+    let processedText = text.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
+        const escapedCode = escapeHtml(code);
+        codeBlocks.push(`<pre class="bg-surface-secondary p-3 rounded-md not-prose"><code class="language-${lang}">${escapedCode}</code></pre>`);
+        return `__CODEBLOCK_${codeBlocks.length - 1}__`;
+    });
+    
+    processedText = escapeHtml(processedText);
+    processedText = processedText.replace(/\*(.*?)\*/g, '<strong>$1</strong>');
+    processedText = processedText.replace(/^\s*-\s(.*)/gm, '<li>$1</li>');
+    const listMatches = processedText.match(/(<li>.*<\/li>)/s);
+    if(listMatches) {
+        processedText = processedText.replace(listMatches[0], `<ul class="list-disc pl-5">${listMatches[0]}</ul>`);
+    }
+
+    processedText = processedText.replace(/__CODEBLOCK_(\d+)__/g, (match, index) => {
+        return codeBlocks[parseInt(index, 10)];
+    });
+
+    return { __html: processedText };
+};
+
+
+declare global {
+    interface Window {
+      renderMath: () => void;
+    }
+}
+
+interface ChatMessageItemProps {
+    message: ChatMessage;
+    onOpenArtifact: (artifact: Artifact) => void;
+    onPinArtifact: (artifact: Artifact) => void;
+    onPreviewImage: (attachment: Attachment) => void;
+}
+
+const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, onOpenArtifact, onPinArtifact, onPreviewImage }) => {
+    const isUser = message.author === MessageAuthor.USER;
+    const [pinnedArtifacts, setPinnedArtifacts] = useState<string[]>([]);
+
+    useEffect(() => {
+        if (typeof window.renderMath === 'function') {
+            window.renderMath();
+        }
+    }, [message.text]);
+
+    const handlePinArtifact = (artifact: Artifact) => {
+        if (!pinnedArtifacts.includes(artifact.id)) {
+            onPinArtifact(artifact);
+            setPinnedArtifacts(prev => [...prev, artifact.id]);
+        }
+    };
+
+    const messageContent = (
+        <div className={`flex flex-col max-w-full ${isUser ? 'items-end' : 'items-start'}`}>
+            <div className={`p-3 rounded-2xl w-fit max-w-xl lg:max-w-3xl xl:max-w-4xl prose prose-sm dark:prose-invert break-words ${isUser ? 'bg-accent text-white rounded-br-lg' : 'bg-surface-primary text-text-main rounded-bl-lg border border-border-subtle'}`}>
+                {message.attachment && (
+                    <div className="mb-2 not-prose">
+                        {message.attachment.type.startsWith('image/') ? (
+                            <img 
+                                src={message.attachment.data} 
+                                alt={message.attachment.name} 
+                                className="max-w-xs rounded-lg cursor-pointer" 
+                                onClick={() => onPreviewImage(message.attachment)}
+                            />
+                        ) : (
+                             <div className="flex items-center gap-2 p-2 bg-surface-secondary rounded-lg text-text-secondary">
+                                <DocumentTextIcon className="w-6 h-6" />
+                                <span>{message.attachment.name}</span>
+                            </div>
+                        )}
+                    </div>
+                )}
+                
+                {message.essayContent && (
+                     <div className="p-4 rounded-lg bg-surface-secondary border border-border-subtle not-prose cursor-pointer hover:border-accent/50 transition-colors">
+                        <div className="flex items-center gap-2 mb-2">
+                             <AcademicCapIcon className="w-5 h-5 text-accent"/>
+                             <h4 className="font-bold text-text-main">Ensayo: {message.essayContent.topic}</h4>
+                        </div>
+                        <p className="text-sm text-text-secondary line-clamp-3">
+                           {message.essayContent.outline.map(s => message.essayContent.content[s.id]).join(' ')}
+                        </p>
+                    </div>
+                )}
+
+                {message.text && (
+                    <div dangerouslySetInnerHTML={parseMarkdown(message.text)} />
+                )}
+                
+                {message.artifacts && message.artifacts.map(artifact => (
+                     <div key={artifact.id} className="mt-2 p-3 bg-surface-secondary dark:bg-black/20 rounded-lg border border-border-subtle not-prose">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <p className="font-semibold text-sm text-text-main">{artifact.title}</p>
+                                <p className="text-xs text-text-secondary">{artifact.language}</p>
+                            </div>
+                            <button onClick={() => onOpenArtifact(artifact)} className="text-sm bg-accent text-white px-3 py-1.5 rounded-lg hover:opacity-90 transition-opacity">Ver</button>
+                        </div>
+                    </div>
+                ))}
+                
+                {message.generatingArtifact && (
+                    <div className="flex items-center gap-2 text-text-secondary mt-2 text-sm not-prose">
+                        <CodeBracketIcon className="w-4 h-4 animate-pulse" />
+                        <span>Generando componente...</span>
+                    </div>
+                )}
+                 {message.isSearching && (
+                    <div className="flex items-center gap-2 text-text-secondary mt-2 text-sm not-prose">
+                        <GlobeAltIcon className="w-4 h-4 animate-spin" />
+                        <span>Buscando en la web...</span>
+                    </div>
+                )}
+
+            </div>
+             <MessageActions 
+                message={message}
+                text={message.text}
+                groundingMetadata={message.groundingMetadata}
+                onPin={() => {
+                    if (message.artifacts && message.artifacts.length > 0) {
+                        handlePinArtifact(message.artifacts[0]);
+                    }
+                }}
+            />
+        </div>
+    );
+    
+    return (
+        <div className={`flex gap-3 my-1 ${isUser ? 'justify-end' : 'justify-start'}`}>
+            {!isUser && (
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-surface-secondary flex items-center justify-center self-start border border-border-subtle">
+                    <img src="data:image/svg+xml,%3csvg width='100' height='100' viewBox='0 0 100 100' fill='none' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M30 20 L70 20 L70 50 L30 50 L30 80 L70 80' stroke='%233c3c3c' stroke-width='8' stroke-linecap='round'/%3e%3cpath d='M10 60 L50 10 L90 60 M25 45 L75 45' stroke='%233c3c3c' stroke-width='8' stroke-linecap='round'/%3e%3cpath d='M50 10 L50 90 M30 30 L50 50 L70 30' stroke='%233c3c3c' stroke-width='8' stroke-linecap='round'/%3e%3c/svg%3e" alt="SAM Logo" className="w-5 h-5 opacity-80" />
+                </div>
+            )}
+            <div className="max-w-full overflow-hidden">
+                {messageContent}
+            </div>
+        </div>
+    );
+};
+
+export default ChatMessageItem;

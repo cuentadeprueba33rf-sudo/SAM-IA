@@ -248,9 +248,6 @@ const WritingStep: React.FC<{ essay: Essay; onRegenerate: (sectionId: string) =>
     );
 };
 
-// Fix: Using hardcoded API key for consistency with the rest of the project.
-const API_KEY = "AIzaSyDB-CXyCAp6CrquNDM7uMq_SoKDITRA9zI";
-
 const EssayModal: React.FC<EssayModalProps> = ({ initialEssay, onClose, onSave, systemInstruction, modelName }) => {
     const [essay, setEssay] = useState<Essay>(initialEssay);
     const abortControllerRef = React.useRef<AbortController | null>(null);
@@ -265,7 +262,8 @@ const EssayModal: React.FC<EssayModalProps> = ({ initialEssay, onClose, onSave, 
         const prompt = `Topic: "${essay.topic}", Level: ${essay.academicLevel}, Tone: ${essay.tone}, Word Count: ~${essay.wordCountTarget}`;
         
         // Fix: Replaced mocked fetch with a real Gemini API call for generating the outline.
-        const ai = new GoogleGenAI({ apiKey: API_KEY });
+        // FIX: Use process.env.API_KEY instead of hardcoded key.
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
         try {
             const response = await ai.models.generateContent({
@@ -320,7 +318,8 @@ const EssayModal: React.FC<EssayModalProps> = ({ initialEssay, onClose, onSave, 
         abortControllerRef.current = new AbortController();
         
         // Fix: Replaced simulated writing with a real streaming Gemini API call.
-        const ai = new GoogleGenAI({ apiKey: API_KEY });
+        // FIX: Use process.env.API_KEY instead of hardcoded key.
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
         for (const section of essay.outline) {
             if (abortControllerRef.current.signal.aborted) break;

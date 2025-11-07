@@ -2,9 +2,6 @@ import { GoogleGenAI, Modality, LiveServerMessage, Blob } from "@google/genai";
 import type { Attachment, ChatMessage, ModeID } from '../types';
 import { MessageAuthor } from '../types';
 
-// Clave de API proporcionada por el usuario para un propósito específico.
-const API_KEY = "AIzaSyDB-CXyCAp6CrquNDM7uMq_SoKDITRA9zI";
-
 const fileToGenerativePart = async (attachment: Attachment) => {
     return {
         inlineData: {
@@ -72,7 +69,8 @@ export const startVoiceSession = async (
     onTurnComplete: (userInput: string, samOutput: string) => void,
     onError: (error: Error) => void
 ) => {
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
+    // FIX: Use process.env.API_KEY instead of hardcoded key.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     let currentInputTranscription = '';
     let currentOutputTranscription = '';
@@ -183,7 +181,8 @@ export const generateImage = async ({
     prompt: string;
     attachment?: Attachment;
 }): Promise<Attachment> => {
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
+    // FIX: Use process.env.API_KEY instead of hardcoded key.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
         const parts: any[] = [{ text: prompt }];
         if (attachment) {
@@ -247,7 +246,8 @@ export const streamGenerateContent = async ({
     onError,
     abortSignal,
 }: StreamGenerateContentParams) => {
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
+    // FIX: Use process.env.API_KEY instead of hardcoded key.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
         const contents = await Promise.all(history
             .filter(msg => msg.author === MessageAuthor.USER || msg.author === MessageAuthor.SAM)
