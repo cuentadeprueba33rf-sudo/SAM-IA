@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Settings } from './types';
-import { XMarkIcon, SunIcon, MoonIcon, ChatBubbleLeftRightIcon, UsersIcon, TrashIcon } from './components/icons';
+import { XMarkIcon, SunIcon, ChatBubbleLeftRightIcon, UsersIcon, TrashIcon, CheckIcon, SparklesIcon, ArrowDownTrayIcon } from './components/icons';
 import { PERSONALITIES } from './constants';
 
 interface SettingsModalProps {
@@ -9,73 +9,66 @@ interface SettingsModalProps {
     settings: Settings;
     onSave: (settings: Settings) => void;
     onClearHistory: () => void;
+    onExportHistory: () => void;
+    onInstallApp: () => void;
+    installPromptEvent: any;
 }
 
-const SettingsSection: React.FC<{
-    icon: React.ReactNode;
-    title: string;
-    description: string;
-    children: React.ReactNode;
-}> = ({ icon, title, description, children }) => (
-    <div className="flex items-start gap-4">
-        <div className="flex-shrink-0 mt-1 text-text-secondary">{icon}</div>
-        <div className="flex-1">
-            <h4 className="font-semibold text-text-main">{title}</h4>
-            <p className="text-sm text-text-secondary mb-3">{description}</p>
-            {children}
-        </div>
-    </div>
-);
+const SettingsModal: React.FC<SettingsModalProps> = ({ 
+    isOpen, 
+    onClose, 
+    settings, 
+    onSave, 
+    onClearHistory, 
+    onExportHistory, 
+    onInstallApp,
+    installPromptEvent 
+}) => {
+    const [activeSection, setActiveSection] = useState('appearance');
 
-
-const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings, onSave, onClearHistory }) => {
     if (!isOpen) return null;
 
     const handleSettingChange = <K extends keyof Settings>(key: K, value: Settings[K]) => {
         onSave({ ...settings, [key]: value });
     };
 
-    return (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
-            <div 
-                className="bg-surface-primary rounded-2xl p-6 max-w-lg w-full shadow-2xl animate-fade-in-up border border-border-subtle max-h-[90vh] flex flex-col" 
-                onClick={e => e.stopPropagation()}
-            >
-                <header className="flex justify-between items-center mb-6 flex-shrink-0">
-                    <h3 className="text-xl font-semibold text-text-main">Configuración</h3>
-                    <button onClick={onClose} className="p-2 rounded-full hover:bg-surface-secondary">
-                        <XMarkIcon className="w-6 h-6 text-text-secondary" />
-                    </button>
-                </header>
-                
-                <main className="flex-1 overflow-y-auto space-y-8 pr-2 -mr-4">
-                    {/* Appearance Section */}
-                    <SettingsSection
-                        icon={<SunIcon className="w-6 h-6" />}
-                        title="Apariencia"
-                        description="Personaliza el aspecto de la interfaz a tu gusto."
-                    >
-                        <div className="grid grid-cols-2 gap-3">
-                            <button onClick={() => handleSettingChange('theme', 'light')} className={`border-2 rounded-lg p-2 text-left ${settings.theme === 'light' ? 'border-accent' : 'border-border-subtle'}`}>
-                                <div className="w-full h-12 bg-gray-100 rounded mb-2"></div>
+    const sections = {
+        appearance: { title: 'Apariencia', icon: SunIcon },
+        personalization: { title: 'Personalización de IA', icon: ChatBubbleLeftRightIcon },
+        account: { title: 'Perfil', icon: UsersIcon },
+        application: { title: 'Aplicación', icon: ArrowDownTrayIcon },
+        data: { title: 'Gestión de Datos', icon: TrashIcon },
+    };
+    
+    const renderSectionContent = () => {
+        switch (activeSection) {
+            case 'appearance':
+                return (
+                    <div>
+                        <h4 className="font-semibold text-text-main text-lg mb-2">Apariencia</h4>
+                        <p className="text-sm text-text-secondary mb-4">Personaliza el aspecto de la interfaz a tu gusto.</p>
+                        <div className="grid grid-cols-2 gap-4">
+                            <button onClick={() => handleSettingChange('theme', 'light')} className={`relative border-2 rounded-lg p-2 text-left transition-colors ${settings.theme === 'light' ? 'border-accent' : 'border-border-subtle hover:border-text-secondary/50'}`}>
+                                {settings.theme === 'light' && <CheckIcon className="absolute top-2 right-2 w-5 h-5 text-accent" />}
+                                <div className="w-full h-16 bg-gray-100 rounded mb-2 border border-gray-200"></div>
                                 <span className="font-semibold text-sm text-text-main">Claro</span>
                             </button>
-                            <button onClick={() => handleSettingChange('theme', 'dark')} className={`border-2 rounded-lg p-2 text-left ${settings.theme === 'dark' ? 'border-accent' : 'border-border-subtle'}`}>
-                                <div className="w-full h-12 bg-gray-800 rounded mb-2"></div>
+                            <button onClick={() => handleSettingChange('theme', 'dark')} className={`relative border-2 rounded-lg p-2 text-left transition-colors ${settings.theme === 'dark' ? 'border-accent' : 'border-border-subtle hover:border-text-secondary/50'}`}>
+                                {settings.theme === 'dark' && <CheckIcon className="absolute top-2 right-2 w-5 h-5 text-accent" />}
+                                <div className="w-full h-16 bg-gray-800 rounded mb-2 border border-gray-700"></div>
                                 <span className="font-semibold text-sm text-text-main">Oscuro</span>
                             </button>
                         </div>
-                    </SettingsSection>
-                    
-                    {/* AI Customization Section */}
-                    <SettingsSection
-                        icon={<ChatBubbleLeftRightIcon className="w-6 h-6" />}
-                        title="Personalización de IA"
-                        description="Ajusta cómo SAM interactúa y responde."
-                    >
-                        <div className="space-y-4">
-                            <div>
-                                <label htmlFor="personality-select" className="block text-sm font-medium text-text-secondary mb-2">Personalidad de la Guía</label>
+                    </div>
+                );
+            case 'personalization':
+                 return (
+                    <div>
+                        <h4 className="font-semibold text-text-main text-lg mb-2">Personalización de IA</h4>
+                        <p className="text-sm text-text-secondary mb-4">Ajusta cómo SAM interactúa y responde para que se adapte mejor a ti.</p>
+                        <div className="space-y-6">
+                             <div>
+                                <label htmlFor="personality-select" className="block text-sm font-medium text-text-secondary mb-2">Personalidad</label>
                                 <select
                                     id="personality-select"
                                     value={settings.personality}
@@ -87,15 +80,29 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                                     ))}
                                 </select>
                             </div>
+                            <div>
+                                <label className="block text-sm font-medium text-text-secondary mb-2">Modelo por Defecto</label>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <button onClick={() => handleSettingChange('defaultModel', 'sm-i1')} className={`relative text-left p-3 rounded-lg border-2 ${settings.defaultModel === 'sm-i1' ? 'border-accent' : 'border-border-subtle hover:border-text-secondary/50'}`}>
+                                        {settings.defaultModel === 'sm-i1' && <CheckIcon className="absolute top-2 right-2 w-4 h-4 text-accent" />}
+                                        <div className="flex items-center gap-2 font-semibold text-text-main"><SparklesIcon className="w-5 h-5 text-yellow-400" /> SM-I1</div>
+                                        <p className="text-xs text-text-secondary mt-1">Rápido y eficiente para tareas diarias.</p>
+                                    </button>
+                                     <button onClick={() => handleSettingChange('defaultModel', 'sm-i3')} className={`relative text-left p-3 rounded-lg border-2 ${settings.defaultModel === 'sm-i3' ? 'border-accent' : 'border-border-subtle hover:border-text-secondary/50'}`}>
+                                        {settings.defaultModel === 'sm-i3' && <CheckIcon className="absolute top-2 right-2 w-4 h-4 text-accent" />}
+                                        <div className="font-semibold text-text-main">SM-I3</div>
+                                        <p className="text-xs text-text-secondary mt-1">Más potente para tareas complejas.</p>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                    </SettingsSection>
-
-                    {/* Profile Section */}
-                    <SettingsSection
-                        icon={<UsersIcon className="w-6 h-6" />}
-                        title="Perfil de Usuario"
-                        description="Ayuda a SAM a entender mejor tu contexto."
-                    >
+                    </div>
+                );
+            case 'account':
+                return (
+                     <div>
+                        <h4 className="font-semibold text-text-main text-lg mb-2">Perfil de Usuario</h4>
+                        <p className="text-sm text-text-secondary mb-4">Ayuda a SAM a entender mejor tu contexto profesional.</p>
                         <div>
                             <label htmlFor="profession-input" className="block text-sm font-medium text-text-secondary mb-2">¿A qué te dedicas?</label>
                             <input
@@ -108,29 +115,88 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                             />
                             <p className="text-xs text-text-secondary mt-1">SAM adaptará sus respuestas a tu estilo de trabajo.</p>
                         </div>
-                    </SettingsSection>
+                    </div>
+                );
+            case 'application':
+                return (
+                    <div>
+                        <h4 className="font-semibold text-text-main text-lg mb-2">Aplicación</h4>
+                        <p className="text-sm text-text-secondary mb-4">Instala SAM en tu dispositivo para un acceso rápido y una experiencia integrada.</p>
+                        {installPromptEvent ? (
+                            <button
+                                onClick={onInstallApp}
+                                className="w-full flex items-center justify-center gap-2 text-left text-sm font-semibold text-text-main bg-surface-secondary hover:bg-border-subtle px-4 py-2 rounded-lg transition-colors"
+                            >
+                                <ArrowDownTrayIcon className="w-5 h-5" />
+                                <span>Instalar SAM en el dispositivo</span>
+                            </button>
+                        ) : (
+                            <p className="text-sm text-text-secondary p-3 bg-surface-secondary rounded-lg">
+                                La aplicación ya está instalada o tu navegador no es compatible con la instalación.
+                            </p>
+                        )}
+                    </div>
+                );
+            case 'data':
+                return (
+                     <div>
+                        <h4 className="font-semibold text-text-main text-lg mb-2">Gestión de Datos</h4>
+                        <p className="text-sm text-text-secondary mb-4">Maneja tus datos guardados en la aplicación.</p>
+                        <div className="space-y-3">
+                            <button
+                                onClick={onExportHistory}
+                                className="w-full flex items-center justify-center gap-2 text-left text-sm font-semibold text-text-main bg-surface-secondary hover:bg-border-subtle px-4 py-2 rounded-lg transition-colors"
+                            >
+                                <ArrowDownTrayIcon className="w-5 h-5" />
+                                <span>Exportar historial de chats</span>
+                            </button>
+                            <button
+                                onClick={onClearHistory}
+                                className="w-full flex items-center justify-center gap-2 text-left text-sm font-semibold text-danger bg-danger/10 hover:bg-danger/20 px-4 py-2 rounded-lg transition-colors"
+                            >
+                                <TrashIcon className="w-5 h-5" />
+                                <span>Borrar historial de chats</span>
+                            </button>
+                        </div>
+                         <p className="text-xs text-text-secondary mt-2">La eliminación de chats es permanente y no se puede deshacer.</p>
+                    </div>
+                );
+            default:
+                return null;
+        }
+    };
 
-                    {/* Data Management Section */}
-                    <SettingsSection
-                        icon={<TrashIcon className="w-6 h-6 text-danger" />}
-                        title="Gestión de Datos"
-                        description="Maneja tus datos guardados en la aplicación."
-                    >
-                         <button
-                            onClick={onClearHistory}
-                            className="w-full text-left text-sm font-semibold text-danger bg-danger/10 hover:bg-danger/20 px-4 py-2 rounded-lg transition-colors"
-                        >
-                            Borrar historial de chats
-                        </button>
-                        <p className="text-xs text-text-secondary mt-1">Esta acción es permanente y eliminará todas tus conversaciones.</p>
-                    </SettingsSection>
-                </main>
-
-                <footer className="mt-8 flex-shrink-0">
-                    <button onClick={onClose} className="bg-accent text-white font-semibold px-4 py-2 rounded-lg w-full hover:opacity-90 transition-opacity">
-                        Hecho
+    return (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
+            <div 
+                className="bg-surface-primary rounded-2xl max-w-3xl w-full h-full max-h-[600px] shadow-2xl animate-fade-in-up border border-border-subtle flex flex-col" 
+                onClick={e => e.stopPropagation()}
+            >
+                <header className="flex justify-between items-center p-4 border-b border-border-subtle flex-shrink-0">
+                    <h3 className="text-xl font-semibold text-text-main">Configuración</h3>
+                    <button onClick={onClose} className="p-2 rounded-full hover:bg-surface-secondary">
+                        <XMarkIcon className="w-6 h-6 text-text-secondary" />
                     </button>
-                </footer>
+                </header>
+                
+                <main className="flex-1 flex flex-col md:flex-row gap-6 lg:gap-8 p-4 md:p-6 overflow-hidden">
+                    <nav className="flex flex-row md:flex-col gap-1 md:border-r md:border-border-subtle md:pr-6 -ml-2 overflow-x-auto md:overflow-x-visible">
+                       {Object.entries(sections).map(([key, { title, icon: Icon }]) => (
+                           <button 
+                                key={key} 
+                                onClick={() => setActiveSection(key)} 
+                                className={`flex items-center gap-3 p-2 rounded-lg text-left w-full md:w-40 transition-colors text-sm font-medium ${activeSection === key ? 'bg-accent/10 text-accent' : 'text-text-main hover:bg-surface-secondary'}`}
+                           >
+                               <Icon className="w-5 h-5 flex-shrink-0" />
+                               <span className="whitespace-nowrap">{title}</span>
+                           </button>
+                       ))}
+                    </nav>
+
+                    <div className="flex-1 overflow-y-auto pr-2 -mr-4 md:custom-scrollbar">
+                        {renderSectionContent()}
+                    </div>
+                </main>
             </div>
              <style>{`
                 @keyframes fade-in-up {
@@ -140,6 +206,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                 .animate-fade-in-up {
                     animation: fade-in-up 0.2s ease-out;
                 }
+                .md\\:custom-scrollbar::-webkit-scrollbar { width: 6px; }
+                .md\\:custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .md\\:custom-scrollbar::-webkit-scrollbar-thumb { background-color: var(--color-border-subtle); border-radius: 20px; }
+                .md\\:custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: var(--color-text-secondary); }
             `}</style>
         </div>
     );

@@ -11,8 +11,6 @@ import MathConsole from './components/MathConsole';
 import ImagePreviewModal from './components/ImagePreviewModal';
 import EssayModal from './components/EssayComposer';
 import CameraCaptureModal from './components/CameraCaptureModal';
-import WelcomeTutorial from './components/WelcomeTutorial';
-import FeatureNotification from './components/FeatureNotification';
 import { CodeBracketIcon, GlobeAltIcon, CalculatorIcon, PhotoIcon, DocumentIcon, XMarkIcon, ViewColumnsIcon, MegaphoneIcon, BookOpenIcon, TrashIcon } from './components/icons';
 import type { Chat, ChatMessage, ModeID, Attachment, Settings, Artifact, Essay, ModelType, ViewID, Insight } from './types';
 import { MessageAuthor } from './types';
@@ -176,7 +174,7 @@ const App: React.FC = () => {
     const [guestName, setGuestName] = useState('');
     const [chats, setChats] = useState<Chat[]>([]);
     const [currentChatId, setCurrentChatId] = useState<string | null>(null);
-    const [settings, setSettings] = useState<Settings>({ theme: 'dark', personality: 'default', profession: '' });
+    const [settings, setSettings] = useState<Settings>({ theme: 'dark', personality: 'default', profession: '', defaultModel: 'sm-i1' });
     const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
     const [isGenerating, setIsGenerating] = useState(false);
     const [currentMode, setCurrentMode] = useState<ModeID>('normal');
@@ -190,10 +188,6 @@ const App: React.FC = () => {
     const [contextMenu, setContextMenu] = useState<{ chatId: string; coords: { x: number; y: number; } } | null>(null);
     const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
     const [captureMode, setCaptureMode] = useState<'user' | 'environment'>('user');
-    const [tutorialState, setTutorialState] = useState({ active: false, step: 0 });
-    const [tutorialTargetRect, setTutorialTargetRect] = useState<DOMRect | null>(null);
-    const [forceOpenVerification, setForceOpenVerification] = useState(false);
-    const [showWelcomeNotification, setShowWelcomeNotification] = useState(false);
     const [isEssayModalOpen, setIsEssayModalOpen] = useState(false);
     const [currentEssay, setCurrentEssay] = useState<Essay | null>(null);
     const [isVoiceMode, setIsVoiceMode] = useState(false);
@@ -203,6 +197,7 @@ const App: React.FC = () => {
     const [activeView, setActiveView] = useState<ViewID>('chat');
     const [widgets, setWidgets] = useState<ChatMessage[]>([]);
     const [insights, setInsights] = useState<Insight[]>([]);
+    const [installPromptEvent, setInstallPromptEvent] = useState<any>(null);
 
 
     const abortControllerRef = useRef<AbortController | null>(null);
@@ -219,9 +214,6 @@ const App: React.FC = () => {
         if (name) {
             setGuestName(name);
 
-            const TUTORIAL_NOTIFICATION_KEY = 'sam_ia_tutorial_notification_seen_v2';
-            const hasSeenTutorialNotification = localStorage.getItem(TUTORIAL_NOTIFICATION_KEY) === 'true';
-
             let finalChats = [...loadedChats];
             let newChatId = loadedChats.length > 0 ? loadedChats[0].id : null;
 
@@ -234,10 +226,6 @@ const App: React.FC = () => {
             setChats(finalChats);
             setCurrentChatId(newChatId);
 
-            if (!hasSeenTutorialNotification) {
-                // Wait a moment for the app to settle before showing notification
-                setTimeout(() => setShowWelcomeNotification(true), 1500);
-            }
         } else {
              // New user: load existing chats (or the default one) and set the first as active.
             setChats(loadedChats);
@@ -258,6 +246,18 @@ const App: React.FC = () => {
         ]);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Effect to handle the 'Add to Home Screen' prompt
+    useEffect(() => {
+        const handleBeforeInstallPrompt = (e: Event) => {
+            e.preventDefault();
+            setInstallPromptEvent(e);
+        };
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        return () => {
+            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        };
     }, []);
     
     // Persist chats, widgets to localStorage
@@ -285,7 +285,14 @@ const App: React.FC = () => {
     useEffect(() => {
         try {
             const savedSettings = localStorage.getItem('sam-settings');
-            if (savedSettings) setSettings(JSON.parse(savedSettings));
+            if (savedSettings) {
+                const parsedSettings: Settings = JSON.parse(savedSettings);
+                 if (!parsedSettings.defaultModel) {
+                    parsedSettings.defaultModel = 'sm-i1';
+                }
+                setSettings(parsedSettings);
+                setSelectedModel(parsedSettings.defaultModel);
+            }
         } catch(e) { console.error(e); }
     }, []);
 
@@ -730,7 +737,28 @@ const App: React.FC = () => {
     };
 
     const handleSaveSettings = (newSettings: Settings) => {
+        if (newSettings.defaultModel !== settings.defaultModel) {
+            setSelectedModel(newSettings.defaultModel);
+        }
         setSettings(newSettings);
+    };
+
+    const handleExportHistory = () => {
+        try {
+            const chatsToExport = chats.filter(c => !(c.isTemporary && c.messages.length === 0));
+            const dataStr = JSON.stringify(chatsToExport, null, 2);
+            const dataBlob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.download = `sam-ia-chats-export-${new Date().toISOString().split('T')[0]}.json`;
+            link.href = url;
+            link.click();
+            URL.revokeObjectURL(url);
+            setIsSettingsModalOpen(false);
+        } catch (error) {
+            console.error("Failed to export chats:", error);
+            alert("Hubo un error al exportar tus chats.");
+        }
     };
 
     const handleImageCapture = (dataUrl: string | null) => {
@@ -745,49 +773,16 @@ const App: React.FC = () => {
         setIsCameraModalOpen(false);
     };
     
-    const startTutorial = () => {
-        setTutorialState({ active: true, step: 1 });
-        setTutorialTargetRect(null);
-
-        setTimeout(() => {
-            setIsSidebarOpen(true);
-            setTimeout(() => {
-                if (creditsRef.current) {
-                    setTutorialTargetRect(creditsRef.current.getBoundingClientRect());
-                    setTutorialState({ active: true, step: 2 });
-                }
-            }, 400); 
-        }, 2500); 
-
-        setTimeout(() => {
-            setForceOpenVerification(true);
-            setTimeout(() => {
-                 if (verificationPanelRef.current) {
-                    setTutorialTargetRect(verificationPanelRef.current.getBoundingClientRect());
-                    setTutorialState({ active: true, step: 3 });
-                }
-            }, 400); 
-        }, 6500);
-
-        setTimeout(() => {
-            setTutorialState({ active: false, step: 0 });
-            setTutorialTargetRect(null);
-            setForceOpenVerification(false);
-            setIsSidebarOpen(window.innerWidth > 768);
-        }, 10500);
+    const handleInstallApp = async () => {
+        if (!installPromptEvent) {
+            return;
+        }
+        installPromptEvent.prompt();
+        // Wait for the user to respond to the prompt
+        await installPromptEvent.userChoice;
+        setInstallPromptEvent(null);
+        setIsSettingsModalOpen(false);
     };
-    
-    const handleStartTutorialFromNotification = () => {
-        setShowWelcomeNotification(false);
-        localStorage.setItem('sam_ia_tutorial_notification_seen_v2', 'true');
-        startTutorial();
-    };
-
-    const handleDismissNotificationPermanently = () => {
-        setShowWelcomeNotification(false);
-        localStorage.setItem('sam_ia_tutorial_notification_seen_v2', 'true');
-    };
-
 
     const renderMessageContent = (message: ChatMessage) => {
         if (message.author === MessageAuthor.SYSTEM) {
@@ -825,12 +820,6 @@ const App: React.FC = () => {
 
     return (
         <div className={`flex h-screen overflow-hidden font-sans bg-bg-main text-text-main ${settings.theme}`}>
-            {tutorialState.active && (
-                <WelcomeTutorial
-                    step={tutorialState.step}
-                    targetRect={tutorialTargetRect}
-                />
-            )}
             <Sidebar
                 isOpen={isSidebarOpen}
                 onClose={() => setIsSidebarOpen(false)}
@@ -839,11 +828,11 @@ const App: React.FC = () => {
                 onNewChat={handleNewChat}
                 onSelectChat={(id) => {setCurrentChatId(id);}}
                 onShowUpdates={() => setIsUpdatesModalOpen(true)}
-                onOpenSettings={() => setIsSettingsModalOpen(false)}
+                onOpenSettings={() => setIsSettingsModalOpen(true)}
                 onShowContextMenu={(chatId, coords) => setContextMenu({ chatId, coords })}
                 creditsRef={creditsRef}
                 verificationPanelRef={verificationPanelRef}
-                forceOpenVerificationPanel={forceOpenVerification}
+                forceOpenVerificationPanel={false}
                 activeView={activeView}
                 onSelectView={setActiveView}
             />
@@ -921,17 +910,8 @@ const App: React.FC = () => {
 
                 {activeView === 'chat' && (
                     <footer className="absolute bottom-8 left-0 right-0 z-10 bg-gradient-to-t from-bg-main via-bg-main/95 to-transparent">
-                        {showWelcomeNotification && (
-                            <div className="w-full max-w-3xl mx-auto px-4">
-                                <FeatureNotification 
-                                    onShowCollaborator={handleStartTutorialFromNotification}
-                                    onDismissPermanently={handleDismissNotificationPermanently}
-                                />
-                            </div>
-                        )}
                         {currentMode === 'math' && lastSamMessageWithLogs && <MathConsole logs={lastSamMessageWithLogs.consoleLogs || []} isOpen={isMathConsoleOpen} onToggle={() => setIsMathConsoleOpen(!isMathConsoleOpen)} />}
                         <div className="w-full max-w-3xl mx-auto px-4 py-2">
-                            
                             <ChatInput onSendMessage={handleSendMessage} onModeAction={handleModeAction} attachment={attachment} onRemoveAttachment={() => setAttachment(null)} disabled={isGenerating} currentMode={currentMode} onResetMode={() => setCurrentMode('normal')} selectedModel={selectedModel} onSetSelectedModel={setSelectedModel} onToggleSidebar={() => setIsSidebarOpen(prev => !prev)} isVoiceMode={isVoiceMode} onEndVoiceSession={handleEndVoiceSession}/>
                             <p className="text-center text-xs text-text-secondary mt-2 px-2">SAM puede cometer errores. Verifica sus respuestas.</p>
                         </div>
@@ -940,7 +920,16 @@ const App: React.FC = () => {
             </div>
 
             {activeArtifact && <CodeCanvas artifact={activeArtifact} onClose={() => setActiveArtifact(null)} />}
-            <SettingsModal isOpen={isSettingsModalOpen} onClose={() => setIsSettingsModalOpen(false)} settings={settings} onSave={handleSaveSettings} onClearHistory={handleClearHistory} />
+            <SettingsModal 
+                isOpen={isSettingsModalOpen} 
+                onClose={() => setIsSettingsModalOpen(false)} 
+                settings={settings} 
+                onSave={handleSaveSettings} 
+                onClearHistory={handleClearHistory} 
+                onExportHistory={handleExportHistory} 
+                onInstallApp={handleInstallApp}
+                installPromptEvent={installPromptEvent}
+            />
             <UpdatesModal isOpen={isUpdatesModalOpen} onClose={() => setIsUpdatesModalOpen(false)} />
             {contextMenu && <div className="fixed inset-0 z-40" onClick={() => setContextMenu(null)}><ContextMenu x={contextMenu.coords.x} y={contextMenu.coords.y} onClose={() => setContextMenu(null)} onRename={() => { const chat = chats.find(c => c.id === contextMenu.chatId); const newTitle = prompt("Enter new chat title:", chat?.title); if (newTitle && newTitle.trim()) { handleRenameChat(contextMenu.chatId, newTitle.trim()); } }} onDelete={() => { if (window.confirm("Are you sure you want to delete this chat?")) { handleDeleteChat(contextMenu.chatId); } }} /></div>}
             <ImagePreviewModal image={previewImage} onClose={() => setPreviewImage(null)} />

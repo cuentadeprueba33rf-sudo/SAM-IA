@@ -68,6 +68,7 @@ export interface Settings {
     theme: Theme;
     personality: Personality;
     profession: string;
+    defaultModel: ModelType;
 }
 
 export interface EssaySection {
