@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Settings } from './types';
-import { XMarkIcon, SunIcon, ChatBubbleLeftRightIcon, UsersIcon, TrashIcon, CheckIcon, SparklesIcon, ArrowDownTrayIcon, ShieldCheckIcon, DocumentDuplicateIcon } from './components/icons';
+import { XMarkIcon, SunIcon, ChatBubbleLeftRightIcon, UsersIcon, TrashIcon, CheckIcon, SparklesIcon, ArrowDownTrayIcon, ShieldCheckIcon, DocumentDuplicateIcon, BoltIcon } from './components/icons';
 import { PERSONALITIES } from './constants';
 
 interface SettingsModalProps {
@@ -201,6 +201,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                         <div className="flex items-center gap-2 font-semibold text-text-main"><SparklesIcon className="w-5 h-5 text-yellow-400" /> SM-I3</div>
                                         <p className="text-xs text-text-secondary mt-1">Más potente para tareas complejas.</p>
                                         {!settings.isPremiumUnlocked && <span className="text-xs text-accent mt-1">Requiere Premium</span>}
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                 <label className="block text-sm font-medium text-text-secondary mb-2">Velocidad de Respuesta</label>
+                                 <div className="flex items-center justify-between p-3 bg-surface-secondary rounded-lg border border-border-subtle">
+                                    <div>
+                                        <div className="font-semibold text-text-main flex items-center gap-2"><BoltIcon className="w-5 h-5"/>Modo Rápido</div>
+                                        <p className="text-xs text-text-secondary mt-1">Prioriza la velocidad sobre la profundidad de la respuesta.</p>
+                                    </div>
+                                    <button onClick={() => handleSettingChange('quickMode', !settings.quickMode)} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.quickMode ? 'bg-accent' : 'bg-border-subtle'}`}>
+                                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.quickMode ? 'translate-x-6' : 'translate-x-1'}`} />
                                     </button>
                                 </div>
                             </div>

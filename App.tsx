@@ -14,6 +14,7 @@ import WelcomeTutorial from './components/WelcomeTutorial';
 import FeatureNotification from './components/FeatureNotification';
 import InstallNotification from './components/InstallNotification';
 import PremiumNotification from './components/PremiumNotification';
+import VoiceErrorNotification from './components/VoiceErrorNotification';
 import ChatMessageItem from './components/ChatMessage'; // Assuming a ChatMessageItem component for rendering messages.
 import { streamGenerateContent, generateImage, startActiveConversation, detectMode } from './services/geminiService';
 import {
@@ -34,6 +35,7 @@ const defaultSettings: Settings = {
     defaultModel: 'sm-i1',
     isPremiumUnlocked: false,
     accessCode: '',
+    quickMode: false,
 };
 
 const defaultEssay: Essay = {
@@ -141,6 +143,7 @@ const App: React.FC = () => {
     const [installPromptEvent, setInstallPromptEvent] = useState<any>(null);
     const [showInstallNotification, setShowInstallNotification] = useState(false);
     const [showPremiumNotification, setShowPremiumNotification] = useState(false);
+    const [showVoiceErrorNotification, setShowVoiceErrorNotification] = useState(false);
     const [activeView, setActiveView] = useState<ViewID>('chat');
 
     const [voiceModeState, setVoiceModeState] = useState<VoiceModeState>('inactive');
@@ -165,7 +168,7 @@ const App: React.FC = () => {
                 if (!parsedSettings.accessCode) {
                     parsedSettings.accessCode = `${SPECIAL_USERS[Math.floor(Math.random() * SPECIAL_USERS.length)]}${Math.floor(1000 + Math.random() * 9000)}`;
                 }
-                setSettings(parsedSettings);
+                setSettings({...defaultSettings, ...parsedSettings});
             } else {
                  const accessCode = `${SPECIAL_USERS[Math.floor(Math.random() * SPECIAL_USERS.length)]}${Math.floor(1000 + Math.random() * 9000)}`;
                 setSettings(prev => ({ ...prev, accessCode }));
@@ -315,6 +318,7 @@ const App: React.FC = () => {
 
         const history = chats.find(c => c.id === tempChatId)?.messages.slice(-10) || [];
         const systemInstruction = generateSystemInstruction(effectiveMode, settings);
+        const modelToUse = settings.quickMode ? 'sm-i1' : settings.defaultModel;
 
         streamGenerateContent({
             prompt,
@@ -322,7 +326,7 @@ const App: React.FC = () => {
             attachment: messageAttachment,
             history,
             mode: effectiveMode,
-            modelName: settings.defaultModel,
+            modelName: modelToUse,
             abortSignal: abortControllerRef.current.signal,
             onUpdate: (chunk) => {
                 setChats(prev => prev.map(c => {
@@ -422,6 +426,8 @@ const App: React.FC = () => {
                 return;
             }
             if (voiceModeState !== 'inactive') return;
+            
+            setShowVoiceErrorNotification(true);
 
             setVoiceModeState('activeConversation');
             setLiveTranscription('');
@@ -564,6 +570,12 @@ const App: React.FC = () => {
                 {activeView === 'canvas' && <CanvasView pinnedArtifacts={pinnedArtifacts} onOpenArtifact={setActiveArtifact} />}
                 {activeView === 'insights' && <InsightsView insights={DUMMY_INSIGHTS} onAction={handleInsightAction} />}
                 
+                 {showVoiceErrorNotification && (
+                    <div className="absolute bottom-24 right-4 z-20">
+                        <VoiceErrorNotification onDismiss={() => setShowVoiceErrorNotification(false)} />
+                    </div>
+                )}
+
                 <div className="p-4 pt-0 w-full max-w-3xl mx-auto flex flex-col gap-2">
                     {showPremiumNotification && !settings.isPremiumUnlocked && (
                          <PremiumNotification 
@@ -589,10 +601,9 @@ const App: React.FC = () => {
                         disabled={isLoading}
                         currentMode={currentMode}
                         onResetMode={() => setCurrentMode('normal')}
-                        selectedModel={settings.defaultModel}
-                        onSetSelectedModel={(model) => handleSaveSettings({...settings, defaultModel: model})}
                         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
                         settings={settings}
+                        onSaveSettings={handleSaveSettings}
                         voiceModeState={voiceModeState}
                         activeConversationState={activeConversationState}
                         liveTranscription={liveTranscription}

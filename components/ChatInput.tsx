@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import PlusMenu from './PlusMenu';
 import FilePreview from './FilePreview';
-import type { Attachment, ModeID, ModelType, Settings } from '../types';
+import type { Attachment, ModeID, Settings } from '../types';
 import { MODES } from '../constants';
-import { ArrowUpIcon, XMarkIcon, ChevronDownIcon, SparklesIcon, PlusIcon, AdjustmentsHorizontalIcon, PhotoIcon, Bars3Icon, MicrophoneIcon } from './icons';
+import { ArrowUpIcon, XMarkIcon, ChevronDownIcon, SparklesIcon, PlusIcon, AdjustmentsHorizontalIcon, PhotoIcon, Bars3Icon, MicrophoneIcon, BoltIcon } from './icons';
 
 type VoiceModeState = 'inactive' | 'activeConversation';
 type ActiveConversationState = 'LISTENING' | 'RESPONDING';
@@ -17,10 +17,9 @@ interface ChatInputProps {
     disabled: boolean;
     currentMode: ModeID;
     onResetMode: () => void;
-    selectedModel: ModelType;
-    onSetSelectedModel: (model: ModelType) => void;
     onToggleSidebar: () => void;
     settings: Settings;
+    onSaveSettings: (settings: Settings) => void;
     voiceModeState: VoiceModeState;
     activeConversationState: ActiveConversationState;
     liveTranscription: string;
@@ -161,10 +160,9 @@ const ChatInput: React.FC<ChatInputProps> = ({
     disabled, 
     currentMode, 
     onResetMode,
-    selectedModel,
-    onSetSelectedModel,
     onToggleSidebar,
     settings,
+    onSaveSettings,
     voiceModeState,
     activeConversationState,
     liveTranscription,
@@ -294,10 +292,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
                 </div>
 
                 <div className="relative flex-1 flex flex-col">
-                     <div className="flex justify-between items-center px-2">
+                     <div className="flex justify-start items-center px-2 gap-2">
                         <div ref={modelMenuRef} className="relative">
                             <button onClick={() => setIsModelMenuOpen(prev => !prev)} className="flex items-center gap-1 text-sm font-semibold text-text-secondary hover:text-text-main transition-colors">
-                                {selectedModel === 'sm-i1' ? (
+                                {settings.defaultModel === 'sm-i1' ? (
                                     <span>SM-I1</span>
                                 ) : (
                                     <>
@@ -310,13 +308,13 @@ const ChatInput: React.FC<ChatInputProps> = ({
                             {isModelMenuOpen && (
                                 <div className="absolute bottom-full mb-2 bg-surface-secondary p-1 rounded-lg shadow-xl border border-border-subtle w-48 animate-fade-in-up-sm">
                                     <button
-                                        onClick={() => { onSetSelectedModel('sm-i1'); setIsModelMenuOpen(false); }}
+                                        onClick={() => { onSaveSettings({...settings, defaultModel: 'sm-i1'}); setIsModelMenuOpen(false); }}
                                         className="w-full text-left px-3 py-1.5 text-sm rounded-md hover:bg-border-subtle"
                                     >
                                         SM-I1
                                     </button>
                                      <button
-                                        onClick={() => { onSetSelectedModel('sm-i3'); setIsModelMenuOpen(false); }}
+                                        onClick={() => { onSaveSettings({...settings, defaultModel: 'sm-i3'}); setIsModelMenuOpen(false); }}
                                         disabled={!settings.isPremiumUnlocked}
                                         className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-sm rounded-md hover:bg-border-subtle disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
@@ -326,6 +324,13 @@ const ChatInput: React.FC<ChatInputProps> = ({
                                 </div>
                             )}
                         </div>
+                        <button 
+                            onClick={() => onSaveSettings({ ...settings, quickMode: !settings.quickMode })}
+                            className={`p-1 rounded-full transition-colors ${settings.quickMode ? 'text-yellow-400' : 'text-text-secondary hover:text-yellow-400'}`}
+                            title={settings.quickMode ? 'Modo Rápido Activado' : 'Activar Modo Rápido'}
+                        >
+                            <BoltIcon className="w-4 h-4" />
+                        </button>
                     </div>
                     <textarea
                         ref={textareaRef}

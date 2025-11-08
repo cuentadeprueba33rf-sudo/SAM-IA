@@ -71,6 +71,7 @@ export interface Settings {
     defaultModel: ModelType;
     isPremiumUnlocked: boolean;
     accessCode: string;
+    quickMode: boolean;
 }
 
 export interface EssaySection {
