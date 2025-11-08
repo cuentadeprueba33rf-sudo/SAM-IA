@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { DocumentDuplicateIcon, CheckIcon, GlobeAltIcon, PinIcon } from './icons';
 import type { ChatMessage } from '../types';
+import { MessageAuthor } from '../types';
 
 interface MessageActionsProps {
     message: ChatMessage;
@@ -14,6 +15,7 @@ const MessageActions: React.FC<MessageActionsProps> = ({ message, onPin, text, g
     const [showSources, setShowSources] = useState(false);
     const sourcesRef = useRef<HTMLDivElement>(null);
     const iconClasses = "w-5 h-5 text-text-secondary group-hover:text-text-main transition-colors";
+    const isUser = message.author === MessageAuthor.USER;
 
     const hasSources = groundingMetadata && groundingMetadata.length > 0 && groundingMetadata.some(c => c.web);
     const isPinnable = message.artifacts && message.artifacts.length > 0;
@@ -39,7 +41,7 @@ const MessageActions: React.FC<MessageActionsProps> = ({ message, onPin, text, g
     };
     
     return (
-        <div ref={sourcesRef} className="relative flex items-center gap-3 mt-3">
+        <div ref={sourcesRef} className={`relative flex items-center gap-3 mt-3 ${isUser ? 'justify-end' : ''}`}>
             {isPinnable && (
                 <button 
                     onClick={onPin} 
