@@ -505,4 +505,44 @@ export const streamEssaySection = async ({
             throw error; // Re-throw to be handled by the component
         }
     }
-}
+};
+
+export const generateEssayReferences = async ({
+    prompt,
+    systemInstruction,
+    modelName,
+}: {
+    prompt: string;
+    systemInstruction: string;
+    modelName: ModelType;
+}): Promise<string[]> => {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const geminiModelName = MODEL_MAP[modelName] || 'gemini-2.5-flash';
+
+    try {
+        const response = await ai.models.generateContent({
+            model: geminiModelName,
+            contents: prompt,
+            config: {
+                systemInstruction,
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        references: {
+                            type: Type.ARRAY,
+                            description: "An array of 3 to 5 reference strings in APA format.",
+                            items: { type: Type.STRING }
+                        },
+                    },
+                    required: ['references'],
+                },
+            },
+        });
+        const result = JSON.parse(response.text);
+        return result.references;
+    } catch (error) {
+        console.error("Error generating essay references:", error);
+        throw error; // Re-throw to be handled by the component
+    }
+};

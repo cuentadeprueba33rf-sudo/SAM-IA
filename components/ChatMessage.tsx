@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { MessageAuthor } from '../types';
-import type { ChatMessage, Attachment, Artifact } from '../types';
+import type { ChatMessage, Attachment, Artifact, Essay } from '../types';
 import MessageActions from './MessageActions';
 import { DocumentTextIcon, GlobeAltIcon, CodeBracketIcon, AcademicCapIcon, SparklesIcon } from './icons';
 
@@ -51,9 +51,21 @@ interface ChatMessageItemProps {
     onPinArtifact: (artifact: Artifact) => void;
     onPreviewImage: (attachment: Attachment) => void;
     pinnedArtifactIds: string[];
+    onOpenEssay: (essay: Essay, messageId: string) => void;
 }
 
-const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, onOpenArtifact, onPinArtifact, onPreviewImage, pinnedArtifactIds }) => {
+const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, onOpenArtifact, onPinArtifact, onPreviewImage, pinnedArtifactIds, onOpenEssay }) => {
+    
+    const wordCount = useMemo(() => {
+        if (!message.essayContent) return 0;
+        return Object.values(message.essayContent.content).reduce((acc, sectionText) => {
+            // FIX: Added type check for sectionText before calling string method.
+            if (typeof sectionText === 'string') {
+                return acc + (sectionText.split(/\s+/).filter(Boolean).length);
+            }
+            return acc;
+        }, 0);
+    }, [message.essayContent]);
 
     useEffect(() => {
         if (typeof window.renderMath === 'function') {
@@ -76,6 +88,13 @@ const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, onOpenArtifa
     const firstArtifact = message.artifacts?.[0];
     const isArtifactPinned = firstArtifact ? pinnedArtifactIds.includes(firstArtifact.id) : false;
     
+    // If there are artifacts, we assume it's a canvasdev response and hide the code block.
+    let displayText = message.text;
+    if (message.artifacts && message.artifacts.length > 0) {
+        const codeBlockRegex = /```[\s\S]*?```/g;
+        displayText = message.text.replace(codeBlockRegex, '').trim();
+    }
+
     return (
         <div className={`py-4 flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
             <div className="max-w-xl lg:max-w-2xl flex flex-col">
@@ -103,19 +122,30 @@ const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, onOpenArtifa
                     )}
                     
                     {message.essayContent && (
-                         <div className="p-4 rounded-lg bg-surface-primary border border-border-subtle cursor-pointer hover:border-accent/50 transition-colors mb-2">
-                            <div className="flex items-center gap-2 mb-2">
-                                 <AcademicCapIcon className="w-5 h-5 text-accent"/>
-                                 <h4 className="font-bold text-text-main">Ensayo: {message.essayContent.topic}</h4>
+                         <div className="p-4 rounded-lg bg-surface-primary border border-border-subtle">
+                            <div className="flex items-start gap-3 mb-3">
+                                <div className="p-2 bg-accent/10 rounded-full mt-1">
+                                    <AcademicCapIcon className="w-6 h-6 text-accent"/>
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-text-main">Ensayo: {message.essayContent.topic}</h4>
+                                    <p className="text-xs text-text-secondary">{wordCount} / {message.essayContent.wordCountTarget} palabras</p>
+                                </div>
                             </div>
-                            <p className="text-sm text-text-secondary line-clamp-3">
-                               {message.essayContent.outline.map(s => message.essayContent.content[s.id]).join(' ')}
+                            <p className="text-sm text-text-secondary line-clamp-3 mb-4">
+                               {message.essayContent.outline.map(s => message.essayContent.content[s.id]).join(' ').substring(0, 200)}...
                             </p>
+                            <button 
+                                onClick={() => onOpenEssay(message.essayContent!, message.id)}
+                                className="w-full text-center bg-surface-secondary text-text-main font-semibold px-4 py-2 rounded-lg hover:bg-border-subtle transition-colors text-sm"
+                            >
+                                Abrir en el Compositor
+                            </button>
                         </div>
                     )}
 
-                    {message.text && (
-                        <div className="prose prose-sm dark:prose-invert max-w-none break-words" dangerouslySetInnerHTML={parseMarkdown(message.text)} />
+                    {displayText && !message.essayContent && (
+                        <div className="prose prose-sm dark:prose-invert max-w-none break-words" dangerouslySetInnerHTML={parseMarkdown(displayText)} />
                     )}
                     
                     {message.artifacts && message.artifacts.map(artifact => (

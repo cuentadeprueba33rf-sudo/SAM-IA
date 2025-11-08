@@ -132,6 +132,7 @@ const App: React.FC = () => {
     const [isUpdatesModalOpen, setIsUpdatesModalOpen] = useState(false);
     const [contextMenu, setContextMenu] = useState<{ chatId: string; x: number; y: number } | null>(null);
     const [isEssayComposerOpen, setIsEssayComposerOpen] = useState(false);
+    const [editingEssay, setEditingEssay] = useState<{ essay: Essay, messageId: string } | null>(null);
     const [activeArtifact, setActiveArtifact] = useState<Artifact | null>(null);
     const [pinnedArtifacts, setPinnedArtifacts] = useState<Artifact[]>([]);
     const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -460,22 +461,37 @@ const App: React.FC = () => {
     }
     
     const handleSaveEssay = (essay: Essay) => {
-        const essayText = `*Ensayo sobre: ${essay.topic}*\n\n` + 
-            essay.outline.map(s => `**${s.title}**\n${essay.content[s.id]}`).join('\n\n') +
-            `\n\n**Referencias**\n` + essay.references.join('\n');
-            
-        const userMessage: ChatMessage = {id: uuidv4(), author: MessageAuthor.USER, text: `He creado un ensayo sobre "${essay.topic}".`, timestamp: Date.now()};
-        const samMessage: ChatMessage = {id: uuidv4(), author: MessageAuthor.SAM, text: `¡Excelente! Aquí está el ensayo que compusimos juntos.`, timestamp: Date.now(), essayContent: essay };
-        
-        let tempChatId = currentChatId;
-        if (!tempChatId) {
-             const newChat: Chat = { id: uuidv4(), title: `Ensayo: ${essay.topic}`, messages: [userMessage, samMessage] };
-             setChats(prev => [newChat, ...prev]);
-             setCurrentChatId(newChat.id);
+        if (editingEssay) {
+            // Update existing message
+            setChats(prev => prev.map(chat => {
+                if (chat.id === currentChatId) {
+                    return {
+                        ...chat,
+                        messages: chat.messages.map(msg => msg.id === editingEssay.messageId ? { ...msg, essayContent: essay } : msg)
+                    };
+                }
+                return chat;
+            }));
+            setEditingEssay(null);
         } else {
-             setChats(prev => prev.map(c => c.id === tempChatId ? { ...c, messages: [...c.messages, userMessage, samMessage] } : c));
+            // Create new messages
+            const userMessage: ChatMessage = {id: uuidv4(), author: MessageAuthor.USER, text: `He creado un ensayo sobre "${essay.topic}".`, timestamp: Date.now()};
+            const samMessage: ChatMessage = {id: uuidv4(), author: MessageAuthor.SAM, text: `¡Excelente! Aquí está el ensayo que compusimos juntos.`, timestamp: Date.now(), essayContent: essay };
+            
+            let tempChatId = currentChatId;
+            if (!tempChatId) {
+                 const newChat: Chat = { id: uuidv4(), title: `Ensayo: ${essay.topic}`, messages: [userMessage, samMessage] };
+                 setChats(prev => [newChat, ...prev]);
+                 setCurrentChatId(newChat.id);
+            } else {
+                 setChats(prev => prev.map(c => c.id === tempChatId ? { ...c, messages: [...c.messages, userMessage, samMessage] } : c));
+            }
         }
         setIsEssayComposerOpen(false);
+    };
+
+    const handleOpenEssay = (essay: Essay, messageId: string) => {
+        setEditingEssay({ essay, messageId });
     };
 
     const handleInsightAction = (action: Insight['actions'][0]) => {
@@ -527,6 +543,7 @@ const App: React.FC = () => {
                                 }}
                                 onPreviewImage={(attachment) => setPreviewImage(attachment)}
                                 pinnedArtifactIds={pinnedArtifactIds}
+                                onOpenEssay={handleOpenEssay}
                             />
                         ))}
                          <div ref={chatEndRef} />
@@ -611,10 +628,10 @@ const App: React.FC = () => {
                 />
             )}
             {activeArtifact && <CodeCanvas artifact={activeArtifact} onClose={() => setActiveArtifact(null)} />}
-            {isEssayComposerOpen && (
+            {(isEssayComposerOpen || editingEssay) && (
                 <EssayComposer
-                    initialEssay={defaultEssay}
-                    onClose={() => setIsEssayComposerOpen(false)}
+                    initialEssay={editingEssay ? editingEssay.essay : defaultEssay}
+                    onClose={() => { setIsEssayComposerOpen(false); setEditingEssay(null); }}
                     onSave={handleSaveEssay}
                     systemInstruction={generateSystemInstruction('essay', settings)}
                     modelName={settings.defaultModel}
