@@ -5,6 +5,10 @@ import type { Attachment, ModeID, ModelType, Settings } from '../types';
 import { MODES } from '../constants';
 import { ArrowUpIcon, XMarkIcon, ChevronDownIcon, SparklesIcon, PlusIcon, AdjustmentsHorizontalIcon, PhotoIcon, Bars3Icon, MicrophoneIcon } from './icons';
 
+type VoiceModeState = 'inactive' | 'activeConversation';
+type ActiveConversationState = 'LISTENING' | 'RESPONDING';
+
+
 interface ChatInputProps {
     onSendMessage: (message: string, attachment?: Attachment) => void;
     onModeAction: (mode: ModeID, accept?: string, capture?: string) => void;
@@ -16,18 +20,36 @@ interface ChatInputProps {
     selectedModel: ModelType;
     onSetSelectedModel: (model: ModelType) => void;
     onToggleSidebar: () => void;
-    isVoiceMode: boolean;
-    onEndVoiceSession: () => void;
     settings: Settings;
+    voiceModeState: VoiceModeState;
+    activeConversationState: ActiveConversationState;
+    liveTranscription: string;
+    onEndVoiceSession: () => void;
 }
 
-const VoiceInput: React.FC<{ onEndSession: () => void }> = ({ onEndSession }) => {
+const ActiveConversationUI: React.FC<{
+    onEndSession: () => void;
+    conversationState: ActiveConversationState;
+    transcription: string;
+}> = ({ onEndSession, conversationState, transcription }) => {
+    let statusText = '';
+    
+    switch (conversationState) {
+        case 'LISTENING':
+            statusText = 'Escuchando...';
+            break;
+        case 'RESPONDING':
+            statusText = 'SAM está respondiendo...';
+            break;
+    }
+
     return (
         <div className="bg-surface-primary p-3 rounded-2xl border border-border-subtle shadow-lg w-full transition-all flex flex-col items-center gap-4">
             <div className="flex items-center gap-2 text-text-secondary">
                 <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                <span>Escuchando...</span>
+                <span>{statusText}</span>
             </div>
+            <p className="text-text-main text-center h-6">{transcription}</p>
             <button
                 onClick={onEndSession}
                 className="px-4 py-2 bg-danger/10 text-danger text-sm font-semibold rounded-lg hover:bg-danger/20"
@@ -142,9 +164,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
     selectedModel,
     onSetSelectedModel,
     onToggleSidebar,
-    isVoiceMode,
-    onEndVoiceSession,
     settings,
+    voiceModeState,
+    activeConversationState,
+    liveTranscription,
+    onEndVoiceSession,
 }) => {
     const [text, setText] = useState('');
     const [isPlusMenuOpen, setIsPlusMenuOpen] = useState(false);
@@ -193,13 +217,17 @@ const ChatInput: React.FC<ChatInputProps> = ({
     }, [text, adjustTextareaHeight]);
     
     useEffect(() => {
-        if(!disabled && textareaRef.current && !isVoiceMode) {
+        if(!disabled && textareaRef.current && voiceModeState === 'inactive') {
             textareaRef.current.focus();
         }
-    }, [disabled, isVoiceMode]);
+    }, [disabled, voiceModeState]);
 
-    if (isVoiceMode) {
-        return <VoiceInput onEndSession={onEndVoiceSession} />;
+    if (voiceModeState === 'activeConversation') {
+        return <ActiveConversationUI 
+            onEndSession={onEndVoiceSession} 
+            conversationState={activeConversationState}
+            transcription={liveTranscription} 
+        />;
     }
 
     if (currentMode === 'image_generation') {
@@ -312,14 +340,25 @@ const ChatInput: React.FC<ChatInputProps> = ({
                     />
                 </div>
 
-                <button 
-                    onClick={handleSend}
-                    disabled={disabled || (!text.trim() && !attachment)}
-                    className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors bg-text-main text-bg-main hover:opacity-90 disabled:bg-surface-secondary disabled:text-text-secondary self-end"
-                    aria-label="Send message"
-                >
-                    <ArrowUpIcon className="w-6 h-6" />
-                </button>
+                {text.trim() || attachment ? (
+                    <button 
+                        onClick={handleSend}
+                        disabled={disabled}
+                        className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors bg-text-main text-bg-main hover:opacity-90 disabled:bg-surface-secondary disabled:text-text-secondary self-end"
+                        aria-label="Send message"
+                    >
+                        <ArrowUpIcon className="w-6 h-6" />
+                    </button>
+                ) : (
+                    <button
+                        onClick={() => onModeAction('voice')}
+                        disabled={disabled}
+                        className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors bg-surface-secondary text-text-main hover:bg-border-subtle disabled:opacity-50 self-end"
+                        aria-label="Use voice"
+                    >
+                        <MicrophoneIcon className="w-6 h-6"/>
+                    </button>
+                )}
             </div>
              <style>{`
                 @keyframes fade-in {

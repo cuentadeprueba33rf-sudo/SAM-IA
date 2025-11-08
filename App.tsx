@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import Sidebar from './components/Sidebar';
 import ChatInput from './components/ChatInput';
@@ -9,18 +9,23 @@ import CodeCanvas from './components/CodeCanvas';
 import EssayComposer from './components/EssayComposer';
 import CameraCaptureModal from './components/CameraCaptureModal';
 import ImagePreviewModal from './components/ImagePreviewModal';
+import MathConsole from './components/MathConsole';
 import WelcomeTutorial from './components/WelcomeTutorial';
 import FeatureNotification from './components/FeatureNotification';
 import InstallNotification from './components/InstallNotification';
 import PremiumNotification from './components/PremiumNotification';
 import ChatMessageItem from './components/ChatMessage'; // Assuming a ChatMessageItem component for rendering messages.
-import { streamGenerateContent, generateImage, startVoiceSession } from './services/geminiService';
+import { streamGenerateContent, generateImage, startActiveConversation, detectMode } from './services/geminiService';
 import {
     Chat, ChatMessage, MessageAuthor, Attachment, ModeID, Settings,
     ModelType, Artifact, ViewID, Essay, Insight
 } from './types';
 import { generateSystemInstruction, SPECIAL_USERS } from './constants';
 import { BookOpenIcon, MegaphoneIcon, ViewColumnsIcon, AcademicCapIcon, ChatBubbleLeftRightIcon, UsersIcon } from './components/icons';
+
+type VoiceModeState = 'inactive' | 'activeConversation';
+type ActiveConversationState = 'LISTENING' | 'RESPONDING';
+
 
 const defaultSettings: Settings = {
     theme: 'dark',
@@ -136,45 +141,71 @@ const App: React.FC = () => {
     const [showInstallNotification, setShowInstallNotification] = useState(false);
     const [showPremiumNotification, setShowPremiumNotification] = useState(false);
     const [activeView, setActiveView] = useState<ViewID>('chat');
-    const [voiceSession, setVoiceSession] = useState<any>(null);
+
+    const [voiceModeState, setVoiceModeState] = useState<VoiceModeState>('inactive');
+    const [activeConversationState, setActiveConversationState] = useState<ActiveConversationState>('LISTENING');
+    const [liveTranscription, setLiveTranscription] = useState<string>('');
+    const [isMathConsoleOpen, setIsMathConsoleOpen] = useState(true);
 
 
     const abortControllerRef = useRef<AbortController | null>(null);
     const chatEndRef = useRef<HTMLDivElement>(null);
+    const activeConversationRef = useRef<{ close: () => void } | null>(null);
 
     const currentChat = chats.find(c => c.id === currentChatId);
 
     // ... State and useEffects for loading, saving, etc. ...
     useEffect(() => {
         // Load settings from localStorage
-        const savedSettings = localStorage.getItem('sam-settings');
-        if (savedSettings) {
-            const parsedSettings = JSON.parse(savedSettings);
-            if (!parsedSettings.accessCode) {
-                parsedSettings.accessCode = `${SPECIAL_USERS[Math.floor(Math.random() * SPECIAL_USERS.length)]}${Math.floor(1000 + Math.random() * 9000)}`;
+        try {
+            const savedSettings = localStorage.getItem('sam-settings');
+            if (savedSettings) {
+                const parsedSettings = JSON.parse(savedSettings);
+                if (!parsedSettings.accessCode) {
+                    parsedSettings.accessCode = `${SPECIAL_USERS[Math.floor(Math.random() * SPECIAL_USERS.length)]}${Math.floor(1000 + Math.random() * 9000)}`;
+                }
+                setSettings(parsedSettings);
+            } else {
+                 const accessCode = `${SPECIAL_USERS[Math.floor(Math.random() * SPECIAL_USERS.length)]}${Math.floor(1000 + Math.random() * 9000)}`;
+                setSettings(prev => ({ ...prev, accessCode }));
             }
-            setSettings(parsedSettings);
-        } else {
-             const accessCode = `${SPECIAL_USERS[Math.floor(Math.random() * SPECIAL_USERS.length)]}${Math.floor(1000 + Math.random() * 9000)}`;
-            setSettings(prev => ({ ...prev, accessCode }));
+        } catch (error) {
+            console.error("Failed to load/parse settings, resetting.", error);
+            localStorage.removeItem('sam-settings');
         }
 
         // Load chats from localStorage
-        const savedChats = localStorage.getItem('sam-chats');
-        if (savedChats) {
-            setChats(JSON.parse(savedChats));
+        try {
+            const savedChats = localStorage.getItem('sam-chats');
+            if (savedChats) {
+                const parsedChats = JSON.parse(savedChats);
+                setChats(parsedChats);
+
+                const savedChatId = localStorage.getItem('sam-current-chat-id');
+                const chatExists = parsedChats.some((c: Chat) => c.id === savedChatId);
+                if (savedChatId && chatExists) {
+                    setCurrentChatId(savedChatId);
+                } else if (parsedChats.length > 0) {
+                    setCurrentChatId(parsedChats[0].id);
+                }
+            }
+        } catch(error) {
+            console.error("Failed to load/parse chats, resetting.", error);
+            localStorage.removeItem('sam-chats');
+            localStorage.removeItem('sam-current-chat-id');
+        }
+        
+        // Load pinned artifacts from localStorage
+        try {
+            const savedPinnedArtifacts = localStorage.getItem('sam-pinned-artifacts');
+            if (savedPinnedArtifacts) {
+                setPinnedArtifacts(JSON.parse(savedPinnedArtifacts));
+            }
+        } catch (error) {
+            console.error("Failed to load/parse pinned artifacts, resetting.", error);
+            localStorage.removeItem('sam-pinned-artifacts');
         }
 
-        // Load currentChatId
-        const savedChatId = localStorage.getItem('sam-current-chat-id');
-        if (savedChatId) {
-            setCurrentChatId(savedChatId);
-        } else if (savedChats) {
-            const parsedChats = JSON.parse(savedChats);
-            if(parsedChats.length > 0) {
-                setCurrentChatId(parsedChats[0].id);
-            }
-        }
     }, []);
 
     useEffect(() => {
@@ -189,8 +220,14 @@ const App: React.FC = () => {
     useEffect(() => {
         if(currentChatId) {
             localStorage.setItem('sam-current-chat-id', currentChatId);
+        } else {
+            localStorage.removeItem('sam-current-chat-id');
         }
     }, [currentChatId]);
+
+    useEffect(() => {
+        localStorage.setItem('sam-pinned-artifacts', JSON.stringify(pinnedArtifacts));
+    }, [pinnedArtifacts]);
 
 
     useEffect(() => {
@@ -210,26 +247,39 @@ const App: React.FC = () => {
         if (isLoading || (!prompt.trim() && !messageAttachment)) return;
 
         let tempChatId = currentChatId;
-
-        // Create new chat if there isn't one
         if (!tempChatId) {
-            const newChat: Chat = {
-                id: uuidv4(),
-                title: prompt.substring(0, 30) || "Nuevo Chat",
-                messages: [],
-            };
+            const newChat: Chat = { id: uuidv4(), title: prompt.substring(0, 30) || "Nuevo Chat", messages: [] };
             setChats(prev => [newChat, ...prev]);
-            tempChatId = newChat.id;
             setCurrentChatId(newChat.id);
+            tempChatId = newChat.id;
         }
 
-        const userMessage: ChatMessage = {
-            id: uuidv4(),
-            author: MessageAuthor.USER,
-            text: prompt,
-            timestamp: Date.now(),
-            attachment: messageAttachment ?? undefined,
-        };
+        const userMessage: ChatMessage = { id: uuidv4(), author: MessageAuthor.USER, text: prompt, timestamp: Date.now(), attachment: messageAttachment ?? undefined };
+        setChats(prev => prev.map(c => c.id === tempChatId ? { ...c, messages: [...c.messages, userMessage] } : c));
+        setAttachment(null);
+
+        let effectiveMode = currentMode;
+        let modeSwitchReasoning: string | null = null;
+        abortControllerRef.current = new AbortController();
+
+        if (currentMode === 'normal' && !messageAttachment) {
+            setIsLoading(true);
+            const detectionInstruction = generateSystemInstruction('normal', settings);
+            const detectionResult = await detectMode(prompt, detectionInstruction);
+            if (detectionResult && !abortControllerRef.current.signal.aborted) {
+                effectiveMode = detectionResult.newMode;
+                modeSwitchReasoning = detectionResult.reasoning;
+                setCurrentMode(effectiveMode);
+                
+                const systemMessage: ChatMessage = {
+                    id: uuidv4(),
+                    author: MessageAuthor.SYSTEM,
+                    text: modeSwitchReasoning,
+                    timestamp: Date.now(),
+                };
+                setChats(prev => prev.map(c => c.id === tempChatId ? { ...c, messages: [...c.messages, systemMessage] } : c));
+            }
+        }
 
         const samMessageId = uuidv4();
         const samMessage: ChatMessage = {
@@ -237,32 +287,19 @@ const App: React.FC = () => {
             author: MessageAuthor.SAM,
             text: '',
             timestamp: Date.now(),
-            generatingArtifact: currentMode === 'canvasdev',
-            isSearching: currentMode === 'search',
+            mode: effectiveMode,
+            generatingArtifact: effectiveMode === 'canvasdev',
+            isSearching: effectiveMode === 'search',
         };
 
-        setChats(prev => prev.map(c => c.id === tempChatId ? { ...c, messages: [...c.messages, userMessage, samMessage] } : c));
+        setChats(prev => prev.map(c => c.id === tempChatId ? { ...c, messages: [...c.messages, samMessage] } : c));
         setIsLoading(true);
-        setAttachment(null); // Clear attachment after sending
-
-        abortControllerRef.current = new AbortController();
-
-        const history = chats.find(c => c.id === tempChatId)?.messages.slice(-10) || [];
-        const systemInstruction = generateSystemInstruction(currentMode, settings);
         
         const updateSamMessage = (updates: Partial<ChatMessage>) => {
-            setChats(prev => prev.map(c => {
-                if (c.id === tempChatId) {
-                    return {
-                        ...c,
-                        messages: c.messages.map(m => m.id === samMessageId ? { ...m, ...updates } : m)
-                    };
-                }
-                return c;
-            }));
+            setChats(prev => prev.map(c => c.id === tempChatId ? { ...c, messages: c.messages.map(m => m.id === samMessageId ? { ...m, ...updates } : m) } : c));
         };
 
-        if (currentMode === 'image_generation') {
+        if (effectiveMode === 'image_generation') {
              try {
                 const generatedImage = await generateImage({ prompt, attachment: messageAttachment });
                 updateSamMessage({ text: "Aquí tienes la imagen que generé.", attachment: generatedImage, generatingArtifact: false });
@@ -275,35 +312,38 @@ const App: React.FC = () => {
             return;
         }
 
+        const history = chats.find(c => c.id === tempChatId)?.messages.slice(-10) || [];
+        const systemInstruction = generateSystemInstruction(effectiveMode, settings);
+
         streamGenerateContent({
             prompt,
             systemInstruction,
             attachment: messageAttachment,
             history,
-            mode: currentMode,
+            mode: effectiveMode,
             modelName: settings.defaultModel,
             abortSignal: abortControllerRef.current.signal,
             onUpdate: (chunk) => {
                 setChats(prev => prev.map(c => {
                     if (c.id === tempChatId) {
-                        return {
-                            ...c,
-                            messages: c.messages.map(m => m.id === samMessageId ? { ...m, text: m.text + chunk } : m)
-                        };
+                        return { ...c, messages: c.messages.map(m => m.id === samMessageId ? { ...m, text: m.text + chunk } : m) };
                     }
                     return c;
                 }));
             },
-            onComplete: (fullText, groundingChunks) => {
-                let finalUpdates: Partial<ChatMessage> = { 
-                    generatingArtifact: false, 
-                    isSearching: false 
-                };
-                if(groundingChunks) {
-                    finalUpdates.groundingMetadata = groundingChunks;
-                }
-                // Artifact parsing for canvasdev
-                if (currentMode === 'canvasdev') {
+            onLogUpdate: (logs) => {
+                setChats(prev => prev.map(c => {
+                    if (c.id === tempChatId) {
+                        return { ...c, messages: c.messages.map(m => m.id === samMessageId ? { ...m, consoleLogs: [...(m.consoleLogs || []), ...logs] } : m) };
+                    }
+                    return c;
+                }));
+            },
+            onComplete: (fullText, groundingChunks, consoleLogs) => {
+                let finalUpdates: Partial<ChatMessage> = { generatingArtifact: false, isSearching: false };
+                if (groundingChunks) finalUpdates.groundingMetadata = groundingChunks;
+                if (effectiveMode === 'math' && consoleLogs) finalUpdates.consoleLogs = consoleLogs;
+                if (effectiveMode === 'canvasdev') {
                     const codeBlockRegex = /```(\w+)\n([\s\S]*?)```/;
                     const match = fullText.match(codeBlockRegex);
                     if (match) {
@@ -325,7 +365,6 @@ const App: React.FC = () => {
                 setIsLoading(false);
             }
         });
-
     }, [currentChatId, chats, isLoading, currentMode, settings]);
 
     const handleNewChat = useCallback(() => {
@@ -343,14 +382,13 @@ const App: React.FC = () => {
         }
     }
     
-    // ... other handlers
      const handleSaveSettings = (newSettings: Settings) => {
         setSettings(newSettings);
         if (newSettings.isPremiumUnlocked && !settings.isPremiumUnlocked) {
             setShowPremiumNotification(false);
         }
     };
-
+    
     const handleModeAction = (mode: ModeID, accept?: string, capture?: string) => {
         if (mode === 'essay') {
             setIsEssayComposerOpen(true);
@@ -377,26 +415,36 @@ const App: React.FC = () => {
         } else if (mode === 'camera_capture') {
             setCameraFacingMode(capture as 'user' | 'environment' || 'user');
             setIsCameraOpen(true);
-        // FIX: The mode ID for voice is 'voice', not 'voice_input'. 'voice_input' is the actionType.
         } else if (mode === 'voice') {
             if(!settings.isPremiumUnlocked) {
                 setShowPremiumNotification(true);
                 return;
             }
-            startVoiceSession(
+            if (voiceModeState !== 'inactive') return;
+
+            setVoiceModeState('activeConversation');
+            setLiveTranscription('');
+
+            let tempChatId = currentChatId;
+            if (!tempChatId) {
+                const newChat = { id: uuidv4(), title: "Conversación de Voz", messages: [] };
+                setChats(prev => [newChat, ...prev]);
+                setCurrentChatId(newChat.id);
+                tempChatId = newChat.id;
+            }
+
+            startActiveConversation(
                 generateSystemInstruction('voice', settings),
-                () => {}, // onTranscriptionUpdate
-                (userInput, samOutput) => { // onTurnComplete
+                (isUser, text) => setLiveTranscription(text),
+                (userInput, samOutput) => {
                     const userMessage: ChatMessage = { id: uuidv4(), author: MessageAuthor.USER, text: userInput, timestamp: Date.now() };
                     const samMessage: ChatMessage = { id: uuidv4(), author: MessageAuthor.SAM, text: samOutput, timestamp: Date.now() };
-                     setChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: [...c.messages, userMessage, samMessage] } : c));
+                    setChats(prev => prev.map(c => c.id === tempChatId ? { ...c, messages: [...c.messages, userMessage, samMessage] } : c));
                 },
-                (error) => {
-                    console.error("Voice error:", error);
-                    // handle error display
-                }
+                (error) => { console.error("Voice error:", error); handleEndVoiceSession(); },
+                (state) => setActiveConversationState(state)
             ).then(session => {
-                setVoiceSession(session);
+                activeConversationRef.current = session;
             });
         }
         else {
@@ -405,8 +453,10 @@ const App: React.FC = () => {
     };
     
     const handleEndVoiceSession = () => {
-        voiceSession?.close();
-        setVoiceSession(null);
+        activeConversationRef.current?.close();
+        activeConversationRef.current = null;
+        setVoiceModeState('inactive');
+        setLiveTranscription('');
     }
     
     const handleSaveEssay = (essay: Essay) => {
@@ -440,6 +490,10 @@ const App: React.FC = () => {
         }
     };
 
+    const lastSamMessage = currentChat?.messages.filter(m => m.author === MessageAuthor.SAM).at(-1);
+    const pinnedArtifactIds = useMemo(() => pinnedArtifacts.map(a => a.id), [pinnedArtifacts]);
+
+
     return (
         <div className={`flex h-screen bg-bg-main font-sans text-text-main ${settings.theme}`}>
             <Sidebar 
@@ -466,8 +520,13 @@ const App: React.FC = () => {
                                 key={msg.id} 
                                 message={msg} 
                                 onOpenArtifact={setActiveArtifact}
-                                onPinArtifact={(artifact) => setPinnedArtifacts(prev => [...prev, artifact])}
+                                onPinArtifact={(artifact) => {
+                                    if (!pinnedArtifacts.some(p => p.id === artifact.id)) {
+                                        setPinnedArtifacts(prev => [...prev, artifact]);
+                                    }
+                                }}
                                 onPreviewImage={(attachment) => setPreviewImage(attachment)}
+                                pinnedArtifactIds={pinnedArtifactIds}
                             />
                         ))}
                          <div ref={chatEndRef} />
@@ -488,7 +547,7 @@ const App: React.FC = () => {
                 {activeView === 'canvas' && <CanvasView pinnedArtifacts={pinnedArtifacts} onOpenArtifact={setActiveArtifact} />}
                 {activeView === 'insights' && <InsightsView insights={DUMMY_INSIGHTS} onAction={handleInsightAction} />}
                 
-                <div className="p-4 w-full max-w-3xl mx-auto flex flex-col gap-2">
+                <div className="p-4 pt-0 w-full max-w-3xl mx-auto flex flex-col gap-2">
                     {showPremiumNotification && !settings.isPremiumUnlocked && (
                          <PremiumNotification 
                             onDismiss={() => setShowPremiumNotification(false)}
@@ -497,6 +556,13 @@ const App: React.FC = () => {
                                 setIsSettingsModalOpen(true);
                             }}
                          />
+                    )}
+                    {currentMode === 'math' && currentChat?.messages.length && (
+                        <MathConsole
+                            isOpen={isMathConsoleOpen}
+                            onToggle={() => setIsMathConsoleOpen(prev => !prev)}
+                            logs={lastSamMessage?.consoleLogs || []}
+                        />
                     )}
                     <ChatInput
                         onSendMessage={handleSendMessage}
@@ -509,9 +575,11 @@ const App: React.FC = () => {
                         selectedModel={settings.defaultModel}
                         onSetSelectedModel={(model) => handleSaveSettings({...settings, defaultModel: model})}
                         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-                        isVoiceMode={!!voiceSession}
-                        onEndVoiceSession={handleEndVoiceSession}
                         settings={settings}
+                        voiceModeState={voiceModeState}
+                        activeConversationState={activeConversationState}
+                        liveTranscription={liveTranscription}
+                        onEndVoiceSession={handleEndVoiceSession}
                     />
                 </div>
             </main>
@@ -522,7 +590,7 @@ const App: React.FC = () => {
                     onClose={() => setIsSettingsModalOpen(false)}
                     settings={settings}
                     onSave={handleSaveSettings}
-                    onClearHistory={() => { setChats([]); setCurrentChatId(null); }}
+                    onClearHistory={() => { setChats([]); setCurrentChatId(null); setPinnedArtifacts([]); }}
                     onExportHistory={() => { /* export logic */ }}
                     installPromptEvent={installPromptEvent}
                     onInstallApp={() => installPromptEvent?.prompt()}

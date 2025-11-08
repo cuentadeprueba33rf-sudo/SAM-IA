@@ -15,33 +15,34 @@ const PlusMenu: React.FC<PlusMenuProps> = ({ onAction, settings }) => {
     // This should always be found, but good practice to check
     if (!voiceMode) return null; 
 
-    // FIX: A complex expression like a function call cannot be used directly as a component type in JSX.
-    // It must be assigned to a capitalized variable first.
     const VoiceIcon = voiceMode.icon;
 
     return (
         <div className="absolute bottom-full mb-3 w-full max-w-lg bg-surface-primary rounded-xl border border-border-subtle shadow-2xl animate-fade-in-up p-2">
             <div className="grid grid-cols-2 gap-2">
-                {gridModes.map((mode) => (
-                    <button
-                        key={mode.id}
-                        onClick={() => onAction(mode.id, mode.accept, mode.capture)}
-                        className={`flex items-center gap-3 text-left p-3 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-accent ${
-                            mode.disabled
-                                ? 'opacity-50 cursor-not-allowed'
-                                : 'hover:bg-surface-secondary'
-                        }`}
-                        disabled={mode.disabled}
-                    >
-                        <div className="p-2 bg-surface-secondary rounded-full">
-                           <mode.icon className="w-5 h-5 text-accent-blue" />
-                        </div>
-                        <div>
-                            <p className="font-semibold text-text-main text-sm">{mode.title}</p>
-                            <p className="text-text-secondary text-xs">{mode.description}</p>
-                        </div>
-                    </button>
-                ))}
+                {gridModes.map((mode) => {
+                    const Icon = mode.icon; // Assign component to a capitalized variable
+                    return (
+                        <button
+                            key={mode.id}
+                            onClick={() => onAction(mode.id, mode.accept, mode.capture)}
+                            className={`flex items-center gap-3 text-left p-3 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-accent ${
+                                mode.disabled
+                                    ? 'opacity-50 cursor-not-allowed'
+                                    : 'hover:bg-surface-secondary'
+                            }`}
+                            disabled={mode.disabled}
+                        >
+                            <div className="p-2 bg-surface-secondary rounded-full">
+                               <Icon className="w-5 h-5 text-accent-blue" />
+                            </div>
+                            <div>
+                                <p className="font-semibold text-text-main text-sm">{mode.title}</p>
+                                <p className="text-text-secondary text-xs">{mode.description}</p>
+                            </div>
+                        </button>
+                    );
+                })}
             </div>
             <div className="p-1">
                  <button

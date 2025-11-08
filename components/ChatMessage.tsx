@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { MessageAuthor } from '../types';
 import type { ChatMessage, Attachment, Artifact } from '../types';
 import MessageActions from './MessageActions';
-import { DocumentTextIcon, GlobeAltIcon, CodeBracketIcon, AcademicCapIcon } from './icons';
+import { DocumentTextIcon, GlobeAltIcon, CodeBracketIcon, AcademicCapIcon, SparklesIcon } from './icons';
 
 
 // A more robust markdown parser that handles code blocks separately to prevent nested parsing.
@@ -50,11 +50,10 @@ interface ChatMessageItemProps {
     onOpenArtifact: (artifact: Artifact) => void;
     onPinArtifact: (artifact: Artifact) => void;
     onPreviewImage: (attachment: Attachment) => void;
+    pinnedArtifactIds: string[];
 }
 
-const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, onOpenArtifact, onPinArtifact, onPreviewImage }) => {
-    const isUser = message.author === MessageAuthor.USER;
-    const [pinnedArtifacts, setPinnedArtifacts] = useState<string[]>([]);
+const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, onOpenArtifact, onPinArtifact, onPreviewImage, pinnedArtifactIds }) => {
 
     useEffect(() => {
         if (typeof window.renderMath === 'function') {
@@ -62,12 +61,20 @@ const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, onOpenArtifa
         }
     }, [message.text]);
 
-    const handlePinArtifact = (artifact: Artifact) => {
-        if (!pinnedArtifacts.includes(artifact.id)) {
-            onPinArtifact(artifact);
-            setPinnedArtifacts(prev => [...prev, artifact.id]);
-        }
-    };
+    if (message.author === MessageAuthor.SYSTEM) {
+        return (
+            <div className="py-4 flex justify-center w-full">
+                <div className="flex items-center gap-2 text-sm text-text-secondary px-3 py-1.5 bg-surface-secondary rounded-full">
+                    <SparklesIcon className="w-4 h-4 text-accent" />
+                    <span>{message.text}</span>
+                </div>
+            </div>
+        );
+    }
+
+    const isUser = message.author === MessageAuthor.USER;
+    const firstArtifact = message.artifacts?.[0];
+    const isArtifactPinned = firstArtifact ? pinnedArtifactIds.includes(firstArtifact.id) : false;
     
     return (
         <div className={`py-4 flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -142,10 +149,11 @@ const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, onOpenArtifa
                     text={message.text}
                     groundingMetadata={message.groundingMetadata}
                     onPin={() => {
-                        if (message.artifacts && message.artifacts.length > 0) {
-                            handlePinArtifact(message.artifacts[0]);
+                        if (firstArtifact && !isArtifactPinned) {
+                            onPinArtifact(firstArtifact);
                         }
                     }}
+                    isPinned={isArtifactPinned}
                 />
             </div>
         </div>

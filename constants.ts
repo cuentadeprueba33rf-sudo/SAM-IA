@@ -55,7 +55,7 @@ export const MODES: Mode[] = [
         description: 'Genera y edita imágenes',
         icon: PhotoIcon,
         actionType: 'mode_change',
-        disabled: true,
+        disabled: false,
     },
     {
         id: 'image',

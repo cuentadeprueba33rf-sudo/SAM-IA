@@ -8,9 +8,10 @@ interface MessageActionsProps {
     onPin: () => void;
     text: string;
     groundingMetadata?: any[];
+    isPinned: boolean;
 }
 
-const MessageActions: React.FC<MessageActionsProps> = ({ message, onPin, text, groundingMetadata }) => {
+const MessageActions: React.FC<MessageActionsProps> = ({ message, onPin, text, groundingMetadata, isPinned }) => {
     const [copied, setCopied] = useState(false);
     const [showSources, setShowSources] = useState(false);
     const sourcesRef = useRef<HTMLDivElement>(null);
@@ -45,10 +46,11 @@ const MessageActions: React.FC<MessageActionsProps> = ({ message, onPin, text, g
             {isPinnable && (
                 <button 
                     onClick={onPin} 
-                    aria-label="Anclar al Canvas" 
-                    className="p-1 focus:outline-none focus:ring-2 focus:ring-accent rounded group"
+                    aria-label={isPinned ? "Anclado al Canvas" : "Anclar al Canvas"}
+                    className="p-1 focus:outline-none focus:ring-2 focus:ring-accent rounded group disabled:cursor-not-allowed"
+                    disabled={isPinned}
                 >
-                    <PinIcon className={iconClasses} />
+                    <PinIcon className={`${iconClasses} ${isPinned ? 'text-accent' : ''}`} />
                 </button>
             )}
             {text && (

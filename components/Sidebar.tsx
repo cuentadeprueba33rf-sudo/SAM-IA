@@ -1,5 +1,5 @@
 import React, { Fragment, useState, useEffect, RefObject } from 'react';
-import { PencilSquareIcon, WindowIcon, SparklesIcon, Cog6ToothIcon, MagnifyingGlassIcon, EllipsisVerticalIcon, ViewColumnsIcon, MegaphoneIcon, UsersIcon } from './icons';
+import { PencilSquareIcon, WindowIcon, SparklesIcon, Cog6ToothIcon, MagnifyingGlassIcon, EllipsisVerticalIcon, ViewColumnsIcon, MegaphoneIcon, UsersIcon, CheckBadgeIcon } from './icons';
 import VerificationPanel from './VerificationPanel';
 import type { ViewID } from '../types';
 
@@ -53,9 +53,16 @@ const Sidebar: React.FC<SidebarProps> = ({
     activeView,
     onSelectView,
 }) => {
-
+    const [userName, setUserName] = useState('');
     const [isCreatorsOpen, setIsCreatorsOpen] = useState(forceOpenVerificationPanel);
     const [isCollaboratorsOpen, setIsCollaboratorsOpen] = useState(forceOpenVerificationPanel);
+    
+    useEffect(() => {
+      const name = localStorage.getItem('sam_ia_guest_name');
+      if (name) {
+          setUserName(name);
+      }
+    }, []);
 
     useEffect(() => {
         setIsCreatorsOpen(forceOpenVerificationPanel);
@@ -165,6 +172,12 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </div>
 
                 <div ref={creditsRef} className="p-4 border-t border-border-subtle flex-shrink-0 relative">
+                     <div className="flex items-center gap-3 p-2 mb-2">
+                         <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center font-bold text-white">
+                           {userName.charAt(0).toUpperCase()}
+                         </div>
+                         <span className="font-semibold text-text-main">{userName}</span>
+                     </div>
                      <button onClick={onOpenSettings} className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-secondary text-left w-full">
                         <Cog6ToothIcon className="w-6 h-6 text-text-secondary" />
                         <span>Configuración</span>

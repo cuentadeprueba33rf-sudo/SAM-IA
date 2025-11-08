@@ -1,19 +1,6 @@
-import { GoogleGenAI, Modality, LiveServerMessage, Blob, Type } from "@google/genai";
+import { GoogleGenAI, Modality, LiveServerMessage, Blob, Type, FunctionDeclaration } from "@google/genai";
 import type { Attachment, ChatMessage, ModeID, ModelType, EssaySection } from '../types';
 import { MessageAuthor } from '../types';
-
-// --- GESTIÓN DE LA CLAVE API ---
-// ADVERTENCIA DE SEGURIDAD GRAVE:
-// A petición explícita del usuario, la clave de API se ha insertado directamente en el código.
-// Esta práctica es EXTREMADAMENTE PELIGROSA y expone la clave a cualquier persona que utilice la aplicación,
-// ya que será visible en el código fuente del navegador.
-//
-// CUALQUIER PERSONA PODRÁ ROBAR Y UTILIZAR ESTA CLAVE, LO QUE PUEDE GENERAR COSTOS SIGNIFICATIVOS EN TU CUENTA.
-//
-// Se recomienda ENCARECIDAMENTE revertir este cambio y utilizar variables de entorno (`process.env.API_KEY`)
-// antes de distribuir o desplegar esta aplicación en cualquier entorno.
-const GEMINI_API_KEY = "AIzaSyDB-CXyCAp6CrquNDM7uMq_SoKDITRA9zI"; // ¡¡¡CLAVE EXPUESTA - RIESGO DE SEGURIDAD ALTO!!!
-
 
 const MODEL_MAP: Record<ModelType, string> = {
     'sm-i1': 'gemini-2.5-flash',
@@ -81,17 +68,22 @@ function createBlob(data: Float32Array): Blob {
   };
 }
 
-export const startVoiceSession = async (
+/**
+ * Inicia una sesión de conversación activa, con audio de entrada y salida.
+ */
+export const startActiveConversation = async (
     systemInstruction: string,
     onTranscriptionUpdate: (isUser: boolean, text: string) => void,
     onTurnComplete: (userInput: string, samOutput: string) => void,
-    onError: (error: Error) => void
-) => {
-    const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+    onError: (error: Error) => void,
+    onStateChange: (state: 'LISTENING' | 'RESPONDING') => void
+): Promise<{ close: () => void }> => {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     let currentInputTranscription = '';
     let currentOutputTranscription = '';
     let nextStartTime = 0;
+
     const outputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
     const outputNode = outputAudioContext.createGain();
     outputNode.connect(outputAudioContext.destination);
@@ -104,7 +96,8 @@ export const startVoiceSession = async (
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
         callbacks: {
             onopen: () => {
-                console.log('Voice session opened.');
+                console.log('Active conversation session opened.');
+                onStateChange('LISTENING');
                 const source = inputAudioContext.createMediaStreamSource(stream);
                 const scriptProcessor = inputAudioContext.createScriptProcessor(4096, 1, 1);
                 scriptProcessor.onaudioprocess = (audioProcessingEvent) => {
@@ -118,39 +111,41 @@ export const startVoiceSession = async (
                 scriptProcessor.connect(inputAudioContext.destination);
             },
             onmessage: async (message: LiveServerMessage) => {
-                // Handle Transcription
-                if (message.serverContent?.outputTranscription) {
-                    const text = message.serverContent.outputTranscription.text;
-                    currentOutputTranscription += text;
-                    onTranscriptionUpdate(false, currentOutputTranscription);
-                } else if (message.serverContent?.inputTranscription) {
+                if (message.serverContent?.inputTranscription) {
+                    onStateChange('LISTENING');
                     const text = message.serverContent.inputTranscription.text;
                     currentInputTranscription += text;
                     onTranscriptionUpdate(true, currentInputTranscription);
                 }
-
-                if (message.serverContent?.turnComplete) {
-                    const fullInput = currentInputTranscription;
-                    const fullOutput = currentOutputTranscription;
-                    onTurnComplete(fullInput, fullOutput);
-                    currentInputTranscription = '';
-                    currentOutputTranscription = '';
+                
+                if (message.serverContent?.outputTranscription) {
+                    const text = message.serverContent.outputTranscription.text;
+                    currentOutputTranscription += text;
+                    onTranscriptionUpdate(false, currentOutputTranscription);
                 }
 
-                // Handle Audio Output
                 const base64Audio = message.serverContent?.modelTurn?.parts[0]?.inlineData.data;
                 if (base64Audio) {
+                    onStateChange('RESPONDING');
                     nextStartTime = Math.max(nextStartTime, outputAudioContext.currentTime);
                     const audioBuffer = await decodeAudioData(decode(base64Audio), outputAudioContext, 24000, 1);
                     const source = outputAudioContext.createBufferSource();
                     source.buffer = audioBuffer;
                     source.connect(outputNode);
-                    source.addEventListener('ended', () => {
-                        sources.delete(source);
-                    });
+                    source.addEventListener('ended', () => sources.delete(source));
                     source.start(nextStartTime);
                     nextStartTime += audioBuffer.duration;
                     sources.add(source);
+                }
+                
+                if (message.serverContent?.turnComplete) {
+                    const fullInput = currentInputTranscription.trim();
+                    const fullOutput = currentOutputTranscription.trim();
+                    if(fullInput || fullOutput) {
+                        onTurnComplete(fullInput, fullOutput);
+                    }
+                    currentInputTranscription = '';
+                    currentOutputTranscription = '';
                 }
                 
                 if (message.serverContent?.interrupted) {
@@ -162,18 +157,14 @@ export const startVoiceSession = async (
                 }
             },
             onerror: (e: ErrorEvent) => {
-                console.error('Voice session error:', e);
+                console.error('Active conversation error:', e);
                 onError(new Error("Hubo un error en la sesión de voz."));
             },
             onclose: (e: CloseEvent) => {
-                console.log('Voice session closed.');
+                console.log('Active conversation closed.');
                 stream.getTracks().forEach(track => track.stop());
-                if (inputAudioContext.state !== 'closed') {
-                    inputAudioContext.close();
-                }
-                if (outputAudioContext.state !== 'closed') {
-                    outputAudioContext.close();
-                }
+                if (inputAudioContext.state !== 'closed') inputAudioContext.close();
+                if (outputAudioContext.state !== 'closed') outputAudioContext.close();
             },
         },
         config: {
@@ -184,8 +175,12 @@ export const startVoiceSession = async (
         },
     });
 
-    return sessionPromise;
+    const session = await sessionPromise;
+    return {
+        close: () => session.close()
+    };
 };
+
 
 
 // --- Fin de funciones para Live API ---
@@ -198,7 +193,7 @@ export const generateImage = async ({
     prompt: string;
     attachment?: Attachment;
 }): Promise<Attachment> => {
-    const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
         const parts: any[] = [{ text: prompt }];
         if (attachment) {
@@ -245,7 +240,8 @@ interface StreamGenerateContentParams {
     mode: ModeID;
     modelName: ModelType;
     onUpdate: (chunk: string) => void;
-    onComplete: (fullText: string, groundingChunks?: any[]) => void;
+    onLogUpdate: (logs: string[]) => void;
+    onComplete: (fullText: string, groundingChunks?: any[], consoleLogs?: string[]) => void;
     onError: (error: Error) => void;
     abortSignal: AbortSignal;
 }
@@ -258,11 +254,12 @@ export const streamGenerateContent = async ({
     mode,
     modelName,
     onUpdate,
+    onLogUpdate,
     onComplete,
     onError,
     abortSignal,
 }: StreamGenerateContentParams) => {
-    const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const geminiModelName = MODEL_MAP[modelName] || 'gemini-2.5-flash';
 
     try {
@@ -304,6 +301,7 @@ export const streamGenerateContent = async ({
         if (abortSignal.aborted) return;
         
         let fullText = "";
+        const allLogs: string[] = [];
         const rawGroundingChunks: any[] = [];
         
         for await (const chunk of resultStream) {
@@ -314,8 +312,23 @@ export const streamGenerateContent = async ({
             
             const chunkText = chunk.text;
             if(chunkText) {
-                fullText += chunkText;
-                onUpdate(chunkText);
+                if (mode === 'math') {
+                    const lines = chunkText.split('\n');
+                    const newLogs = lines.filter(l => l.trim().startsWith('[LOG]'));
+                    const newContent = lines.filter(l => !l.trim().startsWith('[LOG]')).join('\n');
+                    
+                    if (newLogs.length > 0) {
+                        allLogs.push(...newLogs);
+                        onLogUpdate(newLogs);
+                    }
+                    if (newContent) {
+                        fullText += newContent;
+                        onUpdate(newContent);
+                    }
+                } else {
+                    fullText += chunkText;
+                    onUpdate(chunkText);
+                }
             }
             if (chunk.candidates?.[0]?.groundingMetadata?.groundingChunks) {
                 rawGroundingChunks.push(...chunk.candidates[0].groundingMetadata.groundingChunks);
@@ -338,7 +351,7 @@ export const streamGenerateContent = async ({
                 })
                 .filter(Boolean); // remove nulls
 
-            onComplete(fullText, sanitizedGroundingChunks.length > 0 ? sanitizedGroundingChunks : undefined);
+            onComplete(fullText, sanitizedGroundingChunks.length > 0 ? sanitizedGroundingChunks : undefined, allLogs);
         }
 
     } catch (error) {
@@ -350,6 +363,56 @@ export const streamGenerateContent = async ({
     }
 };
 
+const setChatModeFunctionDeclaration: FunctionDeclaration = {
+  name: 'set_chat_mode',
+  description: "Detects if the user's query requires a specialized assistant mode and sets it. Only use this function if the user's intent is very clear (e.g., they ask to 'solve', 'code', 'draw', or 'search'). For general conversation, do not call this function.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      mode: {
+        type: Type.STRING,
+        description: 'The specialized mode to switch to.',
+        enum: ['math', 'canvasdev', 'search', 'image_generation'],
+      },
+      reasoning: {
+        type: Type.STRING,
+        description: "A brief, user-facing message in Spanish explaining why the mode is being changed. For example: 'Cambiando a modo matemático para resolver la ecuación.'",
+      },
+    },
+    required: ['mode', 'reasoning'],
+  },
+};
+
+export const detectMode = async (prompt: string, systemInstruction: string): Promise<{ newMode: ModeID; reasoning: string } | null> => {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
+    try {
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-pro', // Using pro model for better function calling
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          config: {
+            systemInstruction,
+            tools: [{ functionDeclarations: [setChatModeFunctionDeclaration] }],
+          }
+        });
+
+        const functionCall = response.functionCalls?.[0];
+
+        if (functionCall && functionCall.name === 'set_chat_mode') {
+            const { mode, reasoning } = functionCall.args;
+            if (['math', 'canvasdev', 'search', 'image_generation'].includes(mode)) {
+                return { newMode: mode as ModeID, reasoning };
+            }
+        }
+        return null;
+
+    } catch (error) {
+        console.error("Error during mode detection:", error);
+        return null; // Don't block the user if detection fails
+    }
+};
+
+
 export const generateEssayOutline = async ({
     prompt,
     systemInstruction,
@@ -359,7 +422,7 @@ export const generateEssayOutline = async ({
     systemInstruction: string;
     modelName: ModelType;
 }): Promise<Omit<EssaySection, 'id'>[]> => {
-    const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const geminiModelName = MODEL_MAP[modelName] || 'gemini-2.5-flash';
 
     try {
@@ -414,7 +477,7 @@ export const streamEssaySection = async ({
     onUpdate: (chunk: string) => void;
     abortSignal: AbortSignal;
 }) => {
-    const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const geminiModelName = MODEL_MAP[modelName] || 'gemini-2.5-flash';
 
     try {
