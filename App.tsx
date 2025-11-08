@@ -145,6 +145,7 @@ const App: React.FC = () => {
     const [showPremiumNotification, setShowPremiumNotification] = useState(false);
     const [showVoiceErrorNotification, setShowVoiceErrorNotification] = useState(false);
     const [activeView, setActiveView] = useState<ViewID>('chat');
+    const [premiumTimeLeft, setPremiumTimeLeft] = useState<string>('');
 
     const [voiceModeState, setVoiceModeState] = useState<VoiceModeState>('inactive');
     const [activeConversationState, setActiveConversationState] = useState<ActiveConversationState>('LISTENING');
@@ -211,6 +212,59 @@ const App: React.FC = () => {
         }
 
     }, []);
+    
+    // Effect for handling premium expiration and code cooldown
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setSettings(currentSettings => {
+                // Check for premium expiration
+                if (currentSettings.isPremiumUnlocked && currentSettings.premiumActivationTimestamp) {
+                    const expiryTime = currentSettings.premiumActivationTimestamp + 16 * 60 * 60 * 1000;
+                    const now = Date.now();
+
+                    if (now >= expiryTime) {
+                        // Premium has expired
+                        return {
+                            ...currentSettings,
+                            isPremiumUnlocked: false,
+                            premiumActivationTimestamp: undefined,
+                            defaultModel: 'sm-i1',
+                            accessCode: '', // Invalidate old code
+                            codeCooldownUntil: Date.now() + 5 * 60 * 1000,
+                        };
+                    } else {
+                        // Update countdown display
+                        const timeLeft = expiryTime - now;
+                        const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+                        const minutes = Math.floor((timeLeft / 1000 / 60) % 60);
+                        const seconds = Math.floor((timeLeft / 1000) % 60);
+                        setPremiumTimeLeft(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
+                    }
+                } else {
+                    setPremiumTimeLeft('');
+                }
+
+                // Check for code cooldown finish
+                if (currentSettings.codeCooldownUntil) {
+                    const now = Date.now();
+                    if (now >= currentSettings.codeCooldownUntil) {
+                        // Cooldown finished, generate new code
+                        const newCode = `${SPECIAL_USERS[Math.floor(Math.random() * SPECIAL_USERS.length)]}${Math.floor(1000 + Math.random() * 9000)}`;
+                        return {
+                            ...currentSettings,
+                            accessCode: newCode,
+                            codeCooldownUntil: undefined,
+                        };
+                    }
+                }
+
+                return currentSettings; // No changes
+            });
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, []);
+
 
     useEffect(() => {
         localStorage.setItem('sam-settings', JSON.stringify(settings));
@@ -622,6 +676,7 @@ const App: React.FC = () => {
                     onExportHistory={() => { /* export logic */ }}
                     installPromptEvent={installPromptEvent}
                     onInstallApp={() => installPromptEvent?.prompt()}
+                    premiumTimeLeft={premiumTimeLeft}
                 />
             )}
             {isUpdatesModalOpen && <UpdatesModal isOpen={isUpdatesModalOpen} onClose={() => setIsUpdatesModalOpen(false)} />}

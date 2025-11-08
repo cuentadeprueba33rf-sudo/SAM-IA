@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Settings } from './types';
-import { XMarkIcon, SunIcon, ChatBubbleLeftRightIcon, UsersIcon, TrashIcon, CheckIcon, SparklesIcon, ArrowDownTrayIcon, ShieldCheckIcon, DocumentDuplicateIcon, BoltIcon } from './components/icons';
+import { XMarkIcon, SunIcon, ChatBubbleLeftRightIcon, UsersIcon, TrashIcon, CheckIcon, SparklesIcon, ArrowDownTrayIcon, ShieldCheckIcon, DocumentDuplicateIcon, BoltIcon, InformationCircleIcon } from './components/icons';
 import { PERSONALITIES } from './constants';
 
 interface SettingsModalProps {
@@ -12,6 +12,7 @@ interface SettingsModalProps {
     onExportHistory: () => void;
     onInstallApp: () => void;
     installPromptEvent: any;
+    premiumTimeLeft: string;
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ 
@@ -22,31 +23,55 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     onClearHistory, 
     onExportHistory, 
     onInstallApp,
-    installPromptEvent 
+    installPromptEvent,
+    premiumTimeLeft,
 }) => {
     const [activeSection, setActiveSection] = useState('model_access');
     const [codeInput, setCodeInput] = useState("");
     const [error, setError] = useState("");
     const [copied, setCopied] = useState(false);
+    const [cooldownTimeLeft, setCooldownTimeLeft] = useState('');
+
+    useEffect(() => {
+        if (!settings.codeCooldownUntil) {
+            setCooldownTimeLeft('');
+            return;
+        }
+        const timer = setInterval(() => {
+            const now = Date.now();
+            const timeLeft = settings.codeCooldownUntil! - now;
+            if (timeLeft <= 0) {
+                setCooldownTimeLeft('');
+                // The logic in App.tsx will handle generating a new code automatically.
+            } else {
+                const minutes = Math.floor((timeLeft / 1000 / 60) % 60);
+                const seconds = Math.floor((timeLeft / 1000) % 60);
+                setCooldownTimeLeft(`${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
+            }
+        }, 1000);
+        return () => clearInterval(timer);
+    }, [settings.codeCooldownUntil]);
+
 
     if (!isOpen) return null;
 
     const handleSettingChange = <K extends keyof Settings>(key: K, value: Settings[K]) => {
         const newSettings = { ...settings, [key]: value };
-        // If user unlocks premium, set their default model to sm-i3
-        if (key === 'isPremiumUnlocked' && value === true) {
-            newSettings.defaultModel = 'sm-i3';
-        }
         onSave(newSettings);
     };
     
     const handleVerifyCode = () => {
-        if (codeInput.trim() === settings.accessCode) {
-            handleSettingChange('isPremiumUnlocked', true);
+        if (codeInput.trim() === settings.accessCode && settings.accessCode.trim() !== '') {
+            onSave({ 
+                ...settings, 
+                isPremiumUnlocked: true, 
+                premiumActivationTimestamp: Date.now(),
+                defaultModel: 'sm-i3'
+            });
             setError("");
             setCodeInput("");
         } else {
-            setError("El código no coincide. Asegúrate de usar tu código único.");
+            setError("El código no coincide o no es válido. Se generará uno nuevo si es necesario.");
         }
     };
 
@@ -88,12 +113,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                             </div>
                              <p className="text-xs text-text-secondary mt-1">
                                 {settings.isPremiumUnlocked 
-                                    ? "Disfrutas de todas las funcionalidades avanzadas." 
+                                    ? `Tiempo restante: ${premiumTimeLeft}`
                                     : "Estás usando el modelo estándar con funciones limitadas."}
                             </p>
                         </div>
+                        
+                        {!settings.isPremiumUnlocked && settings.codeCooldownUntil && (
+                            <div className="mt-6 p-4 bg-surface-secondary rounded-lg border border-border-subtle text-center">
+                                <h5 className="font-semibold text-text-main">Acceso Expirado</h5>
+                                <p className="text-sm text-text-secondary mt-1">Se generará un nuevo código de acceso en:</p>
+                                <p className="text-2xl font-bold font-mono text-accent my-2">{cooldownTimeLeft}</p>
+                            </div>
+                        )}
 
-                        {!settings.isPremiumUnlocked && (
+                        {!settings.isPremiumUnlocked && !settings.codeCooldownUntil && (
                             <div className="mt-6">
                                 <h5 className="font-semibold text-text-main mb-2">Activar Premium</h5>
                                 <p className="text-sm text-text-secondary mb-3">Para confirmar tu acceso, ingresa tu código único que se muestra a continuación.</p>
@@ -104,8 +137,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                         onChange={(e) => { setCodeInput(e.target.value); setError(""); }}
                                         placeholder="Ingresa tu código único aquí"
                                         className="flex-1 bg-surface-secondary border border-border-subtle rounded-lg px-3 py-2 text-text-main placeholder:text-text-secondary focus:ring-accent focus:border-accent outline-none"
+                                        disabled={!settings.accessCode}
                                     />
-                                    <button onClick={handleVerifyCode} className="bg-accent text-white font-semibold px-4 py-2 rounded-lg hover:opacity-90 transition-opacity">
+                                    <button onClick={handleVerifyCode} className="bg-accent text-white font-semibold px-4 py-2 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50" disabled={!settings.accessCode}>
                                         Activar
                                     </button>
                                 </div>
@@ -113,17 +147,21 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                             </div>
                         )}
                         
-                        <div className="mt-6">
-                             <h5 className="font-semibold text-text-main mb-2">Tu Código de Acceso Único</h5>
-                              <p className="text-sm text-text-secondary mb-3">Este es tu código personal. {!settings.isPremiumUnlocked && "Úsalo para activar las funciones premium."}</p>
-                             <div className="flex items-center gap-2 p-2 bg-surface-secondary rounded-lg border border-border-subtle">
-                                <span className="font-mono text-text-main px-2">{settings.accessCode}</span>
-                                <button onClick={() => handleCopyToClipboard(settings.accessCode)} className="ml-auto p-2 rounded-md hover:bg-border-subtle">
-                                    {copied ? <CheckIcon className="w-4 h-4 text-green-500" /> : <DocumentDuplicateIcon className="w-4 h-4 text-text-secondary" />}
-                                </button>
-                             </div>
-                        </div>
-
+                        {!settings.isPremiumUnlocked && !settings.codeCooldownUntil && settings.accessCode && (
+                            <div className="mt-6">
+                                 <h5 className="font-semibold text-text-main mb-2">Tu Código de Acceso Único</h5>
+                                 <div className="flex items-center gap-2 p-2 bg-surface-secondary rounded-lg border border-border-subtle">
+                                    <span className="font-mono text-text-main px-2">{settings.accessCode}</span>
+                                    <button onClick={() => handleCopyToClipboard(settings.accessCode)} className="ml-auto p-2 rounded-md hover:bg-border-subtle">
+                                        {copied ? <CheckIcon className="w-4 h-4 text-green-500" /> : <DocumentDuplicateIcon className="w-4 h-4 text-text-secondary" />}
+                                    </button>
+                                 </div>
+                                  <div className="flex items-start gap-2 mt-2 p-2 rounded-lg bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
+                                    <InformationCircleIcon className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                    <p className="text-xs">Este es tu código personal, válido por 16 horas y de un solo uso. No lo compartas.</p>
+                                 </div>
+                            </div>
+                        )}
                     </div>
                 );
             case 'moderation':

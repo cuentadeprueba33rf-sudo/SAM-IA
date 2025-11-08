@@ -8,9 +8,11 @@ const MODEL_MAP: Record<ModelType, string> = {
 };
 
 const fileToGenerativePart = async (attachment: Attachment) => {
+    // BUG FIX: Add a defensive check to prevent crashes if attachment.data is not a valid data URL string.
+    const base64Data = attachment.data?.split(',')[1] ?? '';
     return {
         inlineData: {
-            data: attachment.data.split(',')[1], // remove base64 prefix
+            data: base64Data,
             mimeType: attachment.type,
         },
     };

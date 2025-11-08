@@ -72,6 +72,8 @@ export interface Settings {
     isPremiumUnlocked: boolean;
     accessCode: string;
     quickMode: boolean;
+    premiumActivationTimestamp?: number;
+    codeCooldownUntil?: number;
 }
 
 export interface EssaySection {
