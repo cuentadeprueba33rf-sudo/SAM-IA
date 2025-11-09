@@ -567,6 +567,7 @@ const App: React.FC = () => {
     // FIX: Replaced .at(-1) with .slice(-1)[0] for compatibility with older TS/JS versions.
     const lastSamMessage = currentChat?.messages.filter(m => m.author === MessageAuthor.SAM).slice(-1)[0];
     const pinnedArtifactIds = useMemo(() => pinnedArtifacts.map(a => a.id), [pinnedArtifacts]);
+    const lastMessage = currentChat?.messages.slice(-1)[0];
 
 
     return (
@@ -594,6 +595,7 @@ const App: React.FC = () => {
                             <ChatMessageItem 
                                 key={msg.id} 
                                 message={msg} 
+                                isStreaming={isLoading && lastMessage?.id === msg.id && msg.author === MessageAuthor.SAM}
                                 onOpenArtifact={setActiveArtifact}
                                 onPinArtifact={(artifact) => {
                                     if (!pinnedArtifacts.some(p => p.id === artifact.id)) {

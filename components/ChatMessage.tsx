@@ -47,6 +47,7 @@ declare global {
 
 interface ChatMessageItemProps {
     message: ChatMessage;
+    isStreaming: boolean;
     onOpenArtifact: (artifact: Artifact) => void;
     onPinArtifact: (artifact: Artifact) => void;
     onPreviewImage: (attachment: Attachment) => void;
@@ -54,7 +55,9 @@ interface ChatMessageItemProps {
     onOpenEssay: (essay: Essay, messageId: string) => void;
 }
 
-const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, onOpenArtifact, onPinArtifact, onPreviewImage, pinnedArtifactIds, onOpenEssay }) => {
+const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, isStreaming, onOpenArtifact, onPinArtifact, onPreviewImage, pinnedArtifactIds, onOpenEssay }) => {
+    
+    const [displayedText, setDisplayedText] = useState('');
     
     const wordCount = useMemo(() => {
         if (!message.essayContent) return 0;
@@ -70,7 +73,33 @@ const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, onOpenArtifa
         if (typeof window.renderMath === 'function') {
             window.renderMath();
         }
-    }, [message.text]);
+    }, [displayedText]); // Re-render math when displayed text changes
+
+    useEffect(() => {
+        if (!isStreaming) {
+            setDisplayedText(message.text);
+            return;
+        }
+
+        // When streaming a new message, start from scratch
+        if (message.text.length < displayedText.length) {
+            setDisplayedText('');
+        }
+    }, [message.id, isStreaming]);
+
+    useEffect(() => {
+        if (isStreaming && displayedText.length < message.text.length) {
+            const timeout = setTimeout(() => {
+                const remainingText = message.text.substring(displayedText.length);
+                // Add a small batch of characters at a time to make it look fast but still animated
+                const nextBatch = remainingText.substring(0, Math.min(5, remainingText.length));
+                setDisplayedText(displayedText + nextBatch);
+            }, 16); // roughly 60fps
+    
+            return () => clearTimeout(timeout);
+        }
+    }, [displayedText, message.text, isStreaming]);
+
 
     if (message.author === MessageAuthor.SYSTEM) {
         return (
@@ -88,11 +117,13 @@ const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, onOpenArtifa
     const isArtifactPinned = firstArtifact ? pinnedArtifactIds.includes(firstArtifact.id) : false;
     
     // If there are artifacts, we assume it's a canvasdev response and hide the code block.
-    let displayText = message.text;
+    let textToDisplay = displayedText;
     if (message.artifacts && message.artifacts.length > 0) {
         const codeBlockRegex = /```[\s\S]*?```/g;
-        displayText = message.text.replace(codeBlockRegex, '').trim();
+        textToDisplay = displayedText.replace(codeBlockRegex, '').trim();
     }
+    
+    const parsedContent = useMemo(() => parseMarkdown(textToDisplay), [textToDisplay]);
 
     return (
         <div className={`py-4 flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -143,8 +174,8 @@ const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, onOpenArtifa
                         </div>
                     )}
 
-                    {displayText && !message.essayContent && (
-                        <div className="prose prose-sm dark:prose-invert max-w-none break-words" dangerouslySetInnerHTML={parseMarkdown(displayText)} />
+                    {textToDisplay && !message.essayContent && (
+                        <div className={`prose prose-sm dark:prose-invert max-w-none break-words ${isStreaming ? 'streaming-message' : ''}`} dangerouslySetInnerHTML={parsedContent} />
                     )}
                     
                     {message.artifacts && message.artifacts.map(artifact => (
