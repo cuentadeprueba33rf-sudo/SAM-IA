@@ -14,6 +14,7 @@ import WelcomeTutorial from './components/WelcomeTutorial';
 import FeatureNotification from './components/FeatureNotification';
 import InstallNotification from './components/InstallNotification';
 import VoiceErrorNotification from './components/VoiceErrorNotification';
+import ForcedResetModal from './components/ForcedResetModal'; // Importar el nuevo modal
 import ChatMessageItem from './components/ChatMessage'; // Assuming a ChatMessageItem component for rendering messages.
 import { streamGenerateContent, generateImage, startActiveConversation, detectMode } from './services/geminiService';
 import {
@@ -147,6 +148,7 @@ const App: React.FC = () => {
     const [showLimitNotification, setShowLimitNotification] = useState(false);
     const [showVoiceErrorNotification, setShowVoiceErrorNotification] = useState(false);
     const [activeView, setActiveView] = useState<ViewID>('chat');
+    const [showForcedResetModal, setShowForcedResetModal] = useState(false);
     
     const [usage, setUsage] = useState<UsageTracker>({ date: new Date().toISOString().split('T')[0], count: 0, hasAttachment: false });
 
@@ -159,11 +161,20 @@ const App: React.FC = () => {
     const abortControllerRef = useRef<AbortController | null>(null);
     const chatEndRef = useRef<HTMLDivElement>(null);
     const activeConversationRef = useRef<{ close: () => void } | null>(null);
+    const creditsRef = useRef<HTMLDivElement>(null);
+    const verificationPanelRef = useRef<HTMLDivElement>(null);
 
     const currentChat = chats.find(c => c.id === currentChatId);
 
     // ... State and useEffects for loading, saving, etc. ...
     useEffect(() => {
+        // Check for forced reset first
+        const hasReset = localStorage.getItem('sam_ia_forced_reset_v1.5');
+        if (!hasReset) {
+            setShowForcedResetModal(true);
+            return; // Halt further execution until reset is done
+        }
+
         // Load settings from localStorage
         try {
             const savedSettings = localStorage.getItem('sam-settings');
@@ -563,12 +574,20 @@ const App: React.FC = () => {
         window.location.reload();
     }, []);
 
+    const handleForcedReset = useCallback(() => {
+        localStorage.setItem('sam_ia_forced_reset_v1.5', 'true');
+        handleResetApp();
+    }, [handleResetApp]);
+
 
     // FIX: Replaced .at(-1) with .slice(-1)[0] for compatibility with older TS/JS versions.
     const lastSamMessage = currentChat?.messages.filter(m => m.author === MessageAuthor.SAM).slice(-1)[0];
     const pinnedArtifactIds = useMemo(() => pinnedArtifacts.map(a => a.id), [pinnedArtifacts]);
     const lastMessage = currentChat?.messages.slice(-1)[0];
 
+    if (showForcedResetModal) {
+        return <ForcedResetModal onConfirm={handleForcedReset} />;
+    }
 
     return (
         <div className={`flex h-screen bg-bg-main font-sans text-text-main ${settings.theme}`}>
@@ -582,8 +601,8 @@ const App: React.FC = () => {
                 onShowUpdates={() => setIsUpdatesModalOpen(true)}
                 onOpenSettings={() => setIsSettingsModalOpen(true)}
                 onShowContextMenu={(chatId, coords) => setContextMenu({ chatId, ...coords })}
-                creditsRef={useRef(null)}
-                verificationPanelRef={useRef(null)}
+                creditsRef={creditsRef}
+                verificationPanelRef={verificationPanelRef}
                 forceOpenVerificationPanel={false}
                 activeView={activeView}
                 onSelectView={setActiveView}
