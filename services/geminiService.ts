@@ -80,6 +80,12 @@ export const startActiveConversation = async (
     onError: (error: Error) => void,
     onStateChange: (state: 'LISTENING' | 'RESPONDING') => void
 ): Promise<{ close: () => void }> => {
+    // FIX: Per coding guidelines, use process.env.API_KEY and simplify the check.
+    if (!process.env.API_KEY) {
+        const error = new Error("Error de conexión con el servicio de voz. Por favor, verifica tu conexión a internet.");
+        onError(error);
+        throw error;
+    }
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     let currentInputTranscription = '';
@@ -195,6 +201,10 @@ export const generateImage = async ({
     prompt: string;
     attachment?: Attachment;
 }): Promise<Attachment> => {
+    // FIX: Per coding guidelines, use process.env.API_KEY and simplify the check.
+    if (!process.env.API_KEY) {
+        throw new Error("Error de conexión. SAM no pudo generar la imagen.");
+    }
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
         const parts: any[] = [{ text: prompt }];
@@ -226,10 +236,7 @@ export const generateImage = async ({
 
     } catch (error) {
         console.error("Error al generar la imagen:", error);
-        if (error instanceof Error) {
-            throw new Error("No se pudo generar la imagen. " + error.message);
-        }
-        throw new Error("Ocurrió un error desconocido al generar la imagen.");
+        throw new Error("SAM tuvo un error al generar la imagen. Por favor, inténtalo de nuevo.");
     }
 };
 
@@ -261,6 +268,12 @@ export const streamGenerateContent = async ({
     onError,
     abortSignal,
 }: StreamGenerateContentParams) => {
+    // FIX: Per coding guidelines, use process.env.API_KEY and simplify the check.
+    if (!process.env.API_KEY) {
+        const error = new Error("Error de conexión. Por favor, revisa tu conexión a internet e inténtalo de nuevo.");
+        onError(error);
+        return;
+    }
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const geminiModelName = MODEL_MAP[modelName] || 'gemini-2.5-flash';
 
@@ -386,6 +399,11 @@ const setChatModeFunctionDeclaration: FunctionDeclaration = {
 };
 
 export const detectMode = async (prompt: string, systemInstruction: string): Promise<{ newMode: ModeID; reasoning: string } | null> => {
+    // FIX: Per coding guidelines, use process.env.API_KEY and simplify the check.
+    if (!process.env.API_KEY) {
+        console.error("Mode detection skipped: API Key not configured.");
+        return null;
+    }
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     try {
@@ -402,8 +420,9 @@ export const detectMode = async (prompt: string, systemInstruction: string): Pro
 
         if (functionCall && functionCall.name === 'set_chat_mode') {
             const { mode, reasoning } = functionCall.args;
-            if (['math', 'canvasdev', 'search', 'image_generation'].includes(mode)) {
-                return { newMode: mode as ModeID, reasoning };
+            // FIX: Ensure 'mode' is a string before using it in 'includes' and cast 'reasoning' to a string to match the return type.
+            if (typeof mode === 'string' && ['math', 'canvasdev', 'search', 'image_generation'].includes(mode)) {
+                return { newMode: mode as ModeID, reasoning: String(reasoning) };
             }
         }
         return null;
@@ -424,6 +443,10 @@ export const generateEssayOutline = async ({
     systemInstruction: string;
     modelName: ModelType;
 }): Promise<Omit<EssaySection, 'id'>[]> => {
+    // FIX: Per coding guidelines, use process.env.API_KEY and simplify the check.
+    if (!process.env.API_KEY) {
+        throw new Error("Error de conexión. No se pudo generar el esquema del ensayo.");
+    }
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const geminiModelName = MODEL_MAP[modelName] || 'gemini-2.5-flash';
 
@@ -462,7 +485,7 @@ export const generateEssayOutline = async ({
         return result.outline;
     } catch (error) {
         console.error("Error generating essay outline:", error);
-        throw error; // Re-throw to be handled by the component
+        throw new Error("SAM tuvo un error al generar el esquema. Por favor, inténtalo de nuevo.");
     }
 };
 
@@ -479,6 +502,10 @@ export const streamEssaySection = async ({
     onUpdate: (chunk: string) => void;
     abortSignal: AbortSignal;
 }) => {
+    // FIX: Per coding guidelines, use process.env.API_KEY and simplify the check.
+    if (!process.env.API_KEY) {
+        throw new Error("Error de conexión. No se pudo generar la sección del ensayo.");
+    }
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const geminiModelName = MODEL_MAP[modelName] || 'gemini-2.5-flash';
 
@@ -504,7 +531,7 @@ export const streamEssaySection = async ({
     } catch (error) {
         if (error instanceof Error && error.name !== 'AbortError' && !abortSignal.aborted) {
             console.error("Error streaming essay section:", error);
-            throw error; // Re-throw to be handled by the component
+            throw new Error("SAM tuvo un error al generar esta sección. Por favor, inténtalo de nuevo.");
         }
     }
 };
@@ -518,6 +545,10 @@ export const generateEssayReferences = async ({
     systemInstruction: string;
     modelName: ModelType;
 }): Promise<string[]> => {
+    // FIX: Per coding guidelines, use process.env.API_KEY and simplify the check.
+    if (!process.env.API_KEY) {
+        throw new Error("Error de conexión. No se pudieron generar las referencias.");
+    }
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const geminiModelName = MODEL_MAP[modelName] || 'gemini-2.5-flash';
 
@@ -545,6 +576,6 @@ export const generateEssayReferences = async ({
         return result.references;
     } catch (error) {
         console.error("Error generating essay references:", error);
-        throw error; // Re-throw to be handled by the component
+        throw new Error("SAM tuvo un error al generar las referencias. Por favor, inténtalo de nuevo.");
     }
 };

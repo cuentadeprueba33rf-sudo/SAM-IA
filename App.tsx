@@ -566,7 +566,8 @@ const App: React.FC = () => {
         }
     };
 
-    const lastSamMessage = currentChat?.messages.filter(m => m.author === MessageAuthor.SAM).at(-1);
+    // FIX: Replaced .at(-1) with .slice(-1)[0] for compatibility with older TS/JS versions.
+    const lastSamMessage = currentChat?.messages.filter(m => m.author === MessageAuthor.SAM).slice(-1)[0];
     const pinnedArtifactIds = useMemo(() => pinnedArtifacts.map(a => a.id), [pinnedArtifacts]);
 
 
