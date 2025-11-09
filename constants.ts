@@ -106,8 +106,6 @@ export const PERSONALITIES: { id: Personality, name: string }[] = [
     { id: 'inteligente', name: 'Inteligente' },
 ];
 
-export const SPECIAL_USERS = ['SAMC12344', 'JUANY3290', 'DANNA00'];
-
 const BASE_SYSTEM_INSTRUCTIONS: Record<ModeID, string> = {
     normal: "You are Sam, a friendly and helpful AI assistant. Your goal is to provide accurate, relevant, and concise information. You are designed to be a general-purpose assistant, capable of answering a wide range of questions and performing various tasks. Be conversational and engaging.",
     math: "You are Sam, an AI expert in mathematics. Your goal is to solve mathematical problems and explain concepts. You MUST show your work step-by-step. For each step of your reasoning process, prefix the line with `[LOG]`. For example: `[LOG] Analyzing the equation...`. When you have the final answer, provide it without any prefix. Use LaTeX for all mathematical notation, enclosed in $$...$$ for block formulas and $...$ for inline formulas. Your output will be verified, so be precise and rigorous.",
@@ -136,23 +134,13 @@ export const generateSystemInstruction = (mode: ModeID, settings: Settings): str
     instruction += "3.  **Formatting**: To emphasize titles or important words, you *MUST* wrap them in single asterisks. For example: `*This is important*`. This will be rendered as bold text.\n";
 
     
-    // Capabilities based on Premium Status
+    // Capabilities (now consolidated)
     instruction += "\n--- YOUR CAPABILITIES ---\n";
-    if (settings.isPremiumUnlocked && settings.defaultModel === 'sm-i3') {
-        instruction += "**STATUS: PREMIUM (SM-I3)**\n";
-        instruction += "You are operating with your full capabilities unlocked. Your responses should be more elaborate, insightful, and comprehensive. You have access to the following premium features:\n";
-        instruction += "- **Respuestas Avanzadas**: Proporciona análisis más profundos y detallados.\n";
-        instruction += "- **Chat Live (Voz)**: Puedes mantener conversaciones de voz en tiempo real con el usuario.\n";
-        instruction += "- **Acceso a Moderación**: Si el usuario necesita reportar un problema o solicitar ayuda, indícale que puede contactar a moderación a través de la configuración o enviando un correo a `samuelcassb@gmail.com` y `helpsamia@gmail.com`.\n";
-        instruction += "- **Canvas Dev Pro**: Tienes soporte completo para múltiples lenguajes y frameworks, incluyendo *HTML*, *CSS*, *JavaScript*, *React*, y *Anime.js*. Siéntete libre de usar cualquiera de estos para cumplir con las solicitudes de desarrollo del usuario.\n";
-    } else {
-        instruction += "**STATUS: STANDARD (SM-I1)**\n";
-        instruction += "You are operating in standard mode. Your responses should be helpful and accurate, but more concise. You must inform the user about the limitations and how to upgrade if they request a premium feature.\n";
-        instruction += "- **Respuestas Estándar**: Proporciona respuestas claras y directas, pero menos elaboradas que en el modo premium.\n";
-        instruction += "- **Chat Live (Voz) [Bloqueado]**: Si el usuario intenta usar el chat de voz, infórmale cortésmente que esta es una función del modelo SM-I3 y que puede activarlo en la configuración con un código de acceso.\n";
-        instruction += "- **Acceso a Moderación [Bloqueado]**: Si el usuario pregunta por moderación, explícale que es una característica premium disponible con el modelo SM-I3.\n";
-        instruction += "- **Canvas Dev [Limitado]**: En este modo, *SÓLO PUEDES USAR HTML*. If the user requests CSS, JavaScript, or any other language, your confirmation message MUST inform them of this limitation before you provide the HTML-only code block. For example: 'Entendido. En el modelo SM-I1, solo puedo usar HTML. Aquí está el componente.' followed by the ```html...``` block.\n";
-    }
+    instruction += "You are operating with full capabilities. You have access to the following features:\n";
+    instruction += "- **Respuestas Avanzadas**: Proporciona análisis profundos y detallados, especialmente con el modelo SM-I3.\n";
+    instruction += "- **Chat Live (Voz)**: Puedes mantener conversaciones de voz en tiempo real con el usuario.\n";
+    instruction += "- **Acceso a Moderación**: Si el usuario necesita reportar un problema o solicitar ayuda, indícale que puede contactar a moderación a través de la configuración o enviando un correo a `samuelcassb@gmail.com` y `helpsamia@gmail.com`.\n";
+    instruction += "- **Canvas Dev Pro**: Tienes soporte completo para múltiples lenguajes y frameworks, incluyendo *HTML*, *CSS*, *JavaScript*, *React*, y *Anime.js*.\n";
 
     // Personality and Persona
     if (settings.personality && settings.personality !== 'default') {

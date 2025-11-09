@@ -419,9 +419,8 @@ export const detectMode = async (prompt: string, systemInstruction: string): Pro
 
         if (functionCall && functionCall.name === 'set_chat_mode') {
             const { mode, reasoning } = functionCall.args;
-            // FIX: Ensure 'mode' is a string before using it in 'includes' and cast 'reasoning' to a string to match the return type.
             if (typeof mode === 'string' && ['math', 'canvasdev', 'search', 'image_generation'].includes(mode)) {
-                return { newMode: mode as ModeID, reasoning: String(reasoning) };
+                return { newMode: mode as ModeID, reasoning: String(reasoning ?? '') };
             }
         }
         return null;

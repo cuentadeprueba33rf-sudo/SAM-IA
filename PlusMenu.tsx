@@ -48,8 +48,7 @@ const PlusMenu: React.FC<PlusMenuProps> = ({ onAction, settings }) => {
                  <button
                     key="voice"
                     onClick={() => onAction('voice')}
-                    disabled={!settings.isPremiumUnlocked}
-                    className={`flex w-full items-center gap-3 text-left p-3 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-accent ${!settings.isPremiumUnlocked ? 'opacity-60 cursor-not-allowed' : 'hover:bg-surface-secondary'}`}
+                    className={`flex w-full items-center gap-3 text-left p-3 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-accent hover:bg-surface-secondary`}
                 >
                     <div className="p-2 bg-surface-secondary rounded-full">
                         <VoiceIcon className="w-5 h-5 text-accent-blue" />
@@ -57,7 +56,7 @@ const PlusMenu: React.FC<PlusMenuProps> = ({ onAction, settings }) => {
                     <div>
                         <p className="font-semibold text-text-main text-sm">Voz</p>
                         <p className="text-text-secondary text-xs">
-                             {settings.isPremiumUnlocked ? 'Habla con SAM en tiempo real' : 'Función premium (SM-I3)'}
+                             Habla con SAM en tiempo real
                         </p>
                     </div>
                 </button>

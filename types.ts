@@ -69,11 +69,7 @@ export interface Settings {
     personality: Personality;
     profession: string;
     defaultModel: ModelType;
-    isPremiumUnlocked: boolean;
-    accessCode: string;
     quickMode: boolean;
-    premiumActivationTimestamp?: number;
-    codeCooldownUntil?: number;
 }
 
 export interface EssaySection {

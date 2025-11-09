@@ -56,11 +56,9 @@ interface ChatMessageItemProps {
 
 const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, onOpenArtifact, onPinArtifact, onPreviewImage, pinnedArtifactIds, onOpenEssay }) => {
     
-    // FIX: Explicitly typed the accumulator `acc` as a number to resolve the TS error.
     const wordCount = useMemo(() => {
         if (!message.essayContent) return 0;
         return Object.values(message.essayContent.content).reduce((acc: number, sectionText) => {
-            // FIX: Added type check for sectionText before calling string method.
             if (typeof sectionText === 'string') {
                 return acc + (sectionText.split(/\s+/).filter(Boolean).length);
             }

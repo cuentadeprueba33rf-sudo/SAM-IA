@@ -12,7 +12,6 @@ interface SettingsModalProps {
     onExportHistory: () => void;
     onInstallApp: () => void;
     installPromptEvent: any;
-    premiumTimeLeft: string;
     onResetApp: () => void;
 }
 
@@ -25,63 +24,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     onExportHistory, 
     onInstallApp,
     installPromptEvent,
-    premiumTimeLeft,
     onResetApp,
 }) => {
     const [activeSection, setActiveSection] = useState('model_access');
-    const [codeInput, setCodeInput] = useState("");
-    const [error, setError] = useState("");
-    const [copied, setCopied] = useState(false);
-    const [cooldownTimeLeft, setCooldownTimeLeft] = useState('');
-
-    useEffect(() => {
-        if (!settings.codeCooldownUntil) {
-            setCooldownTimeLeft('');
-            return;
-        }
-        const timer = setInterval(() => {
-            const now = Date.now();
-            const timeLeft = settings.codeCooldownUntil! - now;
-            if (timeLeft <= 0) {
-                setCooldownTimeLeft('');
-                // The logic in App.tsx will handle generating a new code automatically.
-            } else {
-                const minutes = Math.floor((timeLeft / 1000 / 60) % 60);
-                const seconds = Math.floor((timeLeft / 1000) % 60);
-                setCooldownTimeLeft(`${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
-            }
-        }, 1000);
-        return () => clearInterval(timer);
-    }, [settings.codeCooldownUntil]);
-
 
     if (!isOpen) return null;
 
     const handleSettingChange = <K extends keyof Settings>(key: K, value: Settings[K]) => {
         const newSettings = { ...settings, [key]: value };
         onSave(newSettings);
-    };
-    
-    const handleVerifyCode = () => {
-        if (codeInput.trim() === settings.accessCode && settings.accessCode.trim() !== '') {
-            onSave({ 
-                ...settings, 
-                isPremiumUnlocked: true, 
-                premiumActivationTimestamp: Date.now(),
-                defaultModel: 'sm-i3'
-            });
-            setError("");
-            setCodeInput("");
-        } else {
-            setError("El código no coincide o no es válido. Se generará uno nuevo si es necesario.");
-        }
-    };
-
-    const handleCopyToClipboard = (text: string) => {
-        navigator.clipboard.writeText(text).then(() => {
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        });
     };
     
     const handleReset = () => {
@@ -106,71 +57,26 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
              case 'model_access':
                 return (
                     <div>
-                        <h4 className="font-semibold text-text-main text-lg mb-2">Modelo y Acceso Premium</h4>
-                        <p className="text-sm text-text-secondary mb-6">Gestiona tu nivel de acceso y las capacidades de la IA.</p>
+                        <h4 className="font-semibold text-text-main text-lg mb-2">Selección de Modelo</h4>
+                        <p className="text-sm text-text-secondary mb-6">Elige el motor de IA que impulsará tus conversaciones. Puedes cambiarlo en cualquier momento desde la barra de chat.</p>
                         
-                        <div className={`p-4 rounded-lg border-2 ${settings.isPremiumUnlocked ? 'border-green-500' : 'border-border-subtle'}`}>
-                            <div className="flex justify-between items-center">
-                                <span className="font-semibold text-text-main">Estado Actual</span>
-                                {settings.isPremiumUnlocked ? (
-                                    <span className="flex items-center gap-1.5 text-sm font-semibold bg-green-500/10 text-green-500 px-2 py-0.5 rounded-full">
-                                        <CheckIcon className="w-4 h-4" /> Premium Activo
-                                    </span>
-                                ) : (
-                                     <span className="text-sm font-semibold bg-surface-secondary px-2 py-0.5 rounded-full">Estándar</span>
-                                )}
+                        <div className="space-y-4">
+                            <div className={`p-4 rounded-lg border-2 ${settings.defaultModel === 'sm-i1' ? 'border-accent' : 'border-border-subtle'}`}>
+                                <h5 className="font-semibold text-text-main">SM-I1 (Recomendado)</h5>
+                                <p className="text-xs text-text-secondary mt-1">Ideal para la mayoría de las tareas diarias, ofreciendo respuestas rápidas y eficientes. Sin límites de uso.</p>
                             </div>
-                             <p className="text-xs text-text-secondary mt-1">
-                                {settings.isPremiumUnlocked 
-                                    ? `Tiempo restante: ${premiumTimeLeft}`
-                                    : "Estás usando el modelo estándar con funciones limitadas."}
-                            </p>
-                        </div>
-                        
-                        {!settings.isPremiumUnlocked && settings.codeCooldownUntil && (
-                            <div className="mt-6 p-4 bg-surface-secondary rounded-lg border border-border-subtle text-center">
-                                <h5 className="font-semibold text-text-main">Acceso Expirado</h5>
-                                <p className="text-sm text-text-secondary mt-1">Se generará un nuevo código de acceso en:</p>
-                                <p className="text-2xl font-bold font-mono text-accent my-2">{cooldownTimeLeft}</p>
-                            </div>
-                        )}
-
-                        {!settings.isPremiumUnlocked && !settings.codeCooldownUntil && (
-                            <div className="mt-6">
-                                <h5 className="font-semibold text-text-main mb-2">Activar Premium</h5>
-                                <p className="text-sm text-text-secondary mb-3">Para confirmar tu acceso, ingresa tu código único que se muestra a continuación.</p>
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="text"
-                                        value={codeInput}
-                                        onChange={(e) => { setCodeInput(e.target.value); setError(""); }}
-                                        placeholder="Ingresa tu código único aquí"
-                                        className="flex-1 bg-surface-secondary border border-border-subtle rounded-lg px-3 py-2 text-text-main placeholder:text-text-secondary focus:ring-accent focus:border-accent outline-none"
-                                        disabled={!settings.accessCode}
-                                    />
-                                    <button onClick={handleVerifyCode} className="bg-accent text-white font-semibold px-4 py-2 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50" disabled={!settings.accessCode}>
-                                        Activar
-                                    </button>
+                            <div className={`p-4 rounded-lg border-2 ${settings.defaultModel === 'sm-i3' ? 'border-accent' : 'border-border-subtle'}`}>
+                                <div className="flex items-center gap-2 font-semibold text-text-main">
+                                    <SparklesIcon className="w-5 h-5 text-yellow-400" />
+                                    <h5>SM-I3</h5>
                                 </div>
-                                {error && <p className="text-xs text-danger mt-1.5">{error}</p>}
+                                <p className="text-xs text-text-secondary mt-1">El modelo más potente, para análisis profundo, razonamiento complejo y creatividad. Tiene un límite de uso diario.</p>
+                                <div className="mt-3 p-2 bg-surface-secondary rounded-md text-xs space-y-1">
+                                    <p><strong>Límite diario:</strong> 20 mensajes.</p>
+                                    <p><strong>Límite con archivos:</strong> 15 mensajes.</p>
+                                </div>
                             </div>
-                        )}
-                        
-                        {!settings.isPremiumUnlocked && !settings.codeCooldownUntil && settings.accessCode && (
-                            <div className="mt-6">
-                                 <h5 className="font-semibold text-text-main mb-2">Tu Código de Acceso Único</h5>
-                                 <div className="flex items-center gap-2 p-2 bg-surface-secondary rounded-lg border border-border-subtle">
-                                    <span className="font-mono text-text-main px-2">{settings.accessCode}</span>
-                                    <button onClick={() => handleCopyToClipboard(settings.accessCode)} className="ml-auto p-2 rounded-md hover:bg-border-subtle">
-                                        {copied ? <CheckIcon className="w-4 h-4 text-green-500" /> : <DocumentDuplicateIcon className="w-4 h-4 text-text-secondary" />}
-                                    </button>
-                                 </div>
-                                  <div className="flex items-start gap-2 mt-2 p-2 rounded-lg bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
-                                    <InformationCircleIcon className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                                    <p className="text-xs">Este es tu código personal, válido por 16 horas y de un solo uso. No lo compartas.</p>
-                                 </div>
-                            </div>
-                        )}
+                        </div>
                     </div>
                 );
             case 'moderation':
@@ -178,23 +84,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     <div>
                         <h4 className="font-semibold text-text-main text-lg mb-2">Moderación y Soporte</h4>
                         <p className="text-sm text-text-secondary mb-4">Contacta con el equipo si encuentras un problema o necesitas ayuda.</p>
-                         {settings.isPremiumUnlocked ? (
-                            <div>
-                                <p className="text-sm text-text-main mb-3">Como usuario premium, tienes acceso directo al equipo de moderación. Usa el siguiente enlace para enviar un correo electrónico.</p>
-                                <a
-                                    href="mailto:samuelcassb@gmail.com,helpsamia@gmail.com?subject=Soporte%20SAM%20IA%20Premium"
-                                    className="w-full flex items-center justify-center gap-2 text-left text-sm font-semibold text-text-main bg-surface-secondary hover:bg-border-subtle px-4 py-2 rounded-lg transition-colors"
-                                >
-                                    <ShieldCheckIcon className="w-5 h-5 text-accent" />
-                                    <span>Contactar a Moderación</span>
-                                </a>
-                            </div>
-                        ) : (
-                             <div className="text-sm text-text-secondary p-4 bg-surface-secondary rounded-lg border border-border-subtle">
-                                <p className="font-semibold text-text-main mb-2">Función Premium</p>
-                                <p>El acceso directo a moderación es una ventaja del modelo SM-I3. Activa tu acceso premium para usar esta función.</p>
-                            </div>
-                        )}
+                        <div>
+                            <p className="text-sm text-text-main mb-3">Usa el siguiente enlace para enviar un correo electrónico al equipo de soporte.</p>
+                            <a
+                                href="mailto:samuelcassb@gmail.com,helpsamia@gmail.com?subject=Soporte%20SAM%20IA"
+                                className="w-full flex items-center justify-center gap-2 text-left text-sm font-semibold text-text-main bg-surface-secondary hover:bg-border-subtle px-4 py-2 rounded-lg transition-colors"
+                            >
+                                <ShieldCheckIcon className="w-5 h-5 text-accent" />
+                                <span>Contactar a Soporte</span>
+                            </a>
+                        </div>
                     </div>
                 );
             case 'appearance':
@@ -243,11 +142,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                         <div className="font-semibold text-text-main">SM-I1</div>
                                         <p className="text-xs text-text-secondary mt-1">Rápido y eficiente para tareas diarias.</p>
                                     </button>
-                                     <button onClick={() => { if(settings.isPremiumUnlocked) handleSettingChange('defaultModel', 'sm-i3')}} disabled={!settings.isPremiumUnlocked} className={`relative text-left p-3 rounded-lg border-2 ${settings.defaultModel === 'sm-i3' ? 'border-accent' : 'border-border-subtle'} ${settings.isPremiumUnlocked ? 'hover:border-text-secondary/50' : 'opacity-60 cursor-not-allowed'}`}>
+                                     <button onClick={() => handleSettingChange('defaultModel', 'sm-i3')} className={`relative text-left p-3 rounded-lg border-2 ${settings.defaultModel === 'sm-i3' ? 'border-accent' : 'border-border-subtle hover:border-text-secondary/50'}`}>
                                         {settings.defaultModel === 'sm-i3' && <CheckIcon className="absolute top-2 right-2 w-4 h-4 text-accent" />}
                                         <div className="flex items-center gap-2 font-semibold text-text-main"><SparklesIcon className="w-5 h-5 text-yellow-400" /> SM-I3</div>
                                         <p className="text-xs text-text-secondary mt-1">Más potente para tareas complejas.</p>
-                                        {!settings.isPremiumUnlocked && <span className="text-xs text-accent mt-1">Requiere Premium</span>}
                                     </button>
                                 </div>
                             </div>

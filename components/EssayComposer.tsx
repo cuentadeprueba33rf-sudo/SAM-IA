@@ -22,10 +22,8 @@ const EssayComposer: React.FC<EssayComposerProps> = ({ initialEssay, onClose, on
     const abortControllerRef = useRef<AbortController | null>(null);
     const workspaceRef = useRef<HTMLTextAreaElement>(null);
 
-    // FIX: Explicitly typed the accumulator `acc` as a number to resolve the TS error.
     const wordCount = useMemo(() => {
         return Object.values(essay.content).reduce((acc: number, sectionText) => {
-            // FIX: Added type check for sectionText before calling string method.
             if (typeof sectionText === 'string') {
                 return acc + (sectionText.split(/\s+/).filter(Boolean).length);
             }

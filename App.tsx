@@ -13,7 +13,6 @@ import MathConsole from './components/MathConsole';
 import WelcomeTutorial from './components/WelcomeTutorial';
 import FeatureNotification from './components/FeatureNotification';
 import InstallNotification from './components/InstallNotification';
-import PremiumNotification from './components/PremiumNotification';
 import VoiceErrorNotification from './components/VoiceErrorNotification';
 import ChatMessageItem from './components/ChatMessage'; // Assuming a ChatMessageItem component for rendering messages.
 import { streamGenerateContent, generateImage, startActiveConversation, detectMode } from './services/geminiService';
@@ -21,8 +20,8 @@ import {
     Chat, ChatMessage, MessageAuthor, Attachment, ModeID, Settings,
     ModelType, Artifact, ViewID, Essay, Insight
 } from './types';
-import { generateSystemInstruction, SPECIAL_USERS } from './constants';
-import { BookOpenIcon, MegaphoneIcon, ViewColumnsIcon, AcademicCapIcon, ChatBubbleLeftRightIcon, UsersIcon } from './components/icons';
+import { generateSystemInstruction } from './constants';
+import { BookOpenIcon, MegaphoneIcon, ViewColumnsIcon, AcademicCapIcon, ChatBubbleLeftRightIcon, UsersIcon, ExclamationTriangleIcon, XMarkIcon } from './components/icons';
 
 type VoiceModeState = 'inactive' | 'activeConversation';
 type ActiveConversationState = 'LISTENING' | 'RESPONDING';
@@ -33,8 +32,6 @@ const defaultSettings: Settings = {
     personality: 'default',
     profession: '',
     defaultModel: 'sm-i1',
-    isPremiumUnlocked: false,
-    accessCode: '',
     quickMode: false,
 };
 
@@ -49,6 +46,11 @@ const defaultEssay: Essay = {
     status: 'briefing',
 };
 
+interface UsageTracker {
+    date: string; // YYYY-MM-DD
+    count: number;
+    hasAttachment: boolean;
+}
 
 const DUMMY_INSIGHTS: Insight[] = [
     {
@@ -70,7 +72,7 @@ const DUMMY_INSIGHTS: Insight[] = [
         icon: UsersIcon,
         title: "Explorar Roles en un Debate",
         description: "Pide a SAM que adopte diferentes posturas sobre un tema para entender múltiples perspectivas.",
-        actions: [{ label: "Comenzar Debate", type: 'new_chat_with_prompt', data: { title: "Debate sobre IA", prompt: "Vamos a debatir sobre los pros y los contras de la inteligencia artificial en la sociedad. Toma la postura a favor." } }]
+        actions: [{ label: "Comenzar Debate", type: 'new_chat_with_prompt', data: { title: "Debate sobre IA", prompt: "Vamos a debating sobre los pros y los contras de la inteligencia artificial en la sociedad. Toma la postura a favor." } }]
     }
 ];
 
@@ -142,10 +144,11 @@ const App: React.FC = () => {
     const [previewImage, setPreviewImage] = useState<Attachment | null>(null);
     const [installPromptEvent, setInstallPromptEvent] = useState<any>(null);
     const [showInstallNotification, setShowInstallNotification] = useState(false);
-    const [showPremiumNotification, setShowPremiumNotification] = useState(false);
+    const [showLimitNotification, setShowLimitNotification] = useState(false);
     const [showVoiceErrorNotification, setShowVoiceErrorNotification] = useState(false);
     const [activeView, setActiveView] = useState<ViewID>('chat');
-    const [premiumTimeLeft, setPremiumTimeLeft] = useState<string>('');
+    
+    const [usage, setUsage] = useState<UsageTracker>({ date: new Date().toISOString().split('T')[0], count: 0, hasAttachment: false });
 
     const [voiceModeState, setVoiceModeState] = useState<VoiceModeState>('inactive');
     const [activeConversationState, setActiveConversationState] = useState<ActiveConversationState>('LISTENING');
@@ -166,17 +169,34 @@ const App: React.FC = () => {
             const savedSettings = localStorage.getItem('sam-settings');
             if (savedSettings) {
                 const parsedSettings = JSON.parse(savedSettings);
-                if (!parsedSettings.accessCode) {
-                    parsedSettings.accessCode = `${SPECIAL_USERS[Math.floor(Math.random() * SPECIAL_USERS.length)]}${Math.floor(1000 + Math.random() * 9000)}`;
-                }
                 setSettings({...defaultSettings, ...parsedSettings});
-            } else {
-                 const accessCode = `${SPECIAL_USERS[Math.floor(Math.random() * SPECIAL_USERS.length)]}${Math.floor(1000 + Math.random() * 9000)}`;
-                setSettings(prev => ({ ...prev, accessCode }));
             }
         } catch (error) {
             console.error("Failed to load/parse settings, resetting.", error);
             localStorage.removeItem('sam-settings');
+        }
+        
+        // Load Usage Tracker
+        try {
+            const savedUsage = localStorage.getItem('sam_ia_usage');
+            const today = new Date().toISOString().split('T')[0];
+            if(savedUsage) {
+                const parsedUsage: UsageTracker = JSON.parse(savedUsage);
+                if(parsedUsage.date === today) {
+                    setUsage(parsedUsage);
+                } else {
+                    // It's a new day, reset the tracker
+                    const newUsage = { date: today, count: 0, hasAttachment: false };
+                    setUsage(newUsage);
+                    localStorage.setItem('sam_ia_usage', JSON.stringify(newUsage));
+                }
+            } else {
+                 const newUsage = { date: today, count: 0, hasAttachment: false };
+                 localStorage.setItem('sam_ia_usage', JSON.stringify(newUsage));
+            }
+
+        } catch(error) {
+             console.error("Failed to load usage tracker.", error);
         }
 
         // Load chats from localStorage
@@ -212,59 +232,6 @@ const App: React.FC = () => {
         }
 
     }, []);
-    
-    // Effect for handling premium expiration and code cooldown
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setSettings(currentSettings => {
-                // Check for premium expiration
-                if (currentSettings.isPremiumUnlocked && currentSettings.premiumActivationTimestamp) {
-                    const expiryTime = currentSettings.premiumActivationTimestamp + 16 * 60 * 60 * 1000;
-                    const now = Date.now();
-
-                    if (now >= expiryTime) {
-                        // Premium has expired
-                        return {
-                            ...currentSettings,
-                            isPremiumUnlocked: false,
-                            premiumActivationTimestamp: undefined,
-                            defaultModel: 'sm-i1',
-                            accessCode: '', // Invalidate old code
-                            codeCooldownUntil: Date.now() + 5 * 60 * 1000,
-                        };
-                    } else {
-                        // Update countdown display
-                        const timeLeft = expiryTime - now;
-                        const hours = Math.floor(timeLeft / (1000 * 60 * 60));
-                        const minutes = Math.floor((timeLeft / 1000 / 60) % 60);
-                        const seconds = Math.floor((timeLeft / 1000) % 60);
-                        setPremiumTimeLeft(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
-                    }
-                } else {
-                    setPremiumTimeLeft('');
-                }
-
-                // Check for code cooldown finish
-                if (currentSettings.codeCooldownUntil) {
-                    const now = Date.now();
-                    if (now >= currentSettings.codeCooldownUntil) {
-                        // Cooldown finished, generate new code
-                        const newCode = `${SPECIAL_USERS[Math.floor(Math.random() * SPECIAL_USERS.length)]}${Math.floor(1000 + Math.random() * 9000)}`;
-                        return {
-                            ...currentSettings,
-                            accessCode: newCode,
-                            codeCooldownUntil: undefined,
-                        };
-                    }
-                }
-
-                return currentSettings; // No changes
-            });
-        }, 1000);
-
-        return () => clearInterval(timer);
-    }, []);
-
 
     useEffect(() => {
         localStorage.setItem('sam-settings', JSON.stringify(settings));
@@ -287,6 +254,10 @@ const App: React.FC = () => {
         localStorage.setItem('sam-pinned-artifacts', JSON.stringify(pinnedArtifacts));
     }, [pinnedArtifacts]);
 
+    useEffect(() => {
+        localStorage.setItem('sam_ia_usage', JSON.stringify(usage));
+    }, [usage]);
+
 
     useEffect(() => {
         const handler = (e: Event) => {
@@ -303,6 +274,16 @@ const App: React.FC = () => {
 
     const handleSendMessage = useCallback(async (prompt: string, messageAttachment?: Attachment) => {
         if (isLoading || (!prompt.trim() && !messageAttachment)) return;
+        
+        const modelToUse = settings.quickMode ? 'sm-i1' : settings.defaultModel;
+
+        if(modelToUse === 'sm-i3') {
+            const limit = usage.hasAttachment ? 15 : 20;
+            if(usage.count >= limit) {
+                setShowLimitNotification(true);
+                return;
+            }
+        }
 
         let tempChatId = currentChatId;
         if (!tempChatId) {
@@ -315,6 +296,10 @@ const App: React.FC = () => {
         const userMessage: ChatMessage = { id: uuidv4(), author: MessageAuthor.USER, text: prompt, timestamp: Date.now(), attachment: messageAttachment ?? undefined };
         setChats(prev => prev.map(c => c.id === tempChatId ? { ...c, messages: [...c.messages, userMessage] } : c));
         setAttachment(null);
+        
+        if (modelToUse === 'sm-i3') {
+            setUsage(prev => ({ ...prev, count: prev.count + 1, hasAttachment: prev.hasAttachment || !!messageAttachment }));
+        }
 
         let effectiveMode = currentMode;
         let modeSwitchReasoning: string | null = null;
@@ -372,7 +357,6 @@ const App: React.FC = () => {
 
         const history = chats.find(c => c.id === tempChatId)?.messages.slice(-10) || [];
         const systemInstruction = generateSystemInstruction(effectiveMode, settings);
-        const modelToUse = settings.quickMode ? 'sm-i1' : settings.defaultModel;
 
         streamGenerateContent({
             prompt,
@@ -422,9 +406,12 @@ const App: React.FC = () => {
             onError: (error) => {
                 updateSamMessage({ text: `Lo siento, hubo un error: ${error.message}`, generatingArtifact: false, isSearching: false });
                 setIsLoading(false);
+                 if (modelToUse === 'sm-i3') {
+                    setUsage(prev => ({ ...prev, count: Math.max(0, prev.count - 1) })); // Revert count on error
+                }
             }
         });
-    }, [currentChatId, chats, isLoading, currentMode, settings]);
+    }, [currentChatId, chats, isLoading, currentMode, settings, usage]);
 
     const handleNewChat = useCallback(() => {
         setActiveView('chat');
@@ -443,9 +430,6 @@ const App: React.FC = () => {
     
      const handleSaveSettings = (newSettings: Settings) => {
         setSettings(newSettings);
-        if (newSettings.isPremiumUnlocked && !settings.isPremiumUnlocked) {
-            setShowPremiumNotification(false);
-        }
     };
     
     const handleModeAction = (mode: ModeID, accept?: string, capture?: string) => {
@@ -475,10 +459,6 @@ const App: React.FC = () => {
             setCameraFacingMode(capture as 'user' | 'environment' || 'user');
             setIsCameraOpen(true);
         } else if (mode === 'voice') {
-            if(!settings.isPremiumUnlocked) {
-                setShowPremiumNotification(true);
-                return;
-            }
             if (voiceModeState !== 'inactive') return;
             
             setShowVoiceErrorNotification(true);
@@ -573,7 +553,8 @@ const App: React.FC = () => {
             'sam-current-chat-id',
             'sam-pinned-artifacts',
             'sam_ia_guest_name',
-            'sam-install-notif-dismissed'
+            'sam-install-notif-dismissed',
+            'sam_ia_usage'
         ];
         
         keysToRemove.forEach(key => localStorage.removeItem(key));
@@ -649,14 +630,15 @@ const App: React.FC = () => {
                 )}
 
                 <div className="p-4 pt-0 w-full max-w-3xl mx-auto flex flex-col gap-2">
-                    {showPremiumNotification && !settings.isPremiumUnlocked && (
-                         <PremiumNotification 
-                            onDismiss={() => setShowPremiumNotification(false)}
-                            onGoToSettings={() => {
-                                setShowPremiumNotification(false);
-                                setIsSettingsModalOpen(true);
-                            }}
-                         />
+                    {showLimitNotification && (
+                        <div className="bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 p-3 rounded-xl text-sm flex items-start gap-3 border border-yellow-500/20">
+                            <ExclamationTriangleIcon className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                            <div className="flex-1">
+                                <p className="font-semibold">Límite de SM-I3 alcanzado</p>
+                                <p>Has alcanzado tu límite diario para el modelo SM-I3. El límite se restablecerá mañana.</p>
+                            </div>
+                            <button onClick={() => setShowLimitNotification(false)} className="p-1 -m-1"><XMarkIcon className="w-5 h-5" /></button>
+                        </div>
                     )}
                     {currentMode === 'math' && currentChat?.messages.length && (
                         <MathConsole
@@ -694,7 +676,6 @@ const App: React.FC = () => {
                     onExportHistory={() => { /* export logic */ }}
                     installPromptEvent={installPromptEvent}
                     onInstallApp={() => installPromptEvent?.prompt()}
-                    premiumTimeLeft={premiumTimeLeft}
                     onResetApp={handleResetApp}
                 />
             )}

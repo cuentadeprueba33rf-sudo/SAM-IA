@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import PlusMenu from './PlusMenu';
+import PlusMenu from '../PlusMenu';
 import FilePreview from './FilePreview';
 import type { Attachment, ModeID, Settings } from '../types';
 import { MODES } from '../constants';
@@ -309,17 +309,20 @@ const ChatInput: React.FC<ChatInputProps> = ({
                                 <div className="absolute bottom-full mb-2 bg-surface-secondary p-1 rounded-lg shadow-xl border border-border-subtle w-48 animate-fade-in-up-sm">
                                     <button
                                         onClick={() => { onSaveSettings({...settings, defaultModel: 'sm-i1'}); setIsModelMenuOpen(false); }}
-                                        className="w-full text-left px-3 py-1.5 text-sm rounded-md hover:bg-border-subtle"
+                                        className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-border-subtle"
                                     >
                                         SM-I1
+                                        <p className="text-xs text-text-secondary font-normal">Rápido y eficiente</p>
                                     </button>
                                      <button
                                         onClick={() => { onSaveSettings({...settings, defaultModel: 'sm-i3'}); setIsModelMenuOpen(false); }}
-                                        disabled={!settings.isPremiumUnlocked}
-                                        className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-sm rounded-md hover:bg-border-subtle disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-border-subtle"
                                     >
-                                        <SparklesIcon className="w-4 h-4 text-yellow-400"/>
-                                        <span>SM-I3 (Premium)</span>
+                                        <div className="flex items-center gap-2">
+                                            <SparklesIcon className="w-4 h-4 text-yellow-400"/>
+                                            <span>SM-I3</span>
+                                        </div>
+                                        <p className="text-xs text-text-secondary font-normal pl-6">Límite diario</p>
                                     </button>
                                 </div>
                             )}
