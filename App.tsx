@@ -565,6 +565,23 @@ const App: React.FC = () => {
             setTimeout(() => handleSendMessage(prompt), 0);
         }
     };
+    
+    const handleResetApp = useCallback(() => {
+        const keysToRemove = [
+            'sam-settings',
+            'sam-chats',
+            'sam-current-chat-id',
+            'sam-pinned-artifacts',
+            'sam_ia_guest_name',
+            'sam-install-notif-dismissed'
+        ];
+        
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+        
+        // Force reload to start fresh
+        window.location.reload();
+    }, []);
+
 
     // FIX: Replaced .at(-1) with .slice(-1)[0] for compatibility with older TS/JS versions.
     const lastSamMessage = currentChat?.messages.filter(m => m.author === MessageAuthor.SAM).slice(-1)[0];
@@ -678,6 +695,7 @@ const App: React.FC = () => {
                     installPromptEvent={installPromptEvent}
                     onInstallApp={() => installPromptEvent?.prompt()}
                     premiumTimeLeft={premiumTimeLeft}
+                    onResetApp={handleResetApp}
                 />
             )}
             {isUpdatesModalOpen && <UpdatesModal isOpen={isUpdatesModalOpen} onClose={() => setIsUpdatesModalOpen(false)} />}

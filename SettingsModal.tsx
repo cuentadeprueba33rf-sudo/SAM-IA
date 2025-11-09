@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Settings } from './types';
-import { XMarkIcon, SunIcon, ChatBubbleLeftRightIcon, UsersIcon, TrashIcon, CheckIcon, SparklesIcon, ArrowDownTrayIcon, ShieldCheckIcon, DocumentDuplicateIcon, BoltIcon, InformationCircleIcon } from './components/icons';
+import { XMarkIcon, SunIcon, ChatBubbleLeftRightIcon, UsersIcon, TrashIcon, CheckIcon, SparklesIcon, ArrowDownTrayIcon, ShieldCheckIcon, DocumentDuplicateIcon, BoltIcon, InformationCircleIcon, ExclamationTriangleIcon } from './components/icons';
 import { PERSONALITIES } from './constants';
 
 interface SettingsModalProps {
@@ -13,6 +13,7 @@ interface SettingsModalProps {
     onInstallApp: () => void;
     installPromptEvent: any;
     premiumTimeLeft: string;
+    onResetApp: () => void;
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ 
@@ -25,6 +26,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     onInstallApp,
     installPromptEvent,
     premiumTimeLeft,
+    onResetApp,
 }) => {
     const [activeSection, setActiveSection] = useState('model_access');
     const [codeInput, setCodeInput] = useState("");
@@ -81,6 +83,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             setTimeout(() => setCopied(false), 2000);
         });
     };
+    
+    const handleReset = () => {
+        if (window.confirm("¿Estás seguro de que quieres restablecer SAM? Se borrarán todos tus chats, configuraciones y tu nombre. La aplicación se recargará.")) {
+            onResetApp();
+        }
+    };
+
 
     const sections = {
         model_access: { title: 'Modelo y Acceso', icon: SparklesIcon },
@@ -319,8 +328,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                 <TrashIcon className="w-5 h-5" />
                                 <span>Borrar historial de chats</span>
                             </button>
+                             <button
+                                onClick={handleReset}
+                                className="w-full flex items-center justify-center gap-2 text-left text-sm font-semibold text-danger bg-danger/10 hover:bg-danger/20 px-4 py-2 rounded-lg transition-colors"
+                            >
+                                <ExclamationTriangleIcon className="w-5 h-5" />
+                                <span>Restablecer SAM (Eliminar todo)</span>
+                            </button>
                         </div>
-                         <p className="text-xs text-text-secondary mt-2">La eliminación de chats es permanente y no se puede deshacer.</p>
+                         <p className="text-xs text-text-secondary mt-2">La eliminación de chats es permanente. El restablecimiento borrará *todos* los datos de la aplicación del navegador.</p>
                     </div>
                 );
             default:
