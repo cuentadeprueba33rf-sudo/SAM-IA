@@ -107,3 +107,9 @@ export interface Insight {
         data: ViewID | { title: string; prompt: string };
     }[];
 }
+
+export interface UsageTracker {
+    date: string; // YYYY-MM-DD
+    count: number;
+    hasAttachment: boolean;
+}

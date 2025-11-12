@@ -19,7 +19,7 @@ import ChatMessageItem from './components/ChatMessage'; // Assuming a ChatMessag
 import { streamGenerateContent, generateImage, startActiveConversation, detectMode } from './services/geminiService';
 import {
     Chat, ChatMessage, MessageAuthor, Attachment, ModeID, Settings,
-    ModelType, Artifact, ViewID, Essay, Insight
+    ModelType, Artifact, ViewID, Essay, Insight, UsageTracker
 } from './types';
 import { generateSystemInstruction } from './constants';
 import { BookOpenIcon, MegaphoneIcon, ViewColumnsIcon, AcademicCapIcon, ChatBubbleLeftRightIcon, UsersIcon, ExclamationTriangleIcon, XMarkIcon } from './components/icons';
@@ -46,12 +46,6 @@ const defaultEssay: Essay = {
     references: [],
     status: 'briefing',
 };
-
-interface UsageTracker {
-    date: string; // YYYY-MM-DD
-    count: number;
-    hasAttachment: boolean;
-}
 
 const DUMMY_INSIGHTS: Insight[] = [
     {
@@ -683,6 +677,7 @@ const App: React.FC = () => {
                         activeConversationState={activeConversationState}
                         liveTranscription={liveTranscription}
                         onEndVoiceSession={handleEndVoiceSession}
+                        usage={usage}
                     />
                 </div>
             </main>

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import PlusMenu from '../PlusMenu';
 import FilePreview from './FilePreview';
-import type { Attachment, ModeID, Settings } from '../types';
+import type { Attachment, ModeID, Settings, UsageTracker } from '../types';
 import { MODES } from '../constants';
 import { ArrowUpIcon, XMarkIcon, ChevronDownIcon, SparklesIcon, PlusIcon, AdjustmentsHorizontalIcon, PhotoIcon, Bars3Icon, MicrophoneIcon, BoltIcon } from './icons';
 
@@ -24,6 +24,7 @@ interface ChatInputProps {
     activeConversationState: ActiveConversationState;
     liveTranscription: string;
     onEndVoiceSession: () => void;
+    usage: UsageTracker;
 }
 
 const ActiveConversationUI: React.FC<{
@@ -167,6 +168,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
     activeConversationState,
     liveTranscription,
     onEndVoiceSession,
+    usage,
 }) => {
     const [text, setText] = useState('');
     const [isPlusMenuOpen, setIsPlusMenuOpen] = useState(false);
@@ -175,6 +177,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
     const modelMenuRef = useRef<HTMLDivElement>(null);
 
     const currentModeData = MODES.find(m => m.id === currentMode);
+
+    const limit = usage.hasAttachment ? 15 : 20;
+    const usagePercentage = Math.round((usage.count / limit) * 100);
+    const isNearingLimit = usagePercentage >= 80 && usagePercentage < 100;
+    const isLimitReached = usagePercentage >= 100;
 
     const handleSend = () => {
         if ((text.trim() || attachment) && !disabled) {
@@ -306,7 +313,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                                 <ChevronDownIcon className="w-4 h-4" />
                             </button>
                             {isModelMenuOpen && (
-                                <div className="absolute bottom-full mb-2 bg-surface-secondary p-1 rounded-lg shadow-xl border border-border-subtle w-48 animate-fade-in-up-sm">
+                                <div className="absolute bottom-full mb-2 bg-surface-secondary p-1 rounded-lg shadow-xl border border-border-subtle w-56 animate-fade-in-up-sm">
                                     <button
                                         onClick={() => { onSaveSettings({...settings, defaultModel: 'sm-i1'}); setIsModelMenuOpen(false); }}
                                         className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-border-subtle"
@@ -322,11 +329,29 @@ const ChatInput: React.FC<ChatInputProps> = ({
                                             <SparklesIcon className="w-4 h-4 text-yellow-400"/>
                                             <span>SM-I3</span>
                                         </div>
-                                        <p className="text-xs text-text-secondary font-normal pl-6">Límite diario</p>
+                                        <p className="text-xs text-text-secondary font-normal pl-6">Más potente para tareas complejas.</p>
+                                        <div className="pl-6 mt-2">
+                                            <div className="flex justify-between items-center">
+                                                <p className="text-xs text-text-secondary font-normal">Límite diario</p>
+                                                <p className={`text-xs font-semibold ${isLimitReached ? 'text-danger' : isNearingLimit ? 'text-yellow-500' : 'text-text-secondary'}`}>{usage.count} / {limit}</p>
+                                            </div>
+                                            <div className="w-full bg-border-subtle rounded-full h-1.5 mt-1">
+                                                <div className={`h-1.5 rounded-full ${isLimitReached ? 'bg-danger' : isNearingLimit ? 'bg-yellow-500' : 'bg-accent'}`} style={{ width: `${Math.min(usagePercentage, 100)}%` }}></div>
+                                            </div>
+                                        </div>
                                     </button>
                                 </div>
                             )}
                         </div>
+                        {settings.defaultModel === 'sm-i3' && !settings.quickMode && (
+                             <div 
+                                className={`flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${isLimitReached ? 'bg-danger/10 text-danger' : isNearingLimit ? 'bg-yellow-500/10 text-yellow-500' : 'bg-surface-secondary text-text-secondary'}`}
+                                title={`Has usado ${usage.count} de ${limit} solicitudes para SM-I3 hoy.`}
+                            >
+                                <div className={`w-1.5 h-1.5 rounded-full ${isLimitReached ? 'bg-danger' : isNearingLimit ? 'bg-yellow-500' : 'bg-accent'}`}></div>
+                                <span>{usage.count}/{limit}</span>
+                            </div>
+                        )}
                         <button 
                             onClick={() => onSaveSettings({ ...settings, quickMode: !settings.quickMode })}
                             className={`p-1 rounded-full transition-colors ${settings.quickMode ? 'text-yellow-400' : 'text-text-secondary hover:text-yellow-400'}`}
