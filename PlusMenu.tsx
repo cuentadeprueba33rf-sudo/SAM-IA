@@ -1,5 +1,5 @@
 import React from 'react';
-import { MODES } from '../constants';
+import { MODES } from './constants';
 import type { ModeID, Settings } from '../types';
 
 interface PlusMenuProps {
