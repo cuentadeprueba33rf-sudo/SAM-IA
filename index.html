@@ -171,20 +171,25 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient( to right, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0) 100% );
-            transform: translateX(-150%) skewX(-30deg);
-            animation: screen-shimmer 1.5s ease-in-out 1s forwards;
+            background: linear-gradient(
+                110deg,
+                rgba(255, 255, 255, 0) 40%,
+                rgba(255, 255, 255, 0.15) 50%,
+                rgba(255, 255, 255, 0) 60%
+            );
+            transform: translateX(-100%);
+            animation: screen-shimmer 1.8s ease-in-out 0.8s forwards;
             pointer-events: none;
         }
         @keyframes screen-shimmer {
             100% {
-                transform: translateX(150%) skewX(-30deg);
+                transform: translateX(100%);
             }
         }
     </style>
 
     <div id="loading-screen" class="fixed inset-0 bg-black flex flex-col items-center justify-center z-50 overflow-hidden">
-        <div class="absolute inset-0 bg-gradient-to-r from-purple-900/80 via-black to-purple-800/70 opacity-80 animate-gradient-x"></div>
+        <div class="absolute inset-0 bg-gradient-to-r from-red-900/80 via-black to-red-800/70 opacity-80 animate-gradient-x"></div>
         <div id="screen-shimmer-overlay"></div>
 
         <div class="relative text-center text-white">
@@ -210,7 +215,7 @@
                 <h2 style="text-align:center; color:white; margin-bottom:.5rem;">Bienvenido a SAM IA</h2>
                 <p style="text-align:center; color:rgba(255,255,255,0.7); margin-bottom:1.5rem;">Por favor, dinos tu nombre para comenzar.</p>
                 <input type="text" id="name-input" placeholder="Escribe tu nombre aquí" style="width:100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid rgba(255,255,255,0.2); background-color: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem; text-align: center; font-size: 1rem; outline: none;">
-                <button id="continue-button" style="width:100%; padding: 0.75rem; border-radius: 0.75rem; border: none; background-color: var(--color-accent); color: white; font-weight: 600; cursor: pointer; transition: opacity .2s;">Continuar</button>
+                <button id="continue-button" style="width:100%; padding: 0.75rem; border-radius: 0.75rem; border: none; background-color: #E50914; color: white; font-weight: 600; cursor: pointer; transition: opacity .2s;">Continuar</button>
             </div>
         </div>
 
@@ -224,7 +229,7 @@
         // Immediately set theme from localStorage to prevent flash
         (function() {
             try {
-                const settings = JSON.parse(localStorage.getItem('sam_ia_settings'));
+                const settings = JSON.parse(localStorage.getItem('sam-settings'));
                 if (settings && settings.theme === 'dark') {
                     document.documentElement.classList.add('dark');
                 } else {
@@ -316,7 +321,70 @@
         })();
     </script>
     <!-- FIN: BLOQUE DE PANTALLA DE CARGA SAM IA (MANTENER) -->
+    <style>
+      .stranger-things-theme {
+        --st-red: #E50914;
+        --st-glow-border: 0 0 4px var(--st-red), 0 0 8px var(--st-red), 0 0 12px #ff0000;
+        --st-glow-icon: drop-shadow(0 0 2px var(--st-red)) drop-shadow(0 0 4px var(--st-red));
+      }
 
+      .stranger-things-theme .st-border {
+        border: 2px solid var(--st-red) !important;
+        box-shadow: var(--st-glow-border);
+        animation: neon-flicker-border 2s infinite alternate ease-in-out;
+        transition: all 0.5s ease-in-out;
+      }
+      
+      .stranger-things-theme .st-icon {
+        color: var(--st-red) !important;
+        stroke: var(--st-red) !important;
+        filter: var(--st-glow-icon);
+        animation: neon-flicker-icon 2s infinite alternate ease-in-out;
+        transition: all 0.5s ease-in-out;
+      }
+
+      .stranger-things-theme .st-mic-button {
+          background-color: transparent !important;
+          border: 2px solid var(--st-red) !important;
+          box-shadow: var(--st-glow-border);
+          animation: neon-flicker-border 2s infinite alternate ease-in-out;
+      }
+
+      .stranger-things-theme .st-mic-button .st-icon {
+          animation: none;
+          filter: var(--st-glow-icon);
+      }
+      
+      .stranger-things-theme #chat-textarea::placeholder {
+          color: var(--st-red);
+          text-shadow: 0 0 5px var(--st-red);
+          opacity: 0.8;
+      }
+
+      @keyframes neon-flicker-border {
+          0%, 18%, 22%, 25%, 53%, 57%, 100% {
+            box-shadow: 0 0 4px var(--st-red), 0 0 8px var(--st-red), 0 0 12px #ff0000;
+            border-color: #ff5555 !important;
+          }
+          20%, 24%, 55% {
+            box-shadow: 0 0 4px var(--st-red);
+            border-color: var(--st-red) !important;
+          }
+      }
+
+      @keyframes neon-flicker-icon {
+          0%, 18%, 22%, 25%, 53%, 57%, 100% {
+            filter: drop-shadow(0 0 2px #ff5555) drop-shadow(0 0 4px #ff5555);
+            color: #ff5555 !important;
+            stroke: #ff5555 !important;
+          }
+          20%, 24%, 55% {
+            filter: drop-shadow(0 0 2px var(--st-red));
+            color: var(--st-red) !important;
+            stroke: var(--st-red) !important;
+          }
+      }
+    </style>
     <div id="root"></div>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIOOTenSvSAPnRdGO8" crossorigin="anonymous"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>

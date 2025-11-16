@@ -25,6 +25,7 @@ interface ChatInputProps {
     liveTranscription: string;
     onEndVoiceSession: () => void;
     usage: UsageTracker;
+    isThemeActive: boolean;
 }
 
 const ActiveConversationUI: React.FC<{
@@ -44,7 +45,7 @@ const ActiveConversationUI: React.FC<{
     }
 
     return (
-        <div className="bg-surface-primary p-3 rounded-2xl border border-border-subtle shadow-lg w-full transition-all flex flex-col items-center gap-4">
+        <div className="bg-surface-primary p-3 rounded-2xl border border-border-subtle shadow-lg w-full transition-all flex flex-col items-center gap-4 st-border">
             <div className="flex items-center gap-2 text-text-secondary">
                 <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
                 <span>{statusText}</span>
@@ -86,28 +87,28 @@ const ImageGenInput: React.FC<{
     };
 
     return (
-        <div className="bg-surface-primary dark:bg-[#1E1F20] p-3 rounded-2xl border border-border-subtle shadow-lg w-full transition-all relative">
+        <div className="bg-surface-primary dark:bg-[#1E1F20] p-3 rounded-2xl border border-border-subtle shadow-lg w-full transition-all relative st-border">
             <button
                 onClick={onResetMode}
                 className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-surface-secondary transition-colors z-10"
                 aria-label="Salir del modo imagen"
             >
-                <XMarkIcon className="w-5 h-5 text-text-secondary" />
+                <XMarkIcon className="w-5 h-5 text-text-secondary st-icon" />
             </button>
             <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
                     <button className="flex items-center gap-2 font-semibold text-text-main p-2 rounded-lg bg-surface-secondary">
                         <span>Imágenes</span>
-                        <ChevronDownIcon className="w-4 h-4 text-text-secondary"/>
+                        <ChevronDownIcon className="w-4 h-4 text-text-secondary st-icon"/>
                     </button>
                 </div>
                 <div className="flex items-center gap-3 text-text-secondary mr-8">
-                    <PhotoIcon className="w-5 h-5"/>
+                    <PhotoIcon className="w-5 h-5 st-icon"/>
                     <span className="text-sm font-medium">Flash Image</span>
                     <div className="w-px h-4 bg-border-subtle"></div>
                     <span className="text-sm font-medium">x1</span>
                     <button className="p-1 rounded-full hover:bg-surface-secondary">
-                        <AdjustmentsHorizontalIcon className="w-5 h-5"/>
+                        <AdjustmentsHorizontalIcon className="w-5 h-5 st-icon"/>
                     </button>
                 </div>
             </div>
@@ -136,17 +137,17 @@ const ImageGenInput: React.FC<{
                             onClick={() => onModeAction('photo_upload', 'image/*')}
                             className="w-16 h-16 bg-surface-secondary rounded-lg flex items-center justify-center text-text-secondary hover:bg-border-subtle transition-colors"
                         >
-                            <PlusIcon className="w-8 h-8"/>
+                            <PlusIcon className="w-8 h-8 st-icon"/>
                         </button>
                     )}
                 </div>
                 <button
                     onClick={handleSendClick}
                     disabled={disabled || (!prompt.trim() && !attachment)}
-                    className="w-12 h-12 flex items-center justify-center rounded-full transition-colors bg-text-main text-bg-main hover:opacity-90 disabled:bg-surface-secondary disabled:text-text-secondary self-end"
+                    className="w-12 h-12 flex items-center justify-center rounded-full transition-colors bg-text-main text-bg-main hover:opacity-90 disabled:bg-surface-secondary disabled:text-text-secondary self-end st-mic-button"
                     aria-label="Generate image"
                 >
-                    <ArrowUpIcon className="w-6 h-6" />
+                    <ArrowUpIcon className="w-6 h-6 st-icon" />
                 </button>
             </div>
         </div>
@@ -169,10 +170,12 @@ const ChatInput: React.FC<ChatInputProps> = ({
     liveTranscription,
     onEndVoiceSession,
     usage,
+    isThemeActive,
 }) => {
     const [text, setText] = useState('');
     const [isPlusMenuOpen, setIsPlusMenuOpen] = useState(false);
     const [isModelMenuOpen, setIsModelMenuOpen] = useState(false);
+    const [placeholder, setPlaceholder] = useState('Pregunta a SAM');
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const modelMenuRef = useRef<HTMLDivElement>(null);
 
@@ -205,6 +208,50 @@ const ChatInput: React.FC<ChatInputProps> = ({
         }
     }, []);
     
+    useEffect(() => {
+        if (!isThemeActive) {
+            setPlaceholder('Pregunta a SAM');
+            return;
+        }
+
+        let isMounted = true;
+        let timeoutId: number;
+        const placeholderText = "stranger things 5";
+        let currentIndex = 0;
+        let isDeleting = false;
+        
+        const animatePlaceholder = () => {
+            if (!isMounted) return;
+
+            const currentFullText = isDeleting
+                ? placeholderText.substring(0, currentIndex - 1)
+                : placeholderText.substring(0, currentIndex + 1);
+            
+            setPlaceholder(currentFullText);
+
+            currentIndex = isDeleting ? currentIndex - 1 : currentIndex + 1;
+
+            if (!isDeleting && currentIndex === placeholderText.length + 1) {
+                isDeleting = true;
+                timeoutId = window.setTimeout(animatePlaceholder, 2000);
+            } else if (isDeleting && currentIndex === 0) {
+                isDeleting = false;
+                timeoutId = window.setTimeout(animatePlaceholder, 500);
+            } else {
+                const delay = isDeleting ? 100 : 150;
+                timeoutId = window.setTimeout(animatePlaceholder, delay);
+            }
+        };
+        
+        animatePlaceholder();
+        
+        return () => {
+            isMounted = false;
+            clearTimeout(timeoutId);
+        };
+
+    }, [isThemeActive]);
+
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (modelMenuRef.current && !modelMenuRef.current.contains(event.target as Node)) {
@@ -261,14 +308,14 @@ const ChatInput: React.FC<ChatInputProps> = ({
                 </div>
             )}
             
-            <div className="flex items-end bg-surface-primary rounded-3xl p-2 gap-2 shadow-lg border border-border-subtle">
+            <div className="flex items-end bg-surface-primary rounded-3xl p-2 gap-2 shadow-lg border border-border-subtle st-border">
                 <div className="flex items-center self-stretch">
                     <button 
                         onClick={onToggleSidebar}
                         className="flex-shrink-0 p-2 text-text-secondary hover:text-text-main transition-colors rounded-full focus:outline-none focus:ring-2 focus:ring-accent"
                         aria-label="Toggle menu"
                     >
-                        <Bars3Icon className="w-6 h-6" />
+                        <Bars3Icon className="w-6 h-6 st-icon" />
                     </button>
                     <button 
                         onClick={() => setIsPlusMenuOpen(prev => !prev)}
@@ -276,7 +323,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                         aria-label="More options"
                         disabled={disabled}
                     >
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                        <svg className="w-6 h-6 st-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                     </button>
                     
                     {currentMode !== 'normal' && currentModeData && (
@@ -285,14 +332,14 @@ const ChatInput: React.FC<ChatInputProps> = ({
                             className="relative flex-shrink-0 self-center animate-fade-in mx-1"
                         >
                             <div className="p-2 bg-accent/10 rounded-full flex items-center justify-center">
-                                <currentModeData.icon className="w-5 h-5 text-accent" />
+                                <currentModeData.icon className="w-5 h-5 text-accent st-icon" />
                             </div>
                             <button 
                                 onClick={onResetMode} 
                                 className="absolute -top-1 -right-1 bg-surface-primary rounded-full p-0.5 shadow hover:scale-110 transition-transform border border-border-subtle" 
                                 aria-label={`Desactivar modo ${currentModeData.title}`}
                             >
-                                <XMarkIcon className="w-3.5 h-3.5 text-text-secondary" />
+                                <XMarkIcon className="w-3.5 h-3.5 text-text-secondary st-icon" />
                             </button>
                         </div>
                     )}
@@ -366,7 +413,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                         value={text}
                         onChange={(e) => setText(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder="Pregunta a SAM"
+                        placeholder={placeholder}
                         className="w-full bg-transparent resize-none outline-none text-text-main max-h-48 py-2 px-2"
                         rows={1}
                         disabled={disabled}
@@ -377,19 +424,19 @@ const ChatInput: React.FC<ChatInputProps> = ({
                     <button 
                         onClick={handleSend}
                         disabled={disabled}
-                        className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors bg-text-main text-bg-main hover:opacity-90 disabled:bg-surface-secondary disabled:text-text-secondary self-end"
+                        className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors bg-text-main text-bg-main hover:opacity-90 disabled:bg-surface-secondary disabled:text-text-secondary self-end st-mic-button"
                         aria-label="Send message"
                     >
-                        <ArrowUpIcon className="w-6 h-6" />
+                        <ArrowUpIcon className="w-6 h-6 st-icon" />
                     </button>
                 ) : (
                     <button
                         onClick={() => onModeAction('voice')}
                         disabled={disabled}
-                        className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors bg-surface-secondary text-text-main hover:bg-border-subtle disabled:opacity-50 self-end"
+                        className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors bg-surface-secondary text-text-main hover:bg-border-subtle disabled:opacity-50 self-end st-mic-button"
                         aria-label="Use voice"
                     >
-                        <MicrophoneIcon className="w-6 h-6"/>
+                        <MicrophoneIcon className="w-6 h-6 st-icon"/>
                     </button>
                 )}
             </div>

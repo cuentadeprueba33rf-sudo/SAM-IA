@@ -22,10 +22,10 @@ const VerificationPanel: React.FC<VerificationPanelProps> = ({ isOpen, onToggle,
                 className="flex items-center justify-between p-2 rounded-lg hover:bg-surface-secondary text-left w-full"
             >
                 <div className="flex items-center gap-2">
-                    <Icon className="w-5 h-5 text-text-secondary" />
+                    <Icon className="w-5 h-5 text-text-secondary st-sidebar-icon" />
                     <span className="font-semibold text-sm text-text-main">{title}</span>
                 </div>
-                <ChevronDownIcon className={`w-5 h-5 text-text-secondary transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                <ChevronDownIcon className={`w-5 h-5 text-text-secondary transition-transform ${isOpen ? 'rotate-180' : ''} st-sidebar-icon`} />
             </button>
             {isOpen && (
                 <div className="pl-2 pt-2 space-y-2 animate-fade-in-down">

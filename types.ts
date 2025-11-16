@@ -70,6 +70,7 @@ export interface Settings {
     profession: string;
     defaultModel: ModelType;
     quickMode: boolean;
+    stThemeEnabled: boolean;
 }
 
 export interface EssaySection {

@@ -100,24 +100,24 @@ const Sidebar: React.FC<SidebarProps> = ({
             <aside className={`absolute top-0 left-0 h-full w-80 bg-surface-primary text-text-main flex flex-col transition-transform duration-300 ease-in-out z-40 md:relative md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                 <div className="p-4 space-y-4 flex-shrink-0">
                     <div className="relative">
-                        <MagnifyingGlassIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+                        <MagnifyingGlassIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary st-sidebar-icon" />
                         <input type="text" placeholder="Buscar chats" className="w-full bg-surface-secondary border border-border-subtle rounded-full pl-10 pr-4 py-2 focus:ring-accent focus:border-accent outline-none" />
                     </div>
                     <div className="flex items-center justify-between">
                          <button onClick={onNewChat} className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-secondary text-left w-full">
-                            <PencilSquareIcon className="w-6 h-6 text-text-secondary" />
+                            <PencilSquareIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
                             <span>Nuevo chat</span>
                         </button>
                         <button onClick={onClose} className="p-2 rounded-lg hover:bg-surface-secondary">
-                            <WindowIcon className="w-6 h-6 text-text-secondary" />
+                            <WindowIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
                         </button>
                     </div>
                     <button onClick={() => onSelectView('canvas')} className={`flex items-center gap-3 p-2 rounded-lg text-left w-full transition-colors ${activeView === 'canvas' ? 'bg-accent/10 text-accent' : 'hover:bg-surface-secondary'}`}>
-                        <ViewColumnsIcon className="w-6 h-6 text-text-secondary" />
+                        <ViewColumnsIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
                         <span>Canvas</span>
                     </button>
                      <button onClick={() => onSelectView('insights')} className={`flex items-center gap-3 p-2 rounded-lg text-left w-full transition-colors ${activeView === 'insights' ? 'bg-accent/10 text-accent' : 'hover:bg-surface-secondary'}`}>
-                        <MegaphoneIcon className="w-6 h-6 text-text-secondary" />
+                        <MegaphoneIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
                         <span>Insights</span>
                     </button>
                 </div>
@@ -164,7 +164,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                     onClick={(e) => onShowContextMenu(chat.id, { x: e.clientX, y: e.clientY })}
                                     className={`absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded-full text-text-secondary hover:bg-surface-primary ${activeView === 'chat' && currentChatId === chat.id ? 'text-white' : 'group-hover:opacity-100 opacity-0'}`}
                                 >
-                                    <EllipsisVerticalIcon className="w-5 h-5" />
+                                    <EllipsisVerticalIcon className="w-5 h-5 st-sidebar-icon" />
                                 </button>
                             </li>
                         ))}
@@ -179,11 +179,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                          <span className="font-semibold text-text-main">{userName}</span>
                      </div>
                      <button onClick={onOpenSettings} className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-secondary text-left w-full">
-                        <Cog6ToothIcon className="w-6 h-6 text-text-secondary" />
+                        <Cog6ToothIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
                         <span>Configuración</span>
                     </button>
                      <button onClick={onShowUpdates} className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-secondary text-left w-full">
-                        <SparklesIcon className="w-6 h-6 text-text-secondary" />
+                        <SparklesIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
                         <span>Actualizaciones</span>
                     </button>
                      <div className="px-2 pt-2 text-center text-xs text-text-secondary">

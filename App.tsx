@@ -11,7 +11,7 @@ import CameraCaptureModal from './components/CameraCaptureModal';
 import ImagePreviewModal from './components/ImagePreviewModal';
 import MathConsole from './components/MathConsole';
 import WelcomeTutorial from './components/WelcomeTutorial';
-import FeatureNotification from './components/FeatureNotification';
+import StThemeNotification from './components/StThemeNotification';
 import InstallNotification from './components/InstallNotification';
 import VoiceErrorNotification from './components/VoiceErrorNotification';
 import ForcedResetModal from './components/ForcedResetModal'; // Importar el nuevo modal
@@ -34,6 +34,7 @@ const defaultSettings: Settings = {
     profession: '',
     defaultModel: 'sm-i1',
     quickMode: false,
+    stThemeEnabled: true,
 };
 
 const defaultEssay: Essay = {
@@ -143,6 +144,9 @@ const App: React.FC = () => {
     const [showVoiceErrorNotification, setShowVoiceErrorNotification] = useState(false);
     const [activeView, setActiveView] = useState<ViewID>('chat');
     const [showForcedResetModal, setShowForcedResetModal] = useState(false);
+    const [isThemeActive, setIsThemeActive] = useState(false); // Tracks if the initial 10-second wait is over
+    const [showStThemeNotification, setShowStThemeNotification] = useState(false);
+
     
     const [usage, setUsage] = useState<UsageTracker>({ date: new Date().toISOString().split('T')[0], count: 0, hasAttachment: false });
 
@@ -237,6 +241,39 @@ const App: React.FC = () => {
         }
 
     }, []);
+
+    // This effect handles the 10s theme activation delay, runs only once
+    useEffect(() => {
+        const themeActivatedBefore = localStorage.getItem('st_theme_activated');
+        if (themeActivatedBefore) {
+            setIsThemeActive(true);
+        } else {
+            const onLoaded = () => {
+                const timer = setTimeout(() => {
+                    setIsThemeActive(true);
+                    localStorage.setItem('st_theme_activated', 'true');
+                }, 10000);
+                 return () => clearTimeout(timer);
+            };
+            window.addEventListener('loadingScreenHidden', onLoaded, { once: true });
+            return () => window.removeEventListener('loadingScreenHidden', onLoaded);
+        }
+    }, []);
+
+    // This effect manages the theme class on the body and the notification
+    useEffect(() => {
+        const notificationShownBefore = localStorage.getItem('st_notification_shown');
+
+        if (isThemeActive && settings.stThemeEnabled) {
+            document.body.classList.add('stranger-things-theme');
+            if (!notificationShownBefore) {
+                setShowStThemeNotification(true);
+            }
+        } else {
+            document.body.classList.remove('stranger-things-theme');
+        }
+    }, [isThemeActive, settings.stThemeEnabled]);
+
 
     useEffect(() => {
         localStorage.setItem('sam-settings', JSON.stringify(settings));
@@ -559,7 +596,9 @@ const App: React.FC = () => {
             'sam-pinned-artifacts',
             'sam_ia_guest_name',
             'sam-install-notif-dismissed',
-            'sam_ia_usage'
+            'sam_ia_usage',
+            'st_theme_activated',
+            'st_notification_shown',
         ];
         
         keysToRemove.forEach(key => localStorage.removeItem(key));
@@ -572,6 +611,17 @@ const App: React.FC = () => {
         localStorage.setItem('sam_ia_forced_reset_v1.5', 'true');
         handleResetApp();
     }, [handleResetApp]);
+
+    const handleDismissStNotification = () => {
+        setShowStThemeNotification(false);
+        localStorage.setItem('st_notification_shown', 'true');
+    };
+
+    const handleDeactivateStTheme = () => {
+        handleSaveSettings({ ...settings, stThemeEnabled: false });
+        setShowStThemeNotification(false);
+        localStorage.setItem('st_notification_shown', 'true'); // Also mark as shown
+    };
 
 
     // FIX: Replaced .at(-1) with .slice(-1)[0] for compatibility with older TS/JS versions.
@@ -644,6 +694,15 @@ const App: React.FC = () => {
                     </div>
                 )}
 
+                 {showStThemeNotification && (
+                    <div className="absolute bottom-24 right-4 z-20">
+                         <StThemeNotification
+                            onDismiss={handleDismissStNotification}
+                            onDeactivate={handleDeactivateStTheme}
+                        />
+                    </div>
+                )}
+
                 <div className="p-4 pt-0 w-full max-w-3xl mx-auto flex flex-col gap-2">
                     {showLimitNotification && (
                         <div className="bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 p-3 rounded-xl text-sm flex items-start gap-3 border border-yellow-500/20">
@@ -678,6 +737,7 @@ const App: React.FC = () => {
                         liveTranscription={liveTranscription}
                         onEndVoiceSession={handleEndVoiceSession}
                         usage={usage}
+                        isThemeActive={isThemeActive}
                     />
                 </div>
             </main>

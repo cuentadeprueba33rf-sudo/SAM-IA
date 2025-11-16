@@ -134,28 +134,42 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             case 'appearance':
                 return (
                     <Section title="Apariencia" description="Personaliza el aspecto de la interfaz a tu gusto.">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <button onClick={() => handleSettingChange('theme', 'light')} className={`relative border-2 rounded-xl p-3 text-left transition-all ${settings.theme === 'light' ? 'border-accent ring-2 ring-accent/20' : 'border-transparent hover:border-border-subtle'}`}>
-                                {settings.theme === 'light' && <CheckIcon className="absolute top-3 right-3 w-5 h-5 text-accent" />}
-                                <div className="w-full h-24 bg-white rounded-lg mb-3 border border-gray-200 flex items-center justify-center">
-                                  <div className="w-3/4 h-3/4 bg-gray-100 rounded p-2 space-y-2">
-                                    <div className="h-2 bg-gray-300 rounded w-1/2"></div>
-                                    <div className="h-2 bg-blue-200 rounded w-1/3"></div>
-                                  </div>
+                        <Card>
+                            <label className="block text-sm font-medium text-text-secondary mb-3">Tema de Color</label>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <button onClick={() => handleSettingChange('theme', 'light')} className={`relative border-2 rounded-xl p-3 text-left transition-all ${settings.theme === 'light' ? 'border-accent ring-2 ring-accent/20' : 'border-transparent hover:border-border-subtle'}`}>
+                                    {settings.theme === 'light' && <CheckIcon className="absolute top-3 right-3 w-5 h-5 text-accent" />}
+                                    <div className="w-full h-24 bg-white rounded-lg mb-3 border border-gray-200 flex items-center justify-center">
+                                      <div className="w-3/4 h-3/4 bg-gray-100 rounded p-2 space-y-2">
+                                        <div className="h-2 bg-gray-300 rounded w-1/2"></div>
+                                        <div className="h-2 bg-blue-200 rounded w-1/3"></div>
+                                      </div>
+                                    </div>
+                                    <span className="font-semibold text-sm text-text-main">Claro</span>
+                                </button>
+                                <button onClick={() => handleSettingChange('theme', 'dark')} className={`relative border-2 rounded-xl p-3 text-left transition-all ${settings.theme === 'dark' ? 'border-accent ring-2 ring-accent/20' : 'border-transparent hover:border-border-subtle'}`}>
+                                    {settings.theme === 'dark' && <CheckIcon className="absolute top-3 right-3 w-5 h-5 text-accent" />}
+                                    <div className="w-full h-24 bg-[#1E1F20] rounded-lg mb-3 border border-gray-700 flex items-center justify-center">
+                                       <div className="w-3/4 h-3/4 bg-[#2C2C2E] rounded p-2 space-y-2">
+                                        <div className="h-2 bg-gray-600 rounded w-1/2"></div>
+                                        <div className="h-2 bg-blue-800 rounded w-1/3"></div>
+                                      </div>
+                                    </div>
+                                    <span className="font-semibold text-sm text-text-main">Oscuro</span>
+                                </button>
+                            </div>
+                        </Card>
+                        <Card>
+                             <div className="flex items-center justify-between">
+                                <div>
+                                    <div className="font-semibold text-text-main flex items-center gap-2">Tema de Stranger Things</div>
+                                    <p className="text-xs text-text-secondary mt-1 pr-4">Activa un efecto de neón rojo en el cuadro de chat.</p>
                                 </div>
-                                <span className="font-semibold text-sm text-text-main">Claro</span>
-                            </button>
-                            <button onClick={() => handleSettingChange('theme', 'dark')} className={`relative border-2 rounded-xl p-3 text-left transition-all ${settings.theme === 'dark' ? 'border-accent ring-2 ring-accent/20' : 'border-transparent hover:border-border-subtle'}`}>
-                                {settings.theme === 'dark' && <CheckIcon className="absolute top-3 right-3 w-5 h-5 text-accent" />}
-                                <div className="w-full h-24 bg-[#1E1F20] rounded-lg mb-3 border border-gray-700 flex items-center justify-center">
-                                   <div className="w-3/4 h-3/4 bg-[#2C2C2E] rounded p-2 space-y-2">
-                                    <div className="h-2 bg-gray-600 rounded w-1/2"></div>
-                                    <div className="h-2 bg-blue-800 rounded w-1/3"></div>
-                                  </div>
-                                </div>
-                                <span className="font-semibold text-sm text-text-main">Oscuro</span>
-                            </button>
-                        </div>
+                                <button onClick={() => handleSettingChange('stThemeEnabled', !settings.stThemeEnabled)} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.stThemeEnabled ? 'bg-[#E50914]' : 'bg-border-subtle'}`}>
+                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.stThemeEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                                </button>
+                            </div>
+                        </Card>
                     </Section>
                 );
             case 'application':
