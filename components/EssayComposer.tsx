@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import type { Essay, EssaySection, ModelType } from '../types';
-import { AcademicCapIcon, DocumentDuplicateIcon, ArrowDownTrayIcon, ClipboardDocumentCheckIcon, SparklesIcon, XMarkIcon, TrashIcon, PlusIcon, ArrowPathIcon, CheckIcon } from './icons';
+import { AcademicCapIcon, DocumentDuplicateIcon, ArrowDownTrayIcon, ClipboardDocumentCheckIcon, SparklesIcon, XMarkIcon, TrashIcon, PlusIcon, ArrowPathIcon, CheckIcon, ExclamationTriangleIcon } from './icons';
 import { v4 as uuidv4 } from 'uuid';
 import { generateEssayOutline, streamEssaySection, generateEssayReferences } from '../services/geminiService';
 
@@ -19,6 +19,7 @@ const EssayComposer: React.FC<EssayComposerProps> = ({ initialEssay, onClose, on
     const [essay, setEssay] = useState<Essay>(initialEssay);
     const [status, setStatus] = useState<EssayStatus>(initialEssay.outline.length > 0 ? 'idle' : 'briefing');
     const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
     const workspaceRef = useRef<HTMLTextAreaElement>(null);
 
@@ -44,6 +45,7 @@ const EssayComposer: React.FC<EssayComposerProps> = ({ initialEssay, onClose, on
 
     const handleGenerateOutline = async () => {
         setStatus('generating_outline');
+        setErrorMessage(null);
         const prompt = `Topic: "${essay.topic}", Level: ${essay.academicLevel}, Tone: ${essay.tone}, Word Count: ~${essay.wordCountTarget}`;
         try {
             const outlineFromApi = await generateEssayOutline({ prompt, systemInstruction, modelName });
@@ -54,6 +56,7 @@ const EssayComposer: React.FC<EssayComposerProps> = ({ initialEssay, onClose, on
             setStatus('editing_outline');
         } catch (e) {
             console.error("Error generating outline:", e);
+            setErrorMessage(e instanceof Error ? e.message : 'Ocurrió un error desconocido.');
             setStatus('error');
         }
     };
@@ -63,6 +66,7 @@ const EssayComposer: React.FC<EssayComposerProps> = ({ initialEssay, onClose, on
         if (!section || status === 'generating_section') return;
 
         setStatus('generating_section');
+        setErrorMessage(null);
         abortControllerRef.current = new AbortController();
         updateEssay({ content: { ...essay.content, [sectionId]: '' } }); // Clear previous content
 
@@ -84,10 +88,12 @@ const EssayComposer: React.FC<EssayComposerProps> = ({ initialEssay, onClose, on
                 }
             });
         } catch (e) {
+            const err = e instanceof Error ? e.message : "Ocurrió un error desconocido.";
             console.error(`Error generating content for section ${section.title}:`, e);
+            setErrorMessage(err);
             setEssay(prev => ({
                  ...prev,
-                 content: { ...prev.content, [sectionId]: "Error al generar el contenido." }
+                 content: { ...prev.content, [sectionId]: `Error: ${err}` }
              }));
         } finally {
             if (!abortControllerRef.current?.signal.aborted) {
@@ -98,6 +104,7 @@ const EssayComposer: React.FC<EssayComposerProps> = ({ initialEssay, onClose, on
 
     const handleGenerateReferences = async () => {
         setStatus('generating_refs');
+        setErrorMessage(null);
         const fullText = essay.outline
             .map(s => essay.content[s.id] || '')
             .join('\n\n');
@@ -108,8 +115,10 @@ const EssayComposer: React.FC<EssayComposerProps> = ({ initialEssay, onClose, on
             const refs = await generateEssayReferences({ prompt, systemInstruction, modelName });
             updateEssay({ references: refs });
         } catch(e) {
+            const err = e instanceof Error ? e.message : "Ocurrió un error desconocido.";
             console.error("Error generating references:", e);
-            updateEssay({ references: ["Hubo un error al generar las referencias."] });
+            setErrorMessage(err);
+            updateEssay({ references: [`Hubo un error: ${err}`] });
         } finally {
             setStatus('idle');
         }
@@ -165,6 +174,12 @@ const EssayComposer: React.FC<EssayComposerProps> = ({ initialEssay, onClose, on
                 <h2 className="text-2xl font-bold text-text-main mb-2">Comienza tu Ensayo</h2>
                 <p className="text-text-secondary mb-8">Define el tema y los parámetros para que SAM cree un esquema a tu medida.</p>
             </div>
+            {status === 'error' && errorMessage && (
+                <div className="bg-danger/10 text-danger p-3 rounded-lg text-sm my-4 flex items-start gap-2">
+                    <ExclamationTriangleIcon className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                    <span>{errorMessage}</span>
+                </div>
+            )}
             <div className="space-y-6 flex-1">
                 <div>
                     <label htmlFor="topic" className="block text-sm font-medium text-text-secondary mb-1">Tema del Ensayo</label>

@@ -137,9 +137,10 @@ const CanvasDevPro: React.FC<CanvasDevProProps> = ({ onNavigateBack, onShareToCh
             setMessages(prev => prev.map(m => m.text?.includes('preparando todo') ? { ...m, text: `¡Listo! He creado una primera versión de tu proyecto: *${projectName}*. Puedes verla en la pestaña de "Preview".` } : m));
             setActiveTab('preview');
         } catch (error) {
-            console.error("Error generating code:", error);
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            setMessages(prev => prev.map(m => m.text?.includes('preparando todo') ? { ...m, text: `Lo siento, hubo un error al generar el código: ${errorMessage}` } : m));
+            const err = error instanceof Error ? error : new Error("Ocurrió un error desconocido.");
+            setPreviewContent(`<html><body><div style="font-family: sans-serif; padding: 1rem; color: #333;"><h2>Error</h2><p>${err.message}</p></div></body></html>`);
+            setActiveTab('preview');
+            setMessages(prev => prev.map(m => m.text?.includes('preparando todo') ? { ...m, text: `Lo siento, no pude generar el código. ${err.message}` } : m));
         } finally {
             setIsLoading(false);
         }
@@ -155,8 +156,8 @@ const CanvasDevPro: React.FC<CanvasDevProProps> = ({ onNavigateBack, onShareToCh
             typeImprovedPrompt(improved);
             setMessages(prev => prev.map(m => m.text?.includes('mejorando tu idea') ? { ...m, text: 'He redefinido tu prompt en el cuadro de texto de abajo. ¡Puedes editarlo y enviarlo cuando quieras!' } : m));
         } catch (error) {
-            console.error("Error improving prompt:", error);
-            setMessages(prev => prev.map(m => m.text?.includes('mejorando tu idea') ? { ...m, text: 'Hubo un error al mejorar el prompt. Por favor, inténtalo de nuevo.' } : m));
+            const err = error instanceof Error ? error : new Error("Ocurrió un error desconocido.");
+            setMessages(prev => prev.map(m => m.text?.includes('mejorando tu idea') ? { ...m, text: err.message } : m));
         } finally {
             setIsImproving(false);
         }

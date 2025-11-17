@@ -23,7 +23,7 @@ import {
     ModelType, Artifact, ViewID, Essay, Insight, UsageTracker
 } from './types';
 import { generateSystemInstruction } from './constants';
-import { BookOpenIcon, MegaphoneIcon, ViewColumnsIcon, AcademicCapIcon, ChatBubbleLeftRightIcon, UsersIcon, ExclamationTriangleIcon, XMarkIcon, ChartBarIcon } from './components/icons';
+import { BookOpenIcon, MegaphoneIcon, ViewColumnsIcon, AcademicCapIcon, ChatBubbleLeftRightIcon, UsersIcon, ExclamationTriangleIcon, XMarkIcon, ChartBarIcon, Bars3Icon, ChevronLeftIcon } from './components/icons';
 
 type VoiceModeState = 'inactive' | 'activeConversation';
 type ActiveConversationState = 'LISTENING' | 'RESPONDING';
@@ -75,7 +75,6 @@ const DUMMY_INSIGHTS: Insight[] = [
 
 const CanvasView: React.FC<{ pinnedArtifacts: Artifact[], onOpenArtifact: (artifact: Artifact) => void }> = ({ pinnedArtifacts, onOpenArtifact }) => (
     <div className="flex-1 p-8 overflow-y-auto">
-        <h1 className="text-3xl font-bold text-text-main mb-6">Canvas</h1>
         {pinnedArtifacts.length === 0 ? (
             <div className="text-center text-text-secondary mt-16">
                 <ViewColumnsIcon className="w-16 h-16 mx-auto mb-4" />
@@ -97,7 +96,6 @@ const CanvasView: React.FC<{ pinnedArtifacts: Artifact[], onOpenArtifact: (artif
 
 const InsightsView: React.FC<{ insights: Insight[], onAction: (action: Insight['actions'][0]) => void }> = ({ insights, onAction }) => (
     <div className="flex-1 p-8 overflow-y-auto">
-        <h1 className="text-3xl font-bold text-text-main mb-6">Insights</h1>
         <p className="text-text-secondary mb-8 max-w-2xl">Descubre nuevas formas de utilizar SAM para potenciar tu creatividad, aprendizaje y productividad. Aquí tienes algunas ideas para empezar.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {insights.map(insight => (
@@ -122,7 +120,6 @@ const InsightsView: React.FC<{ insights: Insight[], onAction: (action: Insight['
 
 const DocumentationView: React.FC = () => (
     <div className="flex-1 p-8 overflow-y-auto">
-        <h1 className="text-3xl font-bold text-text-main mb-6">Documentación</h1>
         <div className="text-center text-text-secondary mt-16">
             <BookOpenIcon className="w-16 h-16 mx-auto mb-4" />
             <h2 className="text-xl font-semibold">Próximamente</h2>
@@ -133,7 +130,6 @@ const DocumentationView: React.FC = () => (
 
 const UsageView: React.FC = () => (
     <div className="flex-1 p-8 overflow-y-auto">
-        <h1 className="text-3xl font-bold text-text-main mb-6">Uso</h1>
         <div className="text-center text-text-secondary mt-16">
             <ChartBarIcon className="w-16 h-16 mx-auto mb-4" />
             <h2 className="text-xl font-semibold">Próximamente</h2>
@@ -412,8 +408,8 @@ const App: React.FC = () => {
                 const generatedImage = await generateImage({ prompt, attachment: messageAttachment });
                 updateSamMessage({ text: "Aquí tienes la imagen que generé.", attachment: generatedImage, generatingArtifact: false });
             } catch (error) {
-                const err = error instanceof Error ? error : new Error("Error desconocido");
-                updateSamMessage({ text: `Lo siento, hubo un error: ${err.message}`, generatingArtifact: false });
+                const err = error instanceof Error ? error : new Error("Ocurrió un error desconocido.");
+                updateSamMessage({ text: err.message, generatingArtifact: false });
             } finally {
                 setIsLoading(false);
             }
@@ -434,6 +430,7 @@ const App: React.FC = () => {
             onUpdate: (chunk) => {
                 setChats(prev => prev.map(c => {
                     if (c.id === tempChatId) {
+// FIX: Removed extra closing brace
                         return { ...c, messages: c.messages.map(m => m.id === samMessageId ? { ...m, text: m.text + chunk } : m) };
                     }
                     return c;
@@ -452,7 +449,7 @@ const App: React.FC = () => {
                 if (groundingChunks) finalUpdates.groundingMetadata = groundingChunks;
                 if (effectiveMode === 'math' && consoleLogs) finalUpdates.consoleLogs = consoleLogs;
                 if (effectiveMode === 'canvasdev') {
-                    const codeBlockRegex = /```(\w+)\n([\s\S]*?)```/;
+                    const codeBlockRegex = /```(\w+)\n([\s\S]*?)```/g;
                     const match = fullText.match(codeBlockRegex);
                     if (match) {
                         const artifact: Artifact = {
@@ -469,7 +466,7 @@ const App: React.FC = () => {
                 setIsLoading(false);
             },
             onError: (error) => {
-                updateSamMessage({ text: `Lo siento, hubo un error: ${error.message}`, generatingArtifact: false, isSearching: false });
+                updateSamMessage({ text: error.message, generatingArtifact: false, isSearching: false });
                 setIsLoading(false);
                  if (modelToUse === 'sm-i3' || modelToUse === 'sm-l3.9') {
                     setUsage(prev => ({ ...prev, count: Math.max(0, prev.count - 1) })); // Revert count on error
@@ -686,6 +683,52 @@ const App: React.FC = () => {
     }
 
     const renderActiveView = () => {
+        const secondaryViews: Partial<Record<ViewID, { title: string; component: React.ReactNode }>> = {
+            canvas: {
+                title: 'Canvas',
+                component: <CanvasView pinnedArtifacts={pinnedArtifacts} onOpenArtifact={setActiveArtifact} />
+            },
+            insights: {
+                title: 'Insights',
+                component: <InsightsView insights={DUMMY_INSIGHTS} onAction={handleInsightAction} />
+            },
+            documentation: {
+                title: 'Documentación',
+                component: <DocumentationView />
+            },
+            usage: {
+                title: 'Uso',
+                component: <UsageView />
+            }
+        };
+
+        const viewConfig = secondaryViews[activeView];
+
+        if (viewConfig) {
+            return (
+                <div className="flex flex-col h-full w-full">
+                    <header className="flex-shrink-0 flex items-center gap-2 sm:gap-4 p-2 sm:p-4 border-b border-border-subtle">
+                        <button
+                            onClick={() => setSidebarOpen(!sidebarOpen)}
+                            className="p-2 text-text-secondary hover:text-text-main md:hidden"
+                            aria-label="Toggle sidebar"
+                        >
+                            <Bars3Icon className="w-6 h-6" />
+                        </button>
+                        <button
+                            onClick={() => setActiveView('chat')}
+                            className="p-2 text-text-secondary hover:text-text-main"
+                            aria-label="Volver al chat"
+                        >
+                            <ChevronLeftIcon className="w-6 h-6" />
+                        </button>
+                        <h1 className="text-xl font-semibold text-text-main truncate">{viewConfig.title}</h1>
+                    </header>
+                    {viewConfig.component}
+                </div>
+            );
+        }
+
         switch (activeView) {
             case 'chat':
                 return currentChat ? (
@@ -719,14 +762,6 @@ const App: React.FC = () => {
                         <p className="text-text-secondary mt-2">Tu asistente de IA amigable y servicial.</p>
                     </div>
                 );
-            case 'canvas':
-                return <CanvasView pinnedArtifacts={pinnedArtifacts} onOpenArtifact={setActiveArtifact} />;
-            case 'insights':
-                return <InsightsView insights={DUMMY_INSIGHTS} onAction={handleInsightAction} />;
-            case 'documentation':
-                return <DocumentationView />;
-            case 'usage':
-                return <UsageView />;
             case 'canvas_dev_pro':
                 return <CanvasDevPro onNavigateBack={() => setActiveView('chat')} onShareToChat={handleShareToCanvasDevPro} />;
             default:

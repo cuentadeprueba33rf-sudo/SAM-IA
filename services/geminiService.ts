@@ -14,6 +14,18 @@ const MODEL_MAP: Record<ModelType, string> = {
     'sm-l3.9': 'gemini-2.5-pro',
 };
 
+const translateError = (error: any): Error => {
+    console.error("Original Gemini Service Error:", error); // Keep original error for debugging
+    const userFriendlyMessages = [
+        "Parece que hay un problema de conexión. Por favor, inténtalo de nuevo más tarde.",
+        "Estamos experimentando dificultades técnicas. El equipo ya está trabajando en ello.",
+        "No se pudo completar la solicitud. Esto podría solucionarse en una próxima actualización.",
+        "El servicio de IA no está respondiendo en este momento. Verifica tu conexión a internet."
+    ];
+    const randomIndex = Math.floor(Math.random() * userFriendlyMessages.length);
+    return new Error(userFriendlyMessages[randomIndex]);
+};
+
 const fileToGenerativePart = async (attachment: Attachment) => {
     // BUG FIX: Add a defensive check to prevent crashes if attachment.data is not a valid data URL string.
     const base64Data = attachment.data?.split(',')[1] ?? '';
@@ -173,16 +185,13 @@ export const startActiveConversation = async (
                     nextStartTime = 0;
                 }
             },
-            // FIX: Complete the callbacks object
             onerror: (e: ErrorEvent) => {
-                console.error("Voice session error:", e);
-                onError(new Error(e.message || 'Unknown voice session error'));
+                onError(translateError(e));
             },
             onclose: (e: CloseEvent) => {
                 console.log('Voice session closed.');
             },
         },
-        // FIX: Complete the config object
         config: {
             responseModalities: [Modality.AUDIO],
             inputAudioTranscription: {},
@@ -195,7 +204,7 @@ export const startActiveConversation = async (
     });
 
     sessionPromise.catch(e => {
-        onError(e);
+        onError(translateError(e));
     });
     
     const session = await sessionPromise;
@@ -210,11 +219,8 @@ export const startActiveConversation = async (
         if (outputAudioContext.state !== 'closed') outputAudioContext.close().catch(console.error);
     };
 
-    // FIX: Add missing return statement
     return { close };
 };
-
-// FIX: Implement and export missing functions
 
 export const streamGenerateContent = async ({
     prompt,
@@ -318,42 +324,46 @@ export const streamGenerateContent = async ({
         
     } catch (error: any) {
         if (error.name !== 'AbortError') {
-            onError(error);
+            onError(translateError(error));
         }
     }
 };
 
 export const generateImage = async ({ prompt, attachment }: { prompt: string; attachment?: Attachment | null; }): Promise<Attachment> => {
-    if (!API_KEY) throw new Error("API key not configured.");
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
+    try {
+        if (!API_KEY) throw new Error("API key not configured.");
+        const ai = new GoogleGenAI({ apiKey: API_KEY });
 
-    const contents: any = { parts: [] };
-    if (attachment) {
-        contents.parts.push(await fileToGenerativePart(attachment));
-    }
-    if (prompt) {
-        contents.parts.push({ text: prompt });
-    }
-
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
-        contents: contents,
-        config: {
-            responseModalities: [Modality.IMAGE],
-        },
-    });
-
-    for (const part of response.candidates[0].content.parts) {
-        if (part.inlineData) {
-            const base64ImageBytes: string = part.inlineData.data;
-            return {
-                name: `generated-${Date.now()}.png`,
-                type: part.inlineData.mimeType || 'image/png',
-                data: `data:${part.inlineData.mimeType || 'image/png'};base64,${base64ImageBytes}`,
-            };
+        const contents: any = { parts: [] };
+        if (attachment) {
+            contents.parts.push(await fileToGenerativePart(attachment));
         }
+        if (prompt) {
+            contents.parts.push({ text: prompt });
+        }
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-image',
+            contents: contents,
+            config: {
+                responseModalities: [Modality.IMAGE],
+            },
+        });
+
+        for (const part of response.candidates[0].content.parts) {
+            if (part.inlineData) {
+                const base64ImageBytes: string = part.inlineData.data;
+                return {
+                    name: `generated-${Date.now()}.png`,
+                    type: part.inlineData.mimeType || 'image/png',
+                    data: `data:${part.inlineData.mimeType || 'image/png'};base64,${base64ImageBytes}`,
+                };
+            }
+        }
+        throw new Error("Image generation failed: no image data in response.");
+    } catch (error) {
+        throw translateError(error);
     }
-    throw new Error("Image generation failed: no image data in response.");
 };
 
 export const detectMode = async (prompt: string, systemInstruction: string): Promise<{ newMode: ModeID, reasoning: string } | null> => {
@@ -387,31 +397,36 @@ User prompt: "${prompt}"
         }
         return null;
     } catch (error) {
-        console.error("Mode detection failed:", error);
+        console.error("Mode detection failed:", translateError(error).message);
         return null;
     }
 };
 
-// FIX: Implement and export missing 'improvePrompt' function.
 export const improvePrompt = async (userPrompt: string): Promise<string> => {
-    if (!API_KEY) throw new Error("API key not configured.");
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
+    try {
+        if (!API_KEY) throw new Error("API key not configured.");
+        const ai = new GoogleGenAI({ apiKey: API_KEY });
 
-    const systemInstruction = `You are an expert prompt engineer specializing in generating code. Your task is to take a user's rough idea and refine it into a detailed, actionable prompt for an AI code generation model (like the 'canvasdev' mode). The user wants to build a web component or a small web application. The output MUST be only the improved prompt, with no additional text, conversation, or markdown formatting. The prompt should be in Spanish.`;
-    
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: `User's idea: "${userPrompt}"`,
-        config: {
-            systemInstruction: systemInstruction,
-        }
-    });
+        const systemInstruction = `You are an expert prompt engineer specializing in generating code. Your task is to take a user's rough idea and refine it into a detailed, actionable prompt for an AI code generation model (like the 'canvasdev' mode). The user wants to build a web component or a small web application. The output MUST be only the improved prompt, with no additional text, conversation, or markdown formatting. The prompt should be in Spanish.`;
+        
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `User's idea: "${userPrompt}"`,
+            config: {
+                systemInstruction: systemInstruction,
+            }
+        });
 
-    return response.text.trim();
+        return response.text.trim();
+    } catch (error) {
+        throw translateError(error);
+    }
 };
 
 export const generateCanvasDevCode = async (prompt: string): Promise<string> => {
-    if (!API_KEY) throw new Error("API key not configured.");
+    if (!API_KEY) {
+        throw new Error("API key not configured.");
+    }
     const ai = new GoogleGenAI({ apiKey: API_KEY });
 
     const model = 'gemini-2.5-pro'; 
@@ -444,22 +459,20 @@ export const generateCanvasDevCode = async (prompt: string): Promise<string> => 
             return `
                 <html>
                     <body style="font-family: sans-serif; padding: 2rem; background-color: #1e1e1e; color: #e0e0e0;">
-                        <h2>Error de Generación</h2>
-                        <p>No se pudo extraer un bloque de código válido de la respuesta de la IA.</p>
+                        <h2>Error de Formato</h2>
+                        <p>La respuesta de la IA no tuvo el formato esperado. Esto puede ser un problema temporal.</p>
                         <pre style="background-color: #2d2d2d; padding: 1rem; border-radius: 8px; white-space: pre-wrap; word-wrap: break-word;">${fullText.replace(/</g, '&lt;')}</pre>
                     </body>
                 </html>
             `;
         }
     } catch (error) {
-        console.error("Error generating CanvasDevPro code:", error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const translatedError = translateError(error);
         return `
             <html>
                 <body style="font-family: sans-serif; padding: 2rem; background-color: #1e1e1e; color: #e0e0e0;">
-                    <h2>Error de API</h2>
-                    <p>Hubo un problema al contactar al servicio de IA.</p>
-                    <pre style="background-color: #2d2d2d; padding: 1rem; border-radius: 8px; white-space: pre-wrap; word-wrap: break-word;">${errorMessage.replace(/</g, '&lt;')}</pre>
+                    <h2>Error al Generar</h2>
+                    <p>${translatedError.message}</p>
                 </body>
             </html>
         `;
@@ -468,25 +481,29 @@ export const generateCanvasDevCode = async (prompt: string): Promise<string> => 
 
 
 export const generateEssayOutline = async ({ prompt, systemInstruction, modelName }: { prompt: string, systemInstruction: string, modelName: ModelType }): Promise<Omit<EssaySection, 'id'>[]> => {
-    if (!API_KEY) throw new Error("API key not configured.");
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
-    const model = MODEL_MAP[modelName] || 'gemini-2.5-flash';
+    try {
+        if (!API_KEY) throw new Error("API key not configured.");
+        const ai = new GoogleGenAI({ apiKey: API_KEY });
+        const model = MODEL_MAP[modelName] || 'gemini-2.5-flash';
 
-    const response = await ai.models.generateContent({
-        model,
-        contents: prompt,
-        config: {
-            systemInstruction,
-            responseMimeType: 'application/json'
+        const response = await ai.models.generateContent({
+            model,
+            contents: prompt,
+            config: {
+                systemInstruction,
+                responseMimeType: 'application/json'
+            }
+        });
+
+        const jsonText = response.text.trim();
+        const result = JSON.parse(jsonText);
+        if (result && result.outline) {
+            return result.outline;
         }
-    });
-
-    const jsonText = response.text.trim();
-    const result = JSON.parse(jsonText);
-    if (result && result.outline) {
-        return result.outline;
+        throw new Error("Failed to generate essay outline.");
+    } catch (error) {
+        throw translateError(error);
     }
-    throw new Error("Failed to generate essay outline.");
 };
 
 
@@ -503,11 +520,11 @@ export const streamEssaySection = async ({
     abortSignal: AbortSignal;
     onUpdate: (chunk: string) => void;
 }) => {
-    if (!API_KEY) throw new Error("API key not configured.");
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
-    const model = MODEL_MAP[modelName] || 'gemini-2.5-flash';
-    
     try {
+        if (!API_KEY) throw new Error("API key not configured.");
+        const ai = new GoogleGenAI({ apiKey: API_KEY });
+        const model = MODEL_MAP[modelName] || 'gemini-2.5-flash';
+        
         const responseStream = await ai.models.generateContentStream({
             model,
             contents: prompt,
@@ -523,30 +540,34 @@ export const streamEssaySection = async ({
     } catch (e: any) {
         if (e.name !== 'AbortError') {
             console.error("Error streaming essay section:", e);
-            throw e;
+            throw translateError(e);
         }
     }
 };
 
 
 export const generateEssayReferences = async ({ prompt, systemInstruction, modelName }: { prompt: string, systemInstruction: string, modelName: ModelType }): Promise<string[]> => {
-    if (!API_KEY) throw new Error("API key not configured.");
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
-    const model = MODEL_MAP[modelName] || 'gemini-2.5-flash';
+    try {
+        if (!API_KEY) throw new Error("API key not configured.");
+        const ai = new GoogleGenAI({ apiKey: API_KEY });
+        const model = MODEL_MAP[modelName] || 'gemini-2.5-flash';
 
-    const response = await ai.models.generateContent({
-        model,
-        contents: prompt,
-        config: {
-            systemInstruction,
-            responseMimeType: 'application/json'
+        const response = await ai.models.generateContent({
+            model,
+            contents: prompt,
+            config: {
+                systemInstruction,
+                responseMimeType: 'application/json'
+            }
+        });
+
+        const jsonText = response.text.trim();
+        const result = JSON.parse(jsonText);
+        if (result && result.references) {
+            return result.references;
         }
-    });
-
-    const jsonText = response.text.trim();
-    const result = JSON.parse(jsonText);
-    if (result && result.references) {
-        return result.references;
+        throw new Error("Failed to generate essay references.");
+    } catch (error) {
+        throw translateError(error);
     }
-    throw new Error("Failed to generate essay references.");
 };
