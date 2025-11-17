@@ -60,7 +60,7 @@ export interface Mode {
   disabled?: boolean;
 }
 
-export type ModelType = 'sm-i1' | 'sm-i3' | 'sm-l3.9';
+export type ModelType = 'sm-i1' | 'sm-i3' | 'sm-l3';
 export type Theme = 'light' | 'dark';
 export type Personality = 'default' | 'amable' | 'directo' | 'divertido' | 'inteligente';
 

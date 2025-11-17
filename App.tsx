@@ -338,7 +338,7 @@ const App: React.FC = () => {
         
         const modelToUse = settings.quickMode ? 'sm-i1' : settings.defaultModel;
 
-        if(modelToUse === 'sm-i3' || modelToUse === 'sm-l3.9') {
+        if(modelToUse === 'sm-i3' || modelToUse === 'sm-l3') {
             const limit = usage.hasAttachment ? 15 : 20;
             if(usage.count >= limit) {
                 setShowLimitNotification(true);
@@ -358,7 +358,7 @@ const App: React.FC = () => {
         setChats(prev => prev.map(c => c.id === tempChatId ? { ...c, messages: [...c.messages, userMessage] } : c));
         setAttachment(null);
         
-        if (modelToUse === 'sm-i3' || modelToUse === 'sm-l3.9') {
+        if (modelToUse === 'sm-i3' || modelToUse === 'sm-l3') {
             setUsage(prev => ({ ...prev, count: prev.count + 1, hasAttachment: prev.hasAttachment || !!messageAttachment }));
         }
 
@@ -404,6 +404,15 @@ const App: React.FC = () => {
         };
 
         if (effectiveMode === 'image_generation') {
+            if (modelToUse !== 'sm-l3') {
+                updateSamMessage({ text: "La generación de imágenes solo está disponible para el modelo SM-L3. Por favor, selecciónalo en la configuración o desde el menú de modelos.", generatingArtifact: false });
+                setIsLoading(false);
+                // Revert usage count if it was a premium model
+                if (modelToUse === 'sm-i3') {
+                    setUsage(prev => ({ ...prev, count: Math.max(0, prev.count - 1) }));
+                }
+                return;
+            }
              try {
                 const generatedImage = await generateImage({ prompt, attachment: messageAttachment });
                 updateSamMessage({ text: "Aquí tienes la imagen que generé.", attachment: generatedImage, generatingArtifact: false });
@@ -430,7 +439,6 @@ const App: React.FC = () => {
             onUpdate: (chunk) => {
                 setChats(prev => prev.map(c => {
                     if (c.id === tempChatId) {
-// FIX: Removed extra closing brace
                         return { ...c, messages: c.messages.map(m => m.id === samMessageId ? { ...m, text: m.text + chunk } : m) };
                     }
                     return c;
@@ -468,7 +476,7 @@ const App: React.FC = () => {
             onError: (error) => {
                 updateSamMessage({ text: error.message, generatingArtifact: false, isSearching: false });
                 setIsLoading(false);
-                 if (modelToUse === 'sm-i3' || modelToUse === 'sm-l3.9') {
+                 if (modelToUse === 'sm-i3' || modelToUse === 'sm-l3') {
                     setUsage(prev => ({ ...prev, count: Math.max(0, prev.count - 1) })); // Revert count on error
                 }
             }

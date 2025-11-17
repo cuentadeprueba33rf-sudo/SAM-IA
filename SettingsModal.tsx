@@ -2,8 +2,7 @@ import React, { useState, ReactNode, useMemo } from 'react';
 import type { Settings } from './types';
 import { 
     XMarkIcon, SunIcon, UsersIcon, TrashIcon, CheckIcon, SparklesIcon, 
-    ArrowDownTrayIcon, ShieldCheckIcon, BoltIcon, ExclamationTriangleIcon,
-    GiftIcon, LockClosedIcon
+    ArrowDownTrayIcon, ShieldCheckIcon, BoltIcon, ExclamationTriangleIcon
 } from './components/icons';
 import { PERSONALITIES } from './constants';
 
@@ -49,12 +48,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     onResetApp,
 }) => {
     const [activeSection, setActiveSection] = useState('account');
-
-    const isChristmasModelUnlocked = useMemo(() => {
-        const now = new Date();
-        const unlockDate = new Date(now.getFullYear(), 11, 2); // Dec 2
-        return now >= unlockDate;
-    }, []);
 
     if (!isOpen) return null;
 
@@ -112,7 +105,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         </Card>
                          <Card>
                             <label className="block text-sm font-medium text-text-secondary mb-3">Modelo por Defecto</label>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 <button onClick={() => handleSettingChange('defaultModel', 'sm-i1')} className={`relative text-left p-3 rounded-lg border-2 transition-all ${settings.defaultModel === 'sm-i1' ? 'border-accent ring-2 ring-accent/20' : 'border-border-subtle hover:border-text-secondary/50'}`}>
                                     {settings.defaultModel === 'sm-i1' && <CheckIcon className="absolute top-2 right-2 w-4 h-4 text-accent" />}
                                     <div className="font-semibold text-text-main">SM-I1</div>
@@ -123,27 +116,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                     <div className="flex items-center gap-2 font-semibold text-text-main"><SparklesIcon className="w-5 h-5 text-yellow-400" /> SM-I3</div>
                                     <p className="text-xs text-text-secondary mt-1">Más potente para tareas complejas.</p>
                                 </button>
-                            </div>
-                            <div className="grid grid-cols-1 gap-3 mt-3">
-                                <button
-                                    disabled={!isChristmasModelUnlocked}
-                                    onClick={() => { if(isChristmasModelUnlocked) handleSettingChange('defaultModel', 'sm-l3.9')}}
-                                    className={`relative text-left p-3 rounded-lg border-2 transition-all ${settings.defaultModel === 'sm-l3.9' ? 'border-accent ring-2 ring-accent/20' : 'border-border-subtle'} ${!isChristmasModelUnlocked ? 'opacity-60 cursor-not-allowed hover:border-border-subtle' : 'hover:border-text-secondary/50'}`}
-                                >
-                                    {settings.defaultModel === 'sm-l3.9' && <CheckIcon className="absolute top-2 right-2 w-4 h-4 text-accent" />}
-                                    <div className="flex items-center justify-between">
-                                        <div className="font-semibold text-text-main flex items-center gap-2">
-                                            <GiftIcon className="w-5 h-5 text-red-400" />
-                                            <span>SM-L3.9 (Edición Navideña)</span>
-                                        </div>
-                                        {!isChristmasModelUnlocked && (
-                                            <div className="flex items-center gap-2 text-sm text-text-secondary font-medium">
-                                                <LockClosedIcon className="w-4 h-4" />
-                                                <span>Disponible el 2 de Dic.</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <p className="text-xs text-text-secondary mt-1 pl-7">El modelo más potente para respuestas de clase mundial.</p>
+                                <button onClick={() => handleSettingChange('defaultModel', 'sm-l3')} className={`relative text-left p-3 rounded-lg border-2 transition-all ${settings.defaultModel === 'sm-l3' ? 'border-accent ring-2 ring-accent/20' : 'border-border-subtle hover:border-text-secondary/50'}`}>
+                                    {settings.defaultModel === 'sm-l3' && <CheckIcon className="absolute top-2 right-2 w-4 h-4 text-accent" />}
+                                    <div className="flex items-center gap-2 font-semibold text-text-main"><SparklesIcon className="w-5 h-5 text-purple-400" /> SM-L3</div>
+                                    <p className="text-xs text-text-secondary mt-1">El mejor para generar imágenes.</p>
                                 </button>
                             </div>
                         </Card>
