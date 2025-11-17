@@ -95,7 +95,7 @@ export interface Essay {
     currentSectionId?: string; // Tracks the ID of the section being written
 }
 
-export type ViewID = 'chat' | 'canvas' | 'insights' | 'documentation' | 'usage';
+export type ViewID = 'chat' | 'canvas' | 'insights' | 'documentation' | 'usage' | 'canvas_dev_pro';
 
 export interface Insight {
     id: string;

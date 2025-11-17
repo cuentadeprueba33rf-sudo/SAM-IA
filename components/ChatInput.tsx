@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import PlusMenu from '../PlusMenu';
 import FilePreview from './FilePreview';
 import type { Attachment, ModeID, Settings, UsageTracker } from '../types';
 import { MODES } from '../constants';
-import { ArrowUpIcon, XMarkIcon, ChevronDownIcon, SparklesIcon, PlusIcon, AdjustmentsHorizontalIcon, PhotoIcon, Bars3Icon, MicrophoneIcon, BoltIcon } from './icons';
+import { ArrowUpIcon, XMarkIcon, ChevronDownIcon, SparklesIcon, PlusIcon, AdjustmentsHorizontalIcon, PhotoIcon, Bars3Icon, MicrophoneIcon, BoltIcon, LockClosedIcon, GiftIcon } from './icons';
 
 type VoiceModeState = 'inactive' | 'activeConversation';
 type ActiveConversationState = 'LISTENING' | 'RESPONDING';
@@ -186,6 +186,12 @@ const ChatInput: React.FC<ChatInputProps> = ({
     const isNearingLimit = usagePercentage >= 80 && usagePercentage < 100;
     const isLimitReached = usagePercentage >= 100;
 
+    const isChristmasModelUnlocked = useMemo(() => {
+        const now = new Date();
+        const unlockDate = new Date(now.getFullYear(), 11, 2); // Dec 2
+        return now >= unlockDate;
+    }, []);
+
     const handleSend = () => {
         if ((text.trim() || attachment) && !disabled) {
             onSendMessage(text, attachment);
@@ -351,10 +357,15 @@ const ChatInput: React.FC<ChatInputProps> = ({
                             <button onClick={() => setIsModelMenuOpen(prev => !prev)} className="flex items-center gap-1 text-sm font-semibold text-text-secondary hover:text-text-main transition-colors">
                                 {settings.defaultModel === 'sm-i1' ? (
                                     <span>SM-I1</span>
-                                ) : (
+                                ) : settings.defaultModel === 'sm-i3' ? (
                                     <>
                                         <SparklesIcon className="w-4 h-4 text-yellow-400"/>
                                         <span>SM-I3</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <GiftIcon className="w-4 h-4 text-red-400" />
+                                        <span>SM-L3.9</span>
                                     </>
                                 )}
                                 <ChevronDownIcon className="w-4 h-4" />
@@ -387,10 +398,29 @@ const ChatInput: React.FC<ChatInputProps> = ({
                                             </div>
                                         </div>
                                     </button>
+                                     <button
+                                        disabled={!isChristmasModelUnlocked}
+                                        onClick={() => { 
+                                            if(isChristmasModelUnlocked) {
+                                                onSaveSettings({...settings, defaultModel: 'sm-l3.9'}); 
+                                                setIsModelMenuOpen(false); 
+                                            }
+                                        }}
+                                        className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-border-subtle disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <GiftIcon className="w-4 h-4 text-red-400"/>
+                                            <span>SM-L3.9</span>
+                                            {!isChristmasModelUnlocked && <LockClosedIcon className="w-3 h-3 text-text-secondary ml-auto" />}
+                                        </div>
+                                        <p className="text-xs text-text-secondary font-normal pl-6">
+                                            {isChristmasModelUnlocked ? '¡El modelo más potente!' : 'Disponible el 2 de Dic.'}
+                                        </p>
+                                    </button>
                                 </div>
                             )}
                         </div>
-                        {settings.defaultModel === 'sm-i3' && !settings.quickMode && (
+                        {(settings.defaultModel === 'sm-i3' || settings.defaultModel === 'sm-l3.9') && !settings.quickMode && (
                              <div 
                                 className={`flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${isLimitReached ? 'bg-danger/10 text-danger' : isNearingLimit ? 'bg-yellow-500/10 text-yellow-500' : 'bg-surface-secondary text-text-secondary'}`}
                                 title={`Has usado ${usage.count} de ${limit} solicitudes para SM-I3 hoy.`}

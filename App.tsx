@@ -6,6 +6,7 @@ import SettingsModal from './SettingsModal';
 import UpdatesModal from './components/UpdatesModal';
 import ContextMenu from './components/ContextMenu';
 import CodeCanvas from './components/CodeCanvas';
+import CanvasDevPro from './components/CanvasDevPro';
 import EssayComposer from './components/EssayComposer';
 import CameraCaptureModal from './components/CameraCaptureModal';
 import ImagePreviewModal from './components/ImagePreviewModal';
@@ -341,7 +342,7 @@ const App: React.FC = () => {
         
         const modelToUse = settings.quickMode ? 'sm-i1' : settings.defaultModel;
 
-        if(modelToUse === 'sm-i3') {
+        if(modelToUse === 'sm-i3' || modelToUse === 'sm-l3.9') {
             const limit = usage.hasAttachment ? 15 : 20;
             if(usage.count >= limit) {
                 setShowLimitNotification(true);
@@ -361,7 +362,7 @@ const App: React.FC = () => {
         setChats(prev => prev.map(c => c.id === tempChatId ? { ...c, messages: [...c.messages, userMessage] } : c));
         setAttachment(null);
         
-        if (modelToUse === 'sm-i3') {
+        if (modelToUse === 'sm-i3' || modelToUse === 'sm-l3.9') {
             setUsage(prev => ({ ...prev, count: prev.count + 1, hasAttachment: prev.hasAttachment || !!messageAttachment }));
         }
 
@@ -396,7 +397,7 @@ const App: React.FC = () => {
             timestamp: Date.now(),
             mode: effectiveMode,
             generatingArtifact: effectiveMode === 'canvasdev',
-            isSearching: effectiveMode === 'search',
+            isSearching: effectiveMode === 'search' || effectiveMode === 'architect',
         };
 
         setChats(prev => prev.map(c => c.id === tempChatId ? { ...c, messages: [...c.messages, samMessage] } : c));
@@ -470,7 +471,7 @@ const App: React.FC = () => {
             onError: (error) => {
                 updateSamMessage({ text: `Lo siento, hubo un error: ${error.message}`, generatingArtifact: false, isSearching: false });
                 setIsLoading(false);
-                 if (modelToUse === 'sm-i3') {
+                 if (modelToUse === 'sm-i3' || modelToUse === 'sm-l3.9') {
                     setUsage(prev => ({ ...prev, count: Math.max(0, prev.count - 1) })); // Revert count on error
                 }
             }
@@ -621,6 +622,7 @@ const App: React.FC = () => {
             'sam_ia_usage',
             'st_theme_activated',
             'st_notification_shown',
+            'canvas-dev-pro-history', // Also clear canvas dev pro history
         ];
         
         keysToRemove.forEach(key => localStorage.removeItem(key));
@@ -644,9 +646,37 @@ const App: React.FC = () => {
         setShowStThemeNotification(false);
         localStorage.setItem('st_notification_shown', 'true'); // Also mark as shown
     };
+    
+    const handleShareToCanvasDevPro = (title: string, code: string) => {
+        const artifact: Artifact = {
+            id: uuidv4(),
+            title: title,
+            filepath: `${title.replace(/\s+/g, '-')}.html`,
+            code: code,
+            language: 'html',
+        };
+
+        const samMessage: ChatMessage = {
+            id: uuidv4(),
+            author: MessageAuthor.SAM,
+            text: `Aquí está el proyecto *${title}* compartido desde Canvas Dev Pro. Puedes abrirlo para verlo y editarlo.`,
+            timestamp: Date.now(),
+            artifacts: [artifact],
+        };
+
+        let tempChatId = currentChatId;
+        if (!tempChatId) {
+            const newChat: Chat = { id: uuidv4(), title: `Proyecto: ${title}`, messages: [samMessage] };
+            setChats(prev => [newChat, ...prev]);
+            setCurrentChatId(newChat.id);
+        } else {
+            setChats(prev => prev.map(c => c.id === tempChatId ? { ...c, messages: [...c.messages, samMessage] } : c));
+        }
+
+        setActiveView('chat');
+    };
 
 
-    // FIX: Replaced .at(-1) with .slice(-1)[0] for compatibility with older TS/JS versions.
     const lastSamMessage = currentChat?.messages.filter(m => m.author === MessageAuthor.SAM).slice(-1)[0];
     const pinnedArtifactIds = useMemo(() => pinnedArtifacts.map(a => a.id), [pinnedArtifacts]);
     const lastMessage = currentChat?.messages.slice(-1)[0];
@@ -654,6 +684,55 @@ const App: React.FC = () => {
     if (showForcedResetModal) {
         return <ForcedResetModal onConfirm={handleForcedReset} />;
     }
+
+    const renderActiveView = () => {
+        switch (activeView) {
+            case 'chat':
+                return currentChat ? (
+                     <div className="flex-1 overflow-y-auto p-4">
+                        {currentChat.messages.map(msg => (
+                            <ChatMessageItem 
+                                key={msg.id} 
+                                message={msg} 
+                                isStreaming={isLoading && lastMessage?.id === msg.id && msg.author === MessageAuthor.SAM}
+                                onOpenArtifact={setActiveArtifact}
+                                onPinArtifact={(artifact) => {
+                                    if (!pinnedArtifacts.some(p => p.id === artifact.id)) {
+                                        setPinnedArtifacts(prev => [...prev, artifact]);
+                                    }
+                                }}
+                                onPreviewImage={(attachment) => setPreviewImage(attachment)}
+                                pinnedArtifactIds={pinnedArtifactIds}
+                                onOpenEssay={handleOpenEssay}
+                            />
+                        ))}
+                         <div ref={chatEndRef} />
+                    </div>
+                ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
+                        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-24 h-24 mb-4 text-text-secondary">
+                            <path d="M30 20 L70 20 L70 50 L30 50 L30 80 L70 80" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+                            <path d="M10 60 L50 10 L90 60 M25 45 L75 45" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+                            <path d="M50 10 L50 90 M30 30 L50 50 L70 30" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+                        </svg>
+                        <h1 className="text-3xl font-bold">SAM</h1>
+                        <p className="text-text-secondary mt-2">Tu asistente de IA amigable y servicial.</p>
+                    </div>
+                );
+            case 'canvas':
+                return <CanvasView pinnedArtifacts={pinnedArtifacts} onOpenArtifact={setActiveArtifact} />;
+            case 'insights':
+                return <InsightsView insights={DUMMY_INSIGHTS} onAction={handleInsightAction} />;
+            case 'documentation':
+                return <DocumentationView />;
+            case 'usage':
+                return <UsageView />;
+            case 'canvas_dev_pro':
+                return <CanvasDevPro onNavigateBack={() => setActiveView('chat')} onShareToChat={handleShareToCanvasDevPro} />;
+            default:
+                return null;
+        }
+    };
 
     return (
         <div className={`flex h-screen bg-bg-main font-sans text-text-main ${settings.theme}`}>
@@ -674,43 +753,7 @@ const App: React.FC = () => {
                 onSelectView={setActiveView}
             />
             <main className="flex-1 flex flex-col relative overflow-hidden bg-bg-main">
-                {activeView === 'chat' && currentChat && (
-                     <div className="flex-1 overflow-y-auto p-4">
-                        {currentChat.messages.map(msg => (
-                            <ChatMessageItem 
-                                key={msg.id} 
-                                message={msg} 
-                                isStreaming={isLoading && lastMessage?.id === msg.id && msg.author === MessageAuthor.SAM}
-                                onOpenArtifact={setActiveArtifact}
-                                onPinArtifact={(artifact) => {
-                                    if (!pinnedArtifacts.some(p => p.id === artifact.id)) {
-                                        setPinnedArtifacts(prev => [...prev, artifact]);
-                                    }
-                                }}
-                                onPreviewImage={(attachment) => setPreviewImage(attachment)}
-                                pinnedArtifactIds={pinnedArtifactIds}
-                                onOpenEssay={handleOpenEssay}
-                            />
-                        ))}
-                         <div ref={chatEndRef} />
-                    </div>
-                )}
-                {activeView === 'chat' && !currentChat && (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
-                        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-24 h-24 mb-4 text-text-secondary">
-                            <path d="M30 20 L70 20 L70 50 L30 50 L30 80 L70 80" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
-                            <path d="M10 60 L50 10 L90 60 M25 45 L75 45" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
-                            <path d="M50 10 L50 90 M30 30 L50 50 L70 30" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
-                        </svg>
-                        <h1 className="text-3xl font-bold">SAM</h1>
-                        <p className="text-text-secondary mt-2">Tu asistente de IA amigable y servicial.</p>
-                    </div>
-                )}
-                
-                {activeView === 'canvas' && <CanvasView pinnedArtifacts={pinnedArtifacts} onOpenArtifact={setActiveArtifact} />}
-                {activeView === 'insights' && <InsightsView insights={DUMMY_INSIGHTS} onAction={handleInsightAction} />}
-                {activeView === 'documentation' && <DocumentationView />}
-                {activeView === 'usage' && <UsageView />}
+                {renderActiveView()}
                 
                  {showVoiceErrorNotification && (
                     <div className="absolute bottom-24 right-4 z-20">
@@ -727,43 +770,45 @@ const App: React.FC = () => {
                     </div>
                 )}
 
-                <div className="p-4 pt-0 w-full max-w-3xl mx-auto flex flex-col gap-2">
-                    {showLimitNotification && (
-                        <div className="bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 p-3 rounded-xl text-sm flex items-start gap-3 border border-yellow-500/20">
-                            <ExclamationTriangleIcon className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                            <div className="flex-1">
-                                <p className="font-semibold">Límite de SM-I3 alcanzado</p>
-                                <p>Has alcanzado tu límite diario para el modelo SM-I3. El límite se restablecerá mañana.</p>
+                {activeView === 'chat' && (
+                    <div className="p-4 pt-0 w-full max-w-3xl mx-auto flex flex-col gap-2">
+                        {showLimitNotification && (
+                            <div className="bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 p-3 rounded-xl text-sm flex items-start gap-3 border border-yellow-500/20">
+                                <ExclamationTriangleIcon className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                                <div className="flex-1">
+                                    <p className="font-semibold">Límite de SM-I3 alcanzado</p>
+                                    <p>Has alcanzado tu límite diario para el modelo SM-I3. El límite se restablecerá mañana.</p>
+                                </div>
+                                <button onClick={() => setShowLimitNotification(false)} className="p-1 -m-1"><XMarkIcon className="w-5 h-5" /></button>
                             </div>
-                            <button onClick={() => setShowLimitNotification(false)} className="p-1 -m-1"><XMarkIcon className="w-5 h-5" /></button>
-                        </div>
-                    )}
-                    {currentMode === 'math' && currentChat?.messages.length && (
-                        <MathConsole
-                            isOpen={isMathConsoleOpen}
-                            onToggle={() => setIsMathConsoleOpen(prev => !prev)}
-                            logs={lastSamMessage?.consoleLogs || []}
+                        )}
+                        {currentMode === 'math' && currentChat?.messages.length > 0 && (
+                            <MathConsole
+                                isOpen={isMathConsoleOpen}
+                                onToggle={() => setIsMathConsoleOpen(prev => !prev)}
+                                logs={lastSamMessage?.consoleLogs || []}
+                            />
+                        )}
+                        <ChatInput
+                            onSendMessage={handleSendMessage}
+                            onModeAction={handleModeAction}
+                            attachment={attachment}
+                            onRemoveAttachment={() => setAttachment(null)}
+                            disabled={isLoading}
+                            currentMode={currentMode}
+                            onResetMode={() => setCurrentMode('normal')}
+                            onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+                            settings={settings}
+                            onSaveSettings={handleSaveSettings}
+                            voiceModeState={voiceModeState}
+                            activeConversationState={activeConversationState}
+                            liveTranscription={liveTranscription}
+                            onEndVoiceSession={handleEndVoiceSession}
+                            usage={usage}
+                            isThemeActive={isThemeActive}
                         />
-                    )}
-                    <ChatInput
-                        onSendMessage={handleSendMessage}
-                        onModeAction={handleModeAction}
-                        attachment={attachment}
-                        onRemoveAttachment={() => setAttachment(null)}
-                        disabled={isLoading}
-                        currentMode={currentMode}
-                        onResetMode={() => setCurrentMode('normal')}
-                        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-                        settings={settings}
-                        onSaveSettings={handleSaveSettings}
-                        voiceModeState={voiceModeState}
-                        activeConversationState={activeConversationState}
-                        liveTranscription={liveTranscription}
-                        onEndVoiceSession={handleEndVoiceSession}
-                        usage={usage}
-                        isThemeActive={isThemeActive}
-                    />
-                </div>
+                    </div>
+                )}
             </main>
 
             {isSettingsModalOpen && (

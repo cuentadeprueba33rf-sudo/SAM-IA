@@ -1,5 +1,5 @@
 import React, { Fragment, useState, useEffect, RefObject } from 'react';
-import { PencilSquareIcon, WindowIcon, SparklesIcon, Cog6ToothIcon, MagnifyingGlassIcon, EllipsisVerticalIcon, ViewColumnsIcon, MegaphoneIcon, UsersIcon, CheckBadgeIcon, BookOpenIcon, ChartBarIcon } from './icons';
+import { PencilSquareIcon, WindowIcon, SparklesIcon, Cog6ToothIcon, MagnifyingGlassIcon, EllipsisVerticalIcon, ViewColumnsIcon, MegaphoneIcon, UsersIcon, CheckBadgeIcon, BookOpenIcon, ChartBarIcon, CodeBracketSquareIcon } from './icons';
 import VerificationPanel from './VerificationPanel';
 import type { ViewID } from '../types';
 
@@ -98,6 +98,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 onClick={onClose}
             />
             <aside className={`absolute top-0 left-0 h-full w-80 bg-surface-primary text-text-main flex flex-col transition-transform duration-300 ease-in-out z-40 md:relative md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                {/* Fixed Header */}
                 <div className="p-4 space-y-4 flex-shrink-0">
                     <div className="relative">
                         <MagnifyingGlassIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary st-sidebar-icon" />
@@ -108,78 +109,94 @@ const Sidebar: React.FC<SidebarProps> = ({
                             <PencilSquareIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
                             <span>Nuevo chat</span>
                         </button>
-                        <button onClick={onClose} className="p-2 rounded-lg hover:bg-surface-secondary">
+                        <button onClick={onClose} className="p-2 rounded-lg hover:bg-surface-secondary md:hidden">
                             <WindowIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
                         </button>
                     </div>
-                    <button onClick={() => onSelectView('canvas')} className={`flex items-center gap-3 p-2 rounded-lg text-left w-full transition-colors ${activeView === 'canvas' ? 'bg-accent/10 text-accent' : 'hover:bg-surface-secondary'}`}>
-                        <ViewColumnsIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
-                        <span>Canvas</span>
-                    </button>
-                     <button onClick={() => onSelectView('insights')} className={`flex items-center gap-3 p-2 rounded-lg text-left w-full transition-colors ${activeView === 'insights' ? 'bg-accent/10 text-accent' : 'hover:bg-surface-secondary'}`}>
-                        <MegaphoneIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
-                        <span>Insights</span>
-                    </button>
-                    <button onClick={() => onSelectView('documentation')} className={`flex items-center gap-3 p-2 rounded-lg text-left w-full transition-colors ${activeView === 'documentation' ? 'bg-accent/10 text-accent' : 'hover:bg-surface-secondary'}`}>
-                        <BookOpenIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
-                        <span>Documentación</span>
-                    </button>
-                    <button onClick={() => onSelectView('usage')} className={`flex items-center gap-3 p-2 rounded-lg text-left w-full transition-colors ${activeView === 'usage' ? 'bg-accent/10 text-accent' : 'hover:bg-surface-secondary'}`}>
-                        <ChartBarIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
-                        <span>Usage</span>
-                    </button>
                 </div>
 
-                <div className="px-2 space-y-2">
-                    <VerificationPanel
-                        title="Creadores Principales"
-                        icon={SparklesIcon}
-                        collaborators={creators}
-                        isOpen={isCreatorsOpen}
-                        onToggle={() => setIsCreatorsOpen(!isCreatorsOpen)}
-                    />
-                    <VerificationPanel
-                        title="Colaboradores Clave"
-                        icon={UsersIcon}
-                        collaborators={collaborators}
-                        isOpen={isCollaboratorsOpen}
-                        onToggle={() => setIsCollaboratorsOpen(!isCollaboratorsOpen)}
-                    />
-                </div>
-                
-                <div className="flex-1 overflow-y-auto px-4 mt-4">
-                    <h3 className="text-text-secondary font-semibold text-sm mb-2">Recientes</h3>
-                    <ul className="space-y-1">
-                        {chats.map(chat => (
-                            <li key={chat.id} className="group relative">
-                                <a 
-                                    href="#"
-                                    onClick={(e) => { e.preventDefault(); handleSelectChat(chat.id); }}
-                                    onContextMenu={(e) => {
-                                        e.preventDefault();
-                                        onShowContextMenu(chat.id, { x: e.clientX, y: e.clientY });
-                                    }}
-                                    onMouseDown={(e) => handlePressStart(e, chat.id)}
-                                    onMouseUp={handlePressEnd}
-                                    onMouseLeave={handlePressEnd}
-                                    onTouchStart={(e) => handlePressStart(e, chat.id)}
-                                    onTouchEnd={handlePressEnd}
-                                    className={`block w-full text-left truncate pr-8 px-3 py-2 rounded-lg transition-colors ${activeView === 'chat' && currentChatId === chat.id ? 'bg-accent text-white' : 'hover:bg-surface-secondary'}`}
-                                >
-                                    {chat.title}
-                                </a>
-                                <button
-                                    onClick={(e) => onShowContextMenu(chat.id, { x: e.clientX, y: e.clientY })}
-                                    className={`absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded-full text-text-secondary hover:bg-surface-primary ${activeView === 'chat' && currentChatId === chat.id ? 'text-white' : 'group-hover:opacity-100 opacity-0'}`}
-                                >
-                                    <EllipsisVerticalIcon className="w-5 h-5 st-sidebar-icon" />
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
+                {/* Scrollable Main Area */}
+                <div className="flex-1 overflow-y-auto px-4">
+                    <div className="space-y-1">
+                        <button onClick={() => onSelectView('canvas')} className={`flex items-center gap-3 p-2 rounded-lg text-left w-full transition-colors ${activeView === 'canvas' ? 'bg-accent/10 text-accent' : 'hover:bg-surface-secondary'}`}>
+                            <ViewColumnsIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
+                            <span>Canvas</span>
+                        </button>
+                         <button onClick={() => onSelectView('insights')} className={`flex items-center gap-3 p-2 rounded-lg text-left w-full transition-colors ${activeView === 'insights' ? 'bg-accent/10 text-accent' : 'hover:bg-surface-secondary'}`}>
+                            <MegaphoneIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
+                            <span>Insights</span>
+                        </button>
+                        <button onClick={() => onSelectView('documentation')} className={`flex items-center gap-3 p-2 rounded-lg text-left w-full transition-colors ${activeView === 'documentation' ? 'bg-accent/10 text-accent' : 'hover:bg-surface-secondary'}`}>
+                            <BookOpenIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
+                            <span>Documentación</span>
+                        </button>
+                        <button onClick={() => onSelectView('usage')} className={`flex items-center gap-3 p-2 rounded-lg text-left w-full transition-colors ${activeView === 'usage' ? 'bg-accent/10 text-accent' : 'hover:bg-surface-secondary'}`}>
+                            <ChartBarIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
+                            <span>Usage</span>
+                        </button>
+                    </div>
+                    
+                    <div className="py-2"><div className="border-t border-border-subtle"></div></div>
+
+                    <div>
+                        <h3 className="text-text-secondary font-semibold text-sm mb-2 px-2">SAM IA Studios</h3>
+                         <button onClick={() => onSelectView('canvas_dev_pro')} className={`flex items-center gap-3 p-2 rounded-lg text-left w-full transition-colors ${activeView === 'canvas_dev_pro' ? 'bg-accent/10 text-accent' : 'hover:bg-surface-secondary'}`}>
+                            <CodeBracketSquareIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
+                            <span>Canvas Dev Pro</span>
+                        </button>
+                    </div>
+                    
+                    <div className="mt-4">
+                        <h3 className="text-text-secondary font-semibold text-sm mb-2">Recientes</h3>
+                        <ul className="space-y-1">
+                            {chats.map(chat => (
+                                <li key={chat.id} className="group relative">
+                                    <a 
+                                        href="#"
+                                        onClick={(e) => { e.preventDefault(); handleSelectChat(chat.id); }}
+                                        onContextMenu={(e) => {
+                                            e.preventDefault();
+                                            onShowContextMenu(chat.id, { x: e.clientX, y: e.clientY });
+                                        }}
+                                        onMouseDown={(e) => handlePressStart(e, chat.id)}
+                                        onMouseUp={handlePressEnd}
+                                        onMouseLeave={handlePressEnd}
+                                        onTouchStart={(e) => handlePressStart(e, chat.id)}
+                                        onTouchEnd={handlePressEnd}
+                                        className={`block w-full text-left truncate pr-8 px-3 py-2 rounded-lg transition-colors ${activeView === 'chat' && currentChatId === chat.id ? 'bg-accent text-white' : 'hover:bg-surface-secondary'}`}
+                                    >
+                                        {chat.title}
+                                    </a>
+                                    <button
+                                        onClick={(e) => onShowContextMenu(chat.id, { x: e.clientX, y: e.clientY })}
+                                        className={`absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded-full text-text-secondary hover:bg-surface-primary ${activeView === 'chat' && currentChatId === chat.id ? 'text-white' : 'group-hover:opacity-100 opacity-0'}`}
+                                    >
+                                        <EllipsisVerticalIcon className="w-5 h-5 st-sidebar-icon" />
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
                 </div>
 
+                {/* Fixed Footer */}
                 <div ref={creditsRef} className="p-4 border-t border-border-subtle flex-shrink-0 relative">
+                    <div className="px-2 space-y-2 mb-2">
+                        <VerificationPanel
+                            title="Creadores Principales"
+                            icon={SparklesIcon}
+                            collaborators={creators}
+                            isOpen={isCreatorsOpen}
+                            onToggle={() => setIsCreatorsOpen(!isCreatorsOpen)}
+                        />
+                        <VerificationPanel
+                            title="Colaboradores Clave"
+                            icon={UsersIcon}
+                            collaborators={collaborators}
+                            isOpen={isCollaboratorsOpen}
+                            onToggle={() => setIsCollaboratorsOpen(!isCollaboratorsOpen)}
+                        />
+                    </div>
                      <div className="flex items-center gap-3 p-2 mb-2">
                          <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center font-bold text-white">
                            {userName.charAt(0).toUpperCase()}

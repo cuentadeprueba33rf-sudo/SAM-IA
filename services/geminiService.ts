@@ -1,7 +1,8 @@
 // FIX: Add missing imports for new functions
 import { GoogleGenAI, Modality, LiveServerMessage, Blob, Type, FunctionDeclaration, GenerateContentResponse } from "@google/genai";
-import type { Attachment, ChatMessage, ModeID, ModelType, EssaySection } from '../types';
+import type { Attachment, ChatMessage, ModeID, ModelType, EssaySection, Settings } from '../types';
 import { MessageAuthor } from '../types';
+import { generateSystemInstruction } from '../constants';
 
 // ¡IMPORTANTE! Clave API interna para el uso de la aplicación.
 // FIX: Use environment variable for API key as per guidelines.
@@ -388,6 +389,80 @@ User prompt: "${prompt}"
     } catch (error) {
         console.error("Mode detection failed:", error);
         return null;
+    }
+};
+
+// FIX: Implement and export missing 'improvePrompt' function.
+export const improvePrompt = async (userPrompt: string): Promise<string> => {
+    if (!API_KEY) throw new Error("API key not configured.");
+    const ai = new GoogleGenAI({ apiKey: API_KEY });
+
+    const systemInstruction = `You are an expert prompt engineer specializing in generating code. Your task is to take a user's rough idea and refine it into a detailed, actionable prompt for an AI code generation model (like the 'canvasdev' mode). The user wants to build a web component or a small web application. The output MUST be only the improved prompt, with no additional text, conversation, or markdown formatting. The prompt should be in Spanish.`;
+    
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `User's idea: "${userPrompt}"`,
+        config: {
+            systemInstruction: systemInstruction,
+        }
+    });
+
+    return response.text.trim();
+};
+
+export const generateCanvasDevCode = async (prompt: string): Promise<string> => {
+    if (!API_KEY) throw new Error("API key not configured.");
+    const ai = new GoogleGenAI({ apiKey: API_KEY });
+
+    const model = 'gemini-2.5-pro'; 
+    const systemInstruction = generateSystemInstruction('canvasdev', { 
+        theme: 'dark', 
+        personality: 'default', 
+        profession: '', 
+        defaultModel: 'sm-i3', 
+        quickMode: false,
+        stThemeEnabled: false,
+    });
+
+    try {
+        const response = await ai.models.generateContent({
+            model: model,
+            contents: prompt,
+            config: {
+                systemInstruction: systemInstruction,
+            },
+        });
+
+        const fullText = response.text;
+        const codeBlockRegex = /```(?:\w+)?\n([\s\S]*?)```/;
+        const match = fullText.match(codeBlockRegex);
+
+        if (match && match[1]) {
+            return match[1].trim();
+        } else {
+            console.warn("CanvasDevPro: No code block found in response. Returning full text.");
+            return `
+                <html>
+                    <body style="font-family: sans-serif; padding: 2rem; background-color: #1e1e1e; color: #e0e0e0;">
+                        <h2>Error de Generación</h2>
+                        <p>No se pudo extraer un bloque de código válido de la respuesta de la IA.</p>
+                        <pre style="background-color: #2d2d2d; padding: 1rem; border-radius: 8px; white-space: pre-wrap; word-wrap: break-word;">${fullText.replace(/</g, '&lt;')}</pre>
+                    </body>
+                </html>
+            `;
+        }
+    } catch (error) {
+        console.error("Error generating CanvasDevPro code:", error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        return `
+            <html>
+                <body style="font-family: sans-serif; padding: 2rem; background-color: #1e1e1e; color: #e0e0e0;">
+                    <h2>Error de API</h2>
+                    <p>Hubo un problema al contactar al servicio de IA.</p>
+                    <pre style="background-color: #2d2d2d; padding: 1rem; border-radius: 8px; white-space: pre-wrap; word-wrap: break-word;">${errorMessage.replace(/</g, '&lt;')}</pre>
+                </body>
+            </html>
+        `;
     }
 };
 
