@@ -9,7 +9,7 @@ interface PlusMenuProps {
 
 const PlusMenu: React.FC<PlusMenuProps> = ({ onAction, settings }) => {
     // Exclude voice mode from the grid, as it will be handled by a dedicated button
-    const gridModes = MODES.filter(mode => mode.id !== 'voice' && mode.id !== 'image_generation');
+    const gridModes = MODES.filter(mode => mode.id !== 'voice');
     const voiceMode = MODES.find(m => m.id === 'voice');
     
     // This should always be found, but good practice to check
