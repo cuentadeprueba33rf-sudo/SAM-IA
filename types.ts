@@ -60,7 +60,7 @@ export interface Mode {
   disabled?: boolean;
 }
 
-export type ModelType = 'sm-i1' | 'sm-i3';
+export type ModelType = 'sm-i1' | 'sm-i3' | 'sm-l3.9';
 export type Theme = 'light' | 'dark';
 export type Personality = 'default' | 'amable' | 'directo' | 'divertido' | 'inteligente';
 
@@ -95,7 +95,7 @@ export interface Essay {
     currentSectionId?: string; // Tracks the ID of the section being written
 }
 
-export type ViewID = 'chat' | 'canvas' | 'insights';
+export type ViewID = 'chat' | 'canvas' | 'insights' | 'documentation' | 'usage';
 
 export interface Insight {
     id: string;

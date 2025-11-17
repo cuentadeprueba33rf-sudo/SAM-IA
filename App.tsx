@@ -22,7 +22,7 @@ import {
     ModelType, Artifact, ViewID, Essay, Insight, UsageTracker
 } from './types';
 import { generateSystemInstruction } from './constants';
-import { BookOpenIcon, MegaphoneIcon, ViewColumnsIcon, AcademicCapIcon, ChatBubbleLeftRightIcon, UsersIcon, ExclamationTriangleIcon, XMarkIcon } from './components/icons';
+import { BookOpenIcon, MegaphoneIcon, ViewColumnsIcon, AcademicCapIcon, ChatBubbleLeftRightIcon, UsersIcon, ExclamationTriangleIcon, XMarkIcon, ChartBarIcon } from './components/icons';
 
 type VoiceModeState = 'inactive' | 'activeConversation';
 type ActiveConversationState = 'LISTENING' | 'RESPONDING';
@@ -115,6 +115,28 @@ const InsightsView: React.FC<{ insights: Insight[], onAction: (action: Insight['
                     </div>
                 </div>
             ))}
+        </div>
+    </div>
+);
+
+const DocumentationView: React.FC = () => (
+    <div className="flex-1 p-8 overflow-y-auto">
+        <h1 className="text-3xl font-bold text-text-main mb-6">Documentación</h1>
+        <div className="text-center text-text-secondary mt-16">
+            <BookOpenIcon className="w-16 h-16 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold">Próximamente</h2>
+            <p>Esta sección contendrá guías detalladas y tutoriales sobre cómo usar SAM.</p>
+        </div>
+    </div>
+);
+
+const UsageView: React.FC = () => (
+    <div className="flex-1 p-8 overflow-y-auto">
+        <h1 className="text-3xl font-bold text-text-main mb-6">Uso</h1>
+        <div className="text-center text-text-secondary mt-16">
+            <ChartBarIcon className="w-16 h-16 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold">Próximamente</h2>
+            <p>Aquí podrás ver estadísticas sobre tu uso de los modelos de IA.</p>
         </div>
     </div>
 );
@@ -687,6 +709,8 @@ const App: React.FC = () => {
                 
                 {activeView === 'canvas' && <CanvasView pinnedArtifacts={pinnedArtifacts} onOpenArtifact={setActiveArtifact} />}
                 {activeView === 'insights' && <InsightsView insights={DUMMY_INSIGHTS} onAction={handleInsightAction} />}
+                {activeView === 'documentation' && <DocumentationView />}
+                {activeView === 'usage' && <UsageView />}
                 
                  {showVoiceErrorNotification && (
                     <div className="absolute bottom-24 right-4 z-20">

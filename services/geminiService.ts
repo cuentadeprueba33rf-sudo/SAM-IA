@@ -1,13 +1,16 @@
-import { GoogleGenAI, Modality, LiveServerMessage, Blob, Type, FunctionDeclaration } from "@google/genai";
+// FIX: Add missing imports for new functions
+import { GoogleGenAI, Modality, LiveServerMessage, Blob, Type, FunctionDeclaration, GenerateContentResponse } from "@google/genai";
 import type { Attachment, ChatMessage, ModeID, ModelType, EssaySection } from '../types';
 import { MessageAuthor } from '../types';
 
 // ¡IMPORTANTE! Clave API interna para el uso de la aplicación.
-const API_KEY = "AIzaSyB0shyePxIHs0XYVLBNGEbWNYMso9RGcQg";
+// FIX: Use environment variable for API key as per guidelines.
+const API_KEY = process.env.API_KEY;
 
 const MODEL_MAP: Record<ModelType, string> = {
     'sm-i1': 'gemini-2.5-flash',
     'sm-i3': 'gemini-2.5-pro',
+    'sm-l3.9': 'gemini-2.5-pro',
 };
 
 const fileToGenerativePart = async (attachment: Attachment) => {
@@ -101,6 +104,9 @@ export const startActiveConversation = async (
 
     const inputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    
+    let scriptProcessor: ScriptProcessorNode | null = null;
+    let mediaStreamSource: MediaStreamAudioSourceNode | null = null;
 
     const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
@@ -108,8 +114,8 @@ export const startActiveConversation = async (
             onopen: () => {
                 console.log('Active conversation session opened.');
                 onStateChange('LISTENING');
-                const source = inputAudioContext.createMediaStreamSource(stream);
-                const scriptProcessor = inputAudioContext.createScriptProcessor(4096, 1, 1);
+                mediaStreamSource = inputAudioContext.createMediaStreamSource(stream);
+                scriptProcessor = inputAudioContext.createScriptProcessor(4096, 1, 1);
                 scriptProcessor.onaudioprocess = (audioProcessingEvent) => {
                     const inputData = audioProcessingEvent.inputBuffer.getChannelData(0);
                     const pcmBlob = createBlob(inputData);
@@ -117,7 +123,7 @@ export const startActiveConversation = async (
                         session.sendRealtimeInput({ media: pcmBlob });
                     });
                 };
-                source.connect(scriptProcessor);
+                mediaStreamSource.connect(scriptProcessor);
                 scriptProcessor.connect(inputAudioContext.destination);
             },
             onmessage: async (message: LiveServerMessage) => {
@@ -166,95 +172,48 @@ export const startActiveConversation = async (
                     nextStartTime = 0;
                 }
             },
+            // FIX: Complete the callbacks object
             onerror: (e: ErrorEvent) => {
-                console.error('Active conversation error:', e);
-                onError(new Error("Hubo un error en la sesión de voz."));
+                console.error("Voice session error:", e);
+                onError(new Error(e.message || 'Unknown voice session error'));
             },
             onclose: (e: CloseEvent) => {
-                console.log('Active conversation closed.');
-                stream.getTracks().forEach(track => track.stop());
-                if (inputAudioContext.state !== 'closed') inputAudioContext.close();
-                if (outputAudioContext.state !== 'closed') outputAudioContext.close();
+                console.log('Voice session closed.');
             },
         },
+        // FIX: Complete the config object
         config: {
             responseModalities: [Modality.AUDIO],
-            outputAudioTranscription: {},
             inputAudioTranscription: {},
+            outputAudioTranscription: {},
+            speechConfig: {
+                voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
+            },
             systemInstruction: systemInstruction,
-        },
+        }
     });
 
+    sessionPromise.catch(e => {
+        onError(e);
+    });
+    
     const session = await sessionPromise;
-    return {
-        close: () => session.close()
+    
+    const close = () => {
+        console.log('Closing active conversation session.');
+        session.close();
+        stream.getTracks().forEach(track => track.stop());
+        if (scriptProcessor) scriptProcessor.disconnect();
+        if (mediaStreamSource) mediaStreamSource.disconnect();
+        if (inputAudioContext.state !== 'closed') inputAudioContext.close().catch(console.error);
+        if (outputAudioContext.state !== 'closed') outputAudioContext.close().catch(console.error);
     };
+
+    // FIX: Add missing return statement
+    return { close };
 };
 
-
-
-// --- Fin de funciones para Live API ---
-
-
-export const generateImage = async ({
-    prompt,
-    attachment,
-}: {
-    prompt: string;
-    attachment?: Attachment;
-}): Promise<Attachment> => {
-    if (!API_KEY) {
-        throw new Error("Error de conexión. SAM no pudo generar la imagen.");
-    }
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
-    try {
-        const parts: any[] = [{ text: prompt }];
-        if (attachment) {
-            const imagePart = await fileToGenerativePart(attachment);
-            parts.unshift(imagePart);
-        }
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image',
-            contents: { parts: parts },
-            config: {
-                responseModalities: [Modality.IMAGE],
-            },
-        });
-        
-        for (const part of response.candidates[0].content.parts) {
-            if (part.inlineData) {
-                const base64ImageBytes: string = part.inlineData.data;
-                const mimeType = part.inlineData.mimeType;
-                return {
-                    name: 'generated-image.png',
-                    type: mimeType,
-                    data: `data:${mimeType};base64,${base64ImageBytes}`,
-                };
-            }
-        }
-        throw new Error("No se generó ninguna imagen.");
-
-    } catch (error) {
-        console.error("Error al generar la imagen:", error);
-        throw new Error("SAM tuvo un error al generar la imagen. Por favor, inténtalo de nuevo.");
-    }
-};
-
-
-interface StreamGenerateContentParams {
-    prompt: string;
-    systemInstruction: string;
-    attachment?: Attachment;
-    history: ChatMessage[];
-    mode: ModeID;
-    modelName: ModelType;
-    onUpdate: (chunk: string) => void;
-    onLogUpdate: (logs: string[]) => void;
-    onComplete: (fullText: string, groundingChunks?: any[], consoleLogs?: string[]) => void;
-    onError: (error: Error) => void;
-    abortSignal: AbortSignal;
-}
+// FIX: Implement and export missing functions
 
 export const streamGenerateContent = async ({
     prompt,
@@ -263,314 +222,256 @@ export const streamGenerateContent = async ({
     history,
     mode,
     modelName,
+    abortSignal,
     onUpdate,
     onLogUpdate,
     onComplete,
     onError,
-    abortSignal,
-}: StreamGenerateContentParams) => {
-    if (!API_KEY) {
-        const error = new Error("Error de conexión. Por favor, revisa tu conexión a internet e inténtalo de nuevo.");
-        onError(error);
-        return;
-    }
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
-    const geminiModelName = MODEL_MAP[modelName] || 'gemini-2.5-flash';
-
+}: {
+    prompt: string;
+    systemInstruction: string;
+    attachment?: Attachment | null;
+    history: ChatMessage[];
+    mode: ModeID;
+    modelName: ModelType;
+    abortSignal: AbortSignal;
+    onUpdate: (chunk: string) => void;
+    onLogUpdate: (logs: string[]) => void;
+    onComplete: (fullText: string, groundingChunks?: any[], consoleLogs?: string[]) => void;
+    onError: (error: Error) => void;
+}) => {
     try {
-        const contents = await Promise.all(history
-            .filter(msg => msg.author === MessageAuthor.USER || msg.author === MessageAuthor.SAM)
-            .map(async (msg) => {
-                const parts: any[] = [{ text: msg.text }];
-                if (msg.attachment) {
-                    const filePart = await fileToGenerativePart(msg.attachment);
-                    parts.unshift(filePart);
-                }
-                return {
-                    role: msg.author === MessageAuthor.USER ? 'user' : 'model',
-                    parts: parts,
-                };
-            }));
-        
-        const currentUserParts: any[] = [{ text: prompt }];
-        if (attachment) {
-            const imagePart = await fileToGenerativePart(attachment);
-            currentUserParts.unshift(imagePart);
-        }
-        contents.push({ role: 'user', parts: currentUserParts });
+        if (!API_KEY) throw new Error("API key not configured.");
+        const ai = new GoogleGenAI({ apiKey: API_KEY });
+        const model = MODEL_MAP[modelName] || 'gemini-2.5-flash';
 
-        const config: any = {
-            systemInstruction: systemInstruction,
-        };
-
-        if (mode === 'search' || mode === 'architect') {
-            config.tools = [{googleSearch: {}}];
-        }
-
-        const resultStream = await ai.models.generateContentStream({
-            model: geminiModelName,
-            contents: contents,
-            config,
+        const conversationHistory = history.map(message => {
+            const parts: any[] = [{ text: message.text }];
+            if (message.attachment) {
+                const base64Data = message.attachment.data?.split(',')[1] ?? '';
+                parts.push({
+                    inlineData: {
+                        data: base64Data,
+                        mimeType: message.attachment.type,
+                    },
+                });
+            }
+            return {
+                role: message.author === MessageAuthor.USER ? 'user' : 'model',
+                parts: parts,
+            };
         });
 
-        if (abortSignal.aborted) return;
+        const userParts: any[] = [{ text: prompt }];
+        if (attachment) {
+            userParts.push(await fileToGenerativePart(attachment));
+        }
+        
+        const latestContent = { role: 'user', parts: userParts };
+
+        const generateContentRequest = {
+            model: model,
+            contents: [...conversationHistory, latestContent],
+            config: {
+                systemInstruction: systemInstruction,
+                tools: (mode === 'search' || mode === 'architect') ? [{googleSearch: {}}] : undefined,
+            },
+        };
+
+        const responseStream = await ai.models.generateContentStream(generateContentRequest);
         
         let fullText = "";
-        const allLogs: string[] = [];
-        const rawGroundingChunks: any[] = [];
-        
-        for await (const chunk of resultStream) {
+        let consoleLogs: string[] = [];
+        let finalChunk: GenerateContentResponse | null = null;
+
+        for await (const chunk of responseStream) {
             if (abortSignal.aborted) {
-                console.log("Stream reading aborted.");
+                console.log("Stream aborted");
                 return;
             }
-            
+            finalChunk = chunk;
             const chunkText = chunk.text;
-            if(chunkText) {
+            if (chunkText) {
                 if (mode === 'math') {
-                    const lines = chunkText.split('\n');
-                    const newLogs = lines.filter(l => l.trim().startsWith('[LOG]'));
-                    const newContent = lines.filter(l => !l.trim().startsWith('[LOG]')).join('\n');
+                    const lines = (fullText + chunkText).split('\n');
+                    const newLogs = lines.filter(line => line.startsWith('[LOG]'));
+                    const regularText = lines.filter(line => !line.startsWith('[LOG]')).join('\n');
                     
-                    if (newLogs.length > 0) {
-                        allLogs.push(...newLogs);
-                        onLogUpdate(newLogs);
+                    if (newLogs.length > consoleLogs.length) {
+                        onLogUpdate(newLogs.slice(consoleLogs.length));
+                        consoleLogs = newLogs;
                     }
-                    if (newContent) {
-                        fullText += newContent;
-                        onUpdate(newContent);
+                    if (regularText !== fullText) {
+                        onUpdate(regularText.slice(fullText.length));
+                        fullText = regularText;
                     }
                 } else {
                     fullText += chunkText;
                     onUpdate(chunkText);
                 }
             }
-            if (chunk.candidates?.[0]?.groundingMetadata?.groundingChunks) {
-                rawGroundingChunks.push(...chunk.candidates[0].groundingMetadata.groundingChunks);
-            }
         }
         
-        if (!abortSignal.aborted) {
-            // Sanitize grounding chunks to prevent circular structure errors when saving to localStorage.
-            const sanitizedGroundingChunks = rawGroundingChunks
-                .map(chunk => {
-                    if (chunk.web) {
-                        return {
-                            web: {
-                                uri: chunk.web.uri,
-                                title: chunk.web.title,
-                            },
-                        };
-                    }
-                    return null;
-                })
-                .filter(Boolean); // remove nulls
-
-            onComplete(fullText, sanitizedGroundingChunks.length > 0 ? sanitizedGroundingChunks : undefined, allLogs);
-        }
-
-    } catch (error) {
-        console.error("Error generating content:", error);
-        if (error instanceof Error && error.name !== 'AbortError' && !abortSignal.aborted) {
-            const customError = new Error("Error de conexión. Por favor, revisa tu conexión a internet e inténtalo de nuevo.");
-            onError(customError);
+        const groundingChunks = finalChunk?.candidates?.[0]?.groundingMetadata?.groundingChunks;
+        onComplete(fullText, groundingChunks, consoleLogs);
+        
+    } catch (error: any) {
+        if (error.name !== 'AbortError') {
+            onError(error);
         }
     }
 };
 
-const setChatModeFunctionDeclaration: FunctionDeclaration = {
-  name: 'set_chat_mode',
-  description: "Detects if the user's query requires a specialized assistant mode and sets it. Only use this function if the user's intent is very clear (e.g., they ask to 'solve', 'code', 'draw', or 'search'). For general conversation, do not call this function.",
-  parameters: {
-    type: Type.OBJECT,
-    properties: {
-      mode: {
-        type: Type.STRING,
-        description: 'The specialized mode to switch to.',
-        enum: ['math', 'canvasdev', 'search', 'image_generation'],
-      },
-      reasoning: {
-        type: Type.STRING,
-        description: "A brief, user-facing message in Spanish explaining why the mode is being changed. For example: 'Cambiando a modo matemático para resolver la ecuación.'",
-      },
-    },
-    required: ['mode', 'reasoning'],
-  },
-};
-
-export const detectMode = async (prompt: string, systemInstruction: string): Promise<{ newMode: ModeID; reasoning: string } | null> => {
-    if (!API_KEY) {
-        console.error("Mode detection skipped: API Key not configured.");
-        return null;
-    }
+export const generateImage = async ({ prompt, attachment }: { prompt: string; attachment?: Attachment | null; }): Promise<Attachment> => {
+    if (!API_KEY) throw new Error("API key not configured.");
     const ai = new GoogleGenAI({ apiKey: API_KEY });
-    
-    try {
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-pro', // Using pro model for better function calling
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          config: {
-            systemInstruction,
-            tools: [{ functionDeclarations: [setChatModeFunctionDeclaration] }],
-          }
-        });
 
-        const functionCall = response.functionCalls?.[0];
-
-        if (functionCall && functionCall.name === 'set_chat_mode') {
-            const { mode, reasoning } = functionCall.args;
-            if (typeof mode === 'string' && ['math', 'canvasdev', 'search', 'image_generation'].includes(mode)) {
-                return { newMode: mode as ModeID, reasoning: String(reasoning ?? '') };
-            }
-        }
-        return null;
-
-    } catch (error) {
-        console.error("Error during mode detection:", error);
-        return null; // Don't block the user if detection fails
+    const contents: any = { parts: [] };
+    if (attachment) {
+        contents.parts.push(await fileToGenerativePart(attachment));
     }
+    if (prompt) {
+        contents.parts.push({ text: prompt });
+    }
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image',
+        contents: contents,
+        config: {
+            responseModalities: [Modality.IMAGE],
+        },
+    });
+
+    for (const part of response.candidates[0].content.parts) {
+        if (part.inlineData) {
+            const base64ImageBytes: string = part.inlineData.data;
+            return {
+                name: `generated-${Date.now()}.png`,
+                type: part.inlineData.mimeType || 'image/png',
+                data: `data:${part.inlineData.mimeType || 'image/png'};base64,${base64ImageBytes}`,
+            };
+        }
+    }
+    throw new Error("Image generation failed: no image data in response.");
 };
 
-
-export const generateEssayOutline = async ({
-    prompt,
-    systemInstruction,
-    modelName,
-}: {
-    prompt: string;
-    systemInstruction: string;
-    modelName: ModelType;
-}): Promise<Omit<EssaySection, 'id'>[]> => {
-    if (!API_KEY) {
-        throw new Error("Error de conexión. No se pudo generar el esquema del ensayo.");
-    }
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
-    const geminiModelName = MODEL_MAP[modelName] || 'gemini-2.5-flash';
-
+export const detectMode = async (prompt: string, systemInstruction: string): Promise<{ newMode: ModeID, reasoning: string } | null> => {
     try {
+        if (!API_KEY) throw new Error("API key not configured.");
+        const ai = new GoogleGenAI({ apiKey: API_KEY });
+
+        const detectionPrompt = `
+Analyze the following user prompt and determine the most appropriate mode.
+The available modes are: 'math', 'canvasdev', 'search', 'architect', 'image_generation'.
+Respond with a JSON object with two keys: "newMode" (one of the available modes) and "reasoning" (a short explanation in Spanish for the user why the mode was switched, max 15 words).
+If the prompt is a general question, conversation, or greeting that doesn't fit a specific mode, respond with the plain text "null".
+
+User prompt: "${prompt}"
+`;
         const response = await ai.models.generateContent({
-            model: geminiModelName,
-            contents: prompt,
+            model: 'gemini-2.5-flash',
+            contents: detectionPrompt,
             config: {
                 systemInstruction,
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        outline: {
-                            type: Type.ARRAY,
-                            description: "The essay outline, with each object being a section.",
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    title: { type: Type.STRING, description: "The title of the essay section." },
-                                    points: {
-                                        type: Type.ARRAY,
-                                        description: "An array of strings, where each string is a key point to cover in this section.",
-                                        items: { type: Type.STRING }
-                                    },
-                                },
-                                required: ['title', 'points'],
-                            },
-                        },
-                    },
-                    required: ['outline'],
-                },
-            },
+                responseMimeType: 'application/json'
+            }
         });
-        const result = JSON.parse(response.text);
-        return result.outline;
+
+        const jsonText = response.text.trim();
+        if (jsonText.toLowerCase() === 'null') return null;
+
+        const result = JSON.parse(jsonText);
+        if (result && result.newMode && result.reasoning) {
+            return result;
+        }
+        return null;
     } catch (error) {
-        console.error("Error generating essay outline:", error);
-        throw new Error("SAM tuvo un error al generar el esquema. Por favor, inténtalo de nuevo.");
+        console.error("Mode detection failed:", error);
+        return null;
     }
 };
+
+
+export const generateEssayOutline = async ({ prompt, systemInstruction, modelName }: { prompt: string, systemInstruction: string, modelName: ModelType }): Promise<Omit<EssaySection, 'id'>[]> => {
+    if (!API_KEY) throw new Error("API key not configured.");
+    const ai = new GoogleGenAI({ apiKey: API_KEY });
+    const model = MODEL_MAP[modelName] || 'gemini-2.5-flash';
+
+    const response = await ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: {
+            systemInstruction,
+            responseMimeType: 'application/json'
+        }
+    });
+
+    const jsonText = response.text.trim();
+    const result = JSON.parse(jsonText);
+    if (result && result.outline) {
+        return result.outline;
+    }
+    throw new Error("Failed to generate essay outline.");
+};
+
 
 export const streamEssaySection = async ({
     prompt,
     systemInstruction,
     modelName,
+    abortSignal,
     onUpdate,
-    abortSignal
 }: {
     prompt: string;
     systemInstruction: string;
     modelName: ModelType;
-    onUpdate: (chunk: string) => void;
     abortSignal: AbortSignal;
+    onUpdate: (chunk: string) => void;
 }) => {
-    if (!API_KEY) {
-        throw new Error("Error de conexión. No se pudo generar la sección del ensayo.");
-    }
+    if (!API_KEY) throw new Error("API key not configured.");
     const ai = new GoogleGenAI({ apiKey: API_KEY });
-    const geminiModelName = MODEL_MAP[modelName] || 'gemini-2.5-flash';
-
+    const model = MODEL_MAP[modelName] || 'gemini-2.5-flash';
+    
     try {
-        const resultStream = await ai.models.generateContentStream({
-            model: geminiModelName,
+        const responseStream = await ai.models.generateContentStream({
+            model,
             contents: prompt,
-            config: { systemInstruction },
+            config: { systemInstruction }
         });
-
-        if (abortSignal.aborted) return;
-        
-        for await (const chunk of resultStream) {
+    
+        for await (const chunk of responseStream) {
             if (abortSignal.aborted) {
-                console.log("Stream reading aborted.");
                 return;
             }
-            const chunkText = chunk.text;
-            if (chunkText) {
-                onUpdate(chunkText);
-            }
+            onUpdate(chunk.text);
         }
-    } catch (error) {
-        if (error instanceof Error && error.name !== 'AbortError' && !abortSignal.aborted) {
-            console.error("Error streaming essay section:", error);
-            throw new Error("SAM tuvo un error al generar esta sección. Por favor, inténtalo de nuevo.");
+    } catch (e: any) {
+        if (e.name !== 'AbortError') {
+            console.error("Error streaming essay section:", e);
+            throw e;
         }
     }
 };
 
-export const generateEssayReferences = async ({
-    prompt,
-    systemInstruction,
-    modelName,
-}: {
-    prompt: string;
-    systemInstruction: string;
-    modelName: ModelType;
-}): Promise<string[]> => {
-    if (!API_KEY) {
-        throw new Error("Error de conexión. No se pudieron generar las referencias.");
-    }
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
-    const geminiModelName = MODEL_MAP[modelName] || 'gemini-2.5-flash';
 
-    try {
-        const response = await ai.models.generateContent({
-            model: geminiModelName,
-            contents: prompt,
-            config: {
-                systemInstruction,
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        references: {
-                            type: Type.ARRAY,
-                            description: "An array of 3 to 5 reference strings in APA format.",
-                            items: { type: Type.STRING }
-                        },
-                    },
-                    required: ['references'],
-                },
-            },
-        });
-        const result = JSON.parse(response.text);
+export const generateEssayReferences = async ({ prompt, systemInstruction, modelName }: { prompt: string, systemInstruction: string, modelName: ModelType }): Promise<string[]> => {
+    if (!API_KEY) throw new Error("API key not configured.");
+    const ai = new GoogleGenAI({ apiKey: API_KEY });
+    const model = MODEL_MAP[modelName] || 'gemini-2.5-flash';
+
+    const response = await ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: {
+            systemInstruction,
+            responseMimeType: 'application/json'
+        }
+    });
+
+    const jsonText = response.text.trim();
+    const result = JSON.parse(jsonText);
+    if (result && result.references) {
         return result.references;
-    } catch (error) {
-        console.error("Error generating essay references:", error);
-        throw new Error("SAM tuvo un error al generar las referencias. Por favor, inténtalo de nuevo.");
     }
+    throw new Error("Failed to generate essay references.");
 };

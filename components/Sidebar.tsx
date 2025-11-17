@@ -1,5 +1,5 @@
 import React, { Fragment, useState, useEffect, RefObject } from 'react';
-import { PencilSquareIcon, WindowIcon, SparklesIcon, Cog6ToothIcon, MagnifyingGlassIcon, EllipsisVerticalIcon, ViewColumnsIcon, MegaphoneIcon, UsersIcon, CheckBadgeIcon } from './icons';
+import { PencilSquareIcon, WindowIcon, SparklesIcon, Cog6ToothIcon, MagnifyingGlassIcon, EllipsisVerticalIcon, ViewColumnsIcon, MegaphoneIcon, UsersIcon, CheckBadgeIcon, BookOpenIcon, ChartBarIcon } from './icons';
 import VerificationPanel from './VerificationPanel';
 import type { ViewID } from '../types';
 
@@ -119,6 +119,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                      <button onClick={() => onSelectView('insights')} className={`flex items-center gap-3 p-2 rounded-lg text-left w-full transition-colors ${activeView === 'insights' ? 'bg-accent/10 text-accent' : 'hover:bg-surface-secondary'}`}>
                         <MegaphoneIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
                         <span>Insights</span>
+                    </button>
+                    <button onClick={() => onSelectView('documentation')} className={`flex items-center gap-3 p-2 rounded-lg text-left w-full transition-colors ${activeView === 'documentation' ? 'bg-accent/10 text-accent' : 'hover:bg-surface-secondary'}`}>
+                        <BookOpenIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
+                        <span>Documentación</span>
+                    </button>
+                    <button onClick={() => onSelectView('usage')} className={`flex items-center gap-3 p-2 rounded-lg text-left w-full transition-colors ${activeView === 'usage' ? 'bg-accent/10 text-accent' : 'hover:bg-surface-secondary'}`}>
+                        <ChartBarIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
+                        <span>Usage</span>
                     </button>
                 </div>
 
