@@ -303,7 +303,7 @@ export const streamGenerateContent = async ({
             systemInstruction: systemInstruction,
         };
 
-        if (mode === 'search') {
+        if (mode === 'search' || mode === 'architect') {
             config.tools = [{googleSearch: {}}];
         }
 

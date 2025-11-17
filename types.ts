@@ -46,7 +46,7 @@ export interface Chat {
   isTemporary?: boolean; // For ephemeral chats on app load
 }
 
-export type ModeID = 'normal' | 'math' | 'canvasdev' | 'search' | 'image' | 'document' | 'guide' | 'photo_upload' | 'camera_capture' | 'image_generation' | 'essay' | 'voice';
+export type ModeID = 'normal' | 'math' | 'canvasdev' | 'search' | 'image' | 'document' | 'architect' | 'photo_upload' | 'camera_capture' | 'image_generation' | 'essay' | 'voice';
 
 export interface Mode {
   id: ModeID;
