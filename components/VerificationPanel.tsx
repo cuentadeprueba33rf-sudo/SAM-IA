@@ -1,3 +1,4 @@
+
 import React, { ComponentType } from 'react';
 import { ChevronDownIcon, CheckBadgeIcon } from './icons';
 
@@ -12,12 +13,14 @@ interface VerificationPanelProps {
     title: string;
     icon: ComponentType<{ className?: string }>;
     collaborators: Collaborator[];
+    id?: string;
 }
 
-const VerificationPanel: React.FC<VerificationPanelProps> = ({ isOpen, onToggle, title, icon: Icon, collaborators }) => {
+const VerificationPanel: React.FC<VerificationPanelProps> = ({ isOpen, onToggle, title, icon: Icon, collaborators, id }) => {
     return (
         <div className="px-2 py-1">
             <button
+                id={id}
                 onClick={onToggle}
                 className="flex items-center justify-between p-2 rounded-lg hover:bg-surface-secondary text-left w-full"
             >

@@ -1,12 +1,13 @@
+
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import PlusMenu from '../PlusMenu';
 import FilePreview from './FilePreview';
 import type { Attachment, ModeID, Settings, UsageTracker } from '../types';
 import { MODES } from '../constants';
-import { ArrowUpIcon, XMarkIcon, ChevronDownIcon, SparklesIcon, PlusIcon, AdjustmentsHorizontalIcon, PhotoIcon, Bars3Icon, MicrophoneIcon, BoltIcon } from './icons';
+import { ArrowUpIcon, XMarkIcon, ChevronDownIcon, SparklesIcon, PlusIcon, AdjustmentsHorizontalIcon, PhotoIcon, Bars3Icon, MicrophoneIcon, BoltIcon, LockClosedIcon, GiftIcon } from './icons';
 
 type VoiceModeState = 'inactive' | 'activeConversation';
-type ActiveConversationState = 'LISTENING' | 'RESPONDING';
+type ActiveConversationState = 'LISTENING' | 'RESPONDING' | 'THINKING';
 
 
 interface ChatInputProps {
@@ -26,41 +27,11 @@ interface ChatInputProps {
     onEndVoiceSession: () => void;
     usage: UsageTracker;
     isThemeActive: boolean;
+    inputText: string;
+    onInputTextChange: (text: string) => void;
+    isPlusMenuOpen: boolean;
+    onSetPlusMenuOpen: (isOpen: boolean | ((prev: boolean) => boolean)) => void;
 }
-
-const ActiveConversationUI: React.FC<{
-    onEndSession: () => void;
-    conversationState: ActiveConversationState;
-    transcription: string;
-}> = ({ onEndSession, conversationState, transcription }) => {
-    let statusText = '';
-    
-    switch (conversationState) {
-        case 'LISTENING':
-            statusText = 'Escuchando...';
-            break;
-        case 'RESPONDING':
-            statusText = 'SAM está respondiendo...';
-            break;
-    }
-
-    return (
-        <div className="bg-surface-primary p-3 rounded-2xl border border-border-subtle shadow-lg w-full transition-all flex flex-col items-center gap-4 st-border">
-            <div className="flex items-center gap-2 text-text-secondary">
-                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                <span>{statusText}</span>
-            </div>
-            <p className="text-text-main text-center h-6">{transcription}</p>
-            <button
-                onClick={onEndSession}
-                className="px-4 py-2 bg-danger/10 text-danger text-sm font-semibold rounded-lg hover:bg-danger/20"
-            >
-                Finalizar Sesión
-            </button>
-        </div>
-    );
-};
-
 
 const ImageGenInput: React.FC<{
     onSend: (prompt: string, attachment?: Attachment) => void;
@@ -166,14 +137,13 @@ const ChatInput: React.FC<ChatInputProps> = ({
     settings,
     onSaveSettings,
     voiceModeState,
-    activeConversationState,
-    liveTranscription,
-    onEndVoiceSession,
     usage,
     isThemeActive,
+    inputText,
+    onInputTextChange,
+    isPlusMenuOpen,
+    onSetPlusMenuOpen
 }) => {
-    const [text, setText] = useState('');
-    const [isPlusMenuOpen, setIsPlusMenuOpen] = useState(false);
     const [isModelMenuOpen, setIsModelMenuOpen] = useState(false);
     const [placeholder, setPlaceholder] = useState('Pregunta a SAM');
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -186,10 +156,15 @@ const ChatInput: React.FC<ChatInputProps> = ({
     const isNearingLimit = usagePercentage >= 80 && usagePercentage < 100;
     const isLimitReached = usagePercentage >= 100;
 
+    const isChristmasModelUnlocked = useMemo(() => {
+        const now = new Date();
+        const unlockDate = new Date(now.getFullYear(), 11, 2); // Dec 2
+        return now >= unlockDate;
+    }, []);
+
     const handleSend = () => {
-        if ((text.trim() || attachment) && !disabled) {
-            onSendMessage(text, attachment);
-            setText('');
+        if ((inputText.trim() || attachment) && !disabled) {
+            onSendMessage(inputText, attachment);
         }
     };
 
@@ -266,21 +241,16 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
     useEffect(() => {
         adjustTextareaHeight();
-    }, [text, adjustTextareaHeight]);
+    }, [inputText, adjustTextareaHeight]);
     
     useEffect(() => {
+        // Keep focus if not disabled, but allow blur if user clicked elsewhere
+        // Only force focus on mount or when re-enabled
         if(!disabled && textareaRef.current && voiceModeState === 'inactive') {
-            textareaRef.current.focus();
+           // textareaRef.current.focus(); // Optional: might be annoying if user is selecting text elsewhere
         }
     }, [disabled, voiceModeState]);
 
-    if (voiceModeState === 'activeConversation') {
-        return <ActiveConversationUI 
-            onEndSession={onEndVoiceSession} 
-            conversationState={activeConversationState}
-            transcription={liveTranscription} 
-        />;
-    }
 
     if (currentMode === 'image_generation') {
         return (
@@ -299,7 +269,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
         <div className="w-full relative">
             {isPlusMenuOpen && <PlusMenu onAction={(mode, accept, capture) => {
                 onModeAction(mode, accept, capture);
-                setIsPlusMenuOpen(false);
+                onSetPlusMenuOpen(false);
             }} settings={settings} />}
             
             {attachment && (
@@ -311,6 +281,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
             <div className="flex items-end bg-surface-primary rounded-3xl p-2 gap-2 shadow-lg border border-border-subtle st-border">
                 <div className="flex items-center self-stretch">
                     <button 
+                        id="btn-toggle-sidebar"
                         onClick={onToggleSidebar}
                         className="flex-shrink-0 p-2 text-text-secondary hover:text-text-main transition-colors rounded-full focus:outline-none focus:ring-2 focus:ring-accent"
                         aria-label="Toggle menu"
@@ -318,7 +289,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
                         <Bars3Icon className="w-6 h-6 st-icon" />
                     </button>
                     <button 
-                        onClick={() => setIsPlusMenuOpen(prev => !prev)}
+                        id="btn-plus-menu"
+                        onClick={() => onSetPlusMenuOpen(prev => !prev)}
                         className="flex-shrink-0 p-2 text-text-secondary hover:text-text-main transition-colors rounded-full focus:outline-none focus:ring-2 focus:ring-accent"
                         aria-label="More options"
                         disabled={disabled}
@@ -358,8 +330,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
                                     </>
                                 ) : (
                                     <>
-                                        <SparklesIcon className="w-4 h-4 text-purple-400" />
-                                        <span>SM-L3</span>
+                                        <GiftIcon className="w-4 h-4 text-red-400" />
+                                        <span>SM-L3.9</span>
                                     </>
                                 )}
                                 <ChevronDownIcon className="w-4 h-4" />
@@ -393,24 +365,28 @@ const ChatInput: React.FC<ChatInputProps> = ({
                                         </div>
                                     </button>
                                      <button
+                                        disabled={!isChristmasModelUnlocked}
                                         onClick={() => { 
-                                            onSaveSettings({...settings, defaultModel: 'sm-l3'}); 
-                                            setIsModelMenuOpen(false); 
+                                            if(isChristmasModelUnlocked) {
+                                                onSaveSettings({...settings, defaultModel: 'sm-l3.9'}); 
+                                                setIsModelMenuOpen(false); 
+                                            }
                                         }}
-                                        className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-border-subtle"
+                                        className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-border-subtle disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                                     >
                                         <div className="flex items-center gap-2">
-                                            <SparklesIcon className="w-4 h-4 text-purple-400"/>
-                                            <span>SM-L3</span>
+                                            <GiftIcon className="w-4 h-4 text-red-400"/>
+                                            <span>SM-L3.9</span>
+                                            {!isChristmasModelUnlocked && <LockClosedIcon className="w-3 h-3 text-text-secondary ml-auto" />}
                                         </div>
                                         <p className="text-xs text-text-secondary font-normal pl-6">
-                                            Ideal para generación de imágenes.
+                                            {isChristmasModelUnlocked ? '¡El modelo más potente!' : 'Disponible el 2 de Dic.'}
                                         </p>
                                     </button>
                                 </div>
                             )}
                         </div>
-                        {(settings.defaultModel === 'sm-i3' || settings.defaultModel === 'sm-l3') && !settings.quickMode && (
+                        {settings.defaultModel === 'sm-i3' && !settings.quickMode && (
                              <div 
                                 className={`flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${isLimitReached ? 'bg-danger/10 text-danger' : isNearingLimit ? 'bg-yellow-500/10 text-yellow-500' : 'bg-surface-secondary text-text-secondary'}`}
                                 title={`Has usado ${usage.count} de ${limit} solicitudes para SM-I3 hoy.`}
@@ -430,8 +406,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
                     <textarea
                         ref={textareaRef}
                         id="chat-textarea"
-                        value={text}
-                        onChange={(e) => setText(e.target.value)}
+                        value={inputText}
+                        onChange={(e) => onInputTextChange(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder={placeholder}
                         className="w-full bg-transparent resize-none outline-none text-text-main max-h-48 py-2 px-2"
@@ -440,8 +416,9 @@ const ChatInput: React.FC<ChatInputProps> = ({
                     />
                 </div>
 
-                {text.trim() || attachment ? (
+                {inputText.trim() || attachment ? (
                     <button 
+                        id="btn-send-message"
                         onClick={handleSend}
                         disabled={disabled}
                         className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors bg-text-main text-bg-main hover:opacity-90 disabled:bg-surface-secondary disabled:text-text-secondary self-end st-mic-button"
@@ -453,7 +430,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                     <button
                         onClick={() => onModeAction('voice')}
                         disabled={disabled}
-                        className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors bg-surface-secondary text-text-main hover:bg-border-subtle disabled:opacity-50 self-end st-mic-button"
+                        className={`flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors self-end st-mic-button ${voiceModeState === 'activeConversation' ? 'bg-red-500 text-white animate-pulse' : 'bg-surface-secondary text-text-main hover:bg-border-subtle disabled:opacity-50'}`}
                         aria-label="Use voice"
                     >
                         <MicrophoneIcon className="w-6 h-6 st-icon"/>

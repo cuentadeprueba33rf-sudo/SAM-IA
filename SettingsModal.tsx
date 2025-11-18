@@ -1,3 +1,4 @@
+
 import React, { useState, ReactNode, useMemo } from 'react';
 import type { Settings } from './types';
 import { 
@@ -287,7 +288,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 </header>
                 
                 <main className="flex-1 flex flex-col md:flex-row gap-0 overflow-hidden">
-                    <nav className="flex flex-row md:flex-col gap-1 border-b md:border-b-0 md:border-r border-border-subtle p-3 overflow-x-auto md:overflow-y-auto custom-scrollbar-thin">
+                    <nav id="settings-menu" className="flex flex-row md:flex-col gap-1 border-b md:border-b-0 md:border-r border-border-subtle p-3 overflow-x-auto md:overflow-y-auto custom-scrollbar-thin">
                        {Object.entries(sections).map(([key, { title, icon: Icon }]) => (
                            <button 
                                 key={key} 
@@ -300,7 +301,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                        ))}
                     </nav>
 
-                    <div className="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar">
+                    <div id="settings-content" className="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar">
                         {renderSectionContent()}
                     </div>
                 </main>

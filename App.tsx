@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import Sidebar from './components/Sidebar';
@@ -17,7 +18,9 @@ import InstallNotification from './components/InstallNotification';
 import VoiceErrorNotification from './components/VoiceErrorNotification';
 import ForcedResetModal from './components/ForcedResetModal'; // Importar el nuevo modal
 import ChatMessageItem from './components/ChatMessage'; // Assuming a ChatMessageItem component for rendering messages.
-import { streamGenerateContent, generateImage, startActiveConversation, detectMode } from './services/geminiService';
+import VoiceOrb from './components/VoiceOrb'; // New Voice UI
+import GhostCursor, { GhostCursorHandle } from './components/GhostCursor'; // IMPORTANTE: Nuevo cursor fantasma
+import { streamGenerateContent, generateImage, startActiveConversation, detectMode, AppToolExecutors } from './services/geminiService';
 import {
     Chat, ChatMessage, MessageAuthor, Attachment, ModeID, Settings,
     ModelType, Artifact, ViewID, Essay, Insight, UsageTracker
@@ -26,7 +29,7 @@ import { generateSystemInstruction } from './constants';
 import { BookOpenIcon, MegaphoneIcon, ViewColumnsIcon, AcademicCapIcon, ChatBubbleLeftRightIcon, UsersIcon, ExclamationTriangleIcon, XMarkIcon, ChartBarIcon, Bars3Icon, ChevronLeftIcon } from './components/icons';
 
 type VoiceModeState = 'inactive' | 'activeConversation';
-type ActiveConversationState = 'LISTENING' | 'RESPONDING';
+type ActiveConversationState = 'LISTENING' | 'RESPONDING' | 'THINKING';
 
 
 const defaultSettings: Settings = {
@@ -165,13 +168,19 @@ const App: React.FC = () => {
     const [showForcedResetModal, setShowForcedResetModal] = useState(false);
     const [isThemeActive, setIsThemeActive] = useState(false); // Tracks if the initial 10-second wait is over
     const [showStThemeNotification, setShowStThemeNotification] = useState(false);
-
+    const [isPlusMenuOpen, setIsPlusMenuOpen] = useState(false); // Lifted state for Ghost Cursor interaction
     
     const [usage, setUsage] = useState<UsageTracker>({ date: new Date().toISOString().split('T')[0], count: 0, hasAttachment: false });
 
+    // Voice State
     const [voiceModeState, setVoiceModeState] = useState<VoiceModeState>('inactive');
     const [activeConversationState, setActiveConversationState] = useState<ActiveConversationState>('LISTENING');
     const [liveTranscription, setLiveTranscription] = useState<string>('');
+    const [voiceVolume, setVoiceVolume] = useState(0);
+    
+    // Lifted Input State (to allow voice agent to type)
+    const [chatInputText, setChatInputText] = useState('');
+    
     const [isMathConsoleOpen, setIsMathConsoleOpen] = useState(true);
 
 
@@ -180,6 +189,16 @@ const App: React.FC = () => {
     const activeConversationRef = useRef<{ close: () => void } | null>(null);
     const creditsRef = useRef<HTMLDivElement>(null);
     const verificationPanelRef = useRef<HTMLDivElement>(null);
+    
+    // Ghost Cursor Ref
+    const ghostCursorRef = useRef<GhostCursorHandle>(null);
+    
+    // Refs for UI state access in voice callbacks
+    const isPlusMenuOpenRef = useRef(isPlusMenuOpen);
+
+    useEffect(() => {
+        isPlusMenuOpenRef.current = isPlusMenuOpen;
+    }, [isPlusMenuOpen]);
 
     const currentChat = chats.find(c => c.id === currentChatId);
 
@@ -338,7 +357,7 @@ const App: React.FC = () => {
         
         const modelToUse = settings.quickMode ? 'sm-i1' : settings.defaultModel;
 
-        if(modelToUse === 'sm-i3' || modelToUse === 'sm-l3') {
+        if(modelToUse === 'sm-i3' || modelToUse === 'sm-l3' || modelToUse === 'sm-l3.9') {
             const limit = usage.hasAttachment ? 15 : 20;
             if(usage.count >= limit) {
                 setShowLimitNotification(true);
@@ -357,8 +376,9 @@ const App: React.FC = () => {
         const userMessage: ChatMessage = { id: uuidv4(), author: MessageAuthor.USER, text: prompt, timestamp: Date.now(), attachment: messageAttachment ?? undefined };
         setChats(prev => prev.map(c => c.id === tempChatId ? { ...c, messages: [...c.messages, userMessage] } : c));
         setAttachment(null);
+        setChatInputText(''); // Clear input when sending
         
-        if (modelToUse === 'sm-i3' || modelToUse === 'sm-l3') {
+        if (modelToUse === 'sm-i3' || modelToUse === 'sm-l3' || modelToUse === 'sm-l3.9') {
             setUsage(prev => ({ ...prev, count: prev.count + 1, hasAttachment: prev.hasAttachment || !!messageAttachment }));
         }
 
@@ -404,8 +424,8 @@ const App: React.FC = () => {
         };
 
         if (effectiveMode === 'image_generation') {
-            if (modelToUse !== 'sm-l3') {
-                updateSamMessage({ text: "La generación de imágenes solo está disponible para el modelo SM-L3. Por favor, selecciónalo en la configuración o desde el menú de modelos.", generatingArtifact: false });
+            if (modelToUse !== 'sm-l3' && modelToUse !== 'sm-l3.9') {
+                updateSamMessage({ text: "La generación de imágenes solo está disponible para los modelos SM-L3. Por favor, selecciónalo en la configuración o desde el menú de modelos.", generatingArtifact: false });
                 setIsLoading(false);
                 // Revert usage count if it was a premium model
                 if (modelToUse === 'sm-i3') {
@@ -476,7 +496,7 @@ const App: React.FC = () => {
             onError: (error) => {
                 updateSamMessage({ text: error.message, generatingArtifact: false, isSearching: false });
                 setIsLoading(false);
-                 if (modelToUse === 'sm-i3' || modelToUse === 'sm-l3') {
+                 if (modelToUse === 'sm-i3' || modelToUse === 'sm-l3' || modelToUse === 'sm-l3.9') {
                     setUsage(prev => ({ ...prev, count: Math.max(0, prev.count - 1) })); // Revert count on error
                 }
             }
@@ -488,6 +508,7 @@ const App: React.FC = () => {
         setCurrentChatId(null);
         setCurrentMode('normal');
         setAttachment(null);
+        setChatInputText('');
     }, []);
 
     const handleSelectChat = (id: string) => {
@@ -495,6 +516,7 @@ const App: React.FC = () => {
              setActiveView('chat');
              setCurrentChatId(id);
              setCurrentMode('normal'); // Reset mode when switching chats
+             setChatInputText('');
         }
     }
     
@@ -531,29 +553,117 @@ const App: React.FC = () => {
         } else if (mode === 'voice') {
             if (voiceModeState !== 'inactive') return;
             
-            setShowVoiceErrorNotification(true);
+            // setShowVoiceErrorNotification(true); // Temporarily removed for new UX
 
             setVoiceModeState('activeConversation');
             setLiveTranscription('');
 
-            let tempChatId = currentChatId;
-            if (!tempChatId) {
-                const newChat = { id: uuidv4(), title: "Conversación de Voz", messages: [] };
-                setChats(prev => [newChat, ...prev]);
-                setCurrentChatId(newChat.id);
-                tempChatId = newChat.id;
-            }
+            // No new chat created purely for voice session unless explicitly asked
 
+            // Define Tool Executors with Ghost Cursor animations
+            const toolExecutors: AppToolExecutors = {
+                setInputText: (text: string) => {
+                    setChatInputText(prev => prev + (prev ? ' ' : '') + text);
+                },
+                sendMessage: () => {
+                     // Ghost trigger handled in event listener if needed, or straightforward logic
+                     // Usually for text input, a direct state update is fine, but if we want the ghost to hit the send button:
+                     // We need the button ID.
+                     if (chatInputText.trim()) {
+                         ghostCursorRef.current?.click('btn-send-message');
+                         // Actual logic is handled by the button click which calls onSendMessage
+                     }
+                },
+                toggleSidebar: async (isOpen: boolean) => {
+                    if (isOpen && !sidebarOpen) {
+                         await ghostCursorRef.current?.click('btn-toggle-sidebar');
+                         setSidebarOpen(true);
+                    } else if (!isOpen && sidebarOpen) {
+                         await ghostCursorRef.current?.click('btn-toggle-sidebar'); // Assuming toggle button handles both
+                         setSidebarOpen(false);
+                    }
+                },
+                changeMode: async (mode: ModeID) => {
+                    if (!isPlusMenuOpenRef.current) {
+                        await ghostCursorRef.current?.click('btn-plus-menu');
+                        setIsPlusMenuOpen(true);
+                        await new Promise(r => setTimeout(r, 300)); // Wait for animation
+                    }
+                    await ghostCursorRef.current?.click(`btn-mode-${mode}`);
+                    // The actual click on the menu item handles the logic: handleModeAction -> setCurrentMode
+                },
+                navigateToView: async (view: ViewID) => {
+                    // Ensure Sidebar is open for navigation if on mobile
+                    if (window.innerWidth < 768 && !sidebarOpen) {
+                         await ghostCursorRef.current?.click('btn-toggle-sidebar');
+                         setSidebarOpen(true);
+                         await new Promise(r => setTimeout(r, 300));
+                    }
+                    
+                    const viewBtnId = `btn-nav-${view}`;
+                    await ghostCursorRef.current?.click(viewBtnId);
+                    // Click triggers setActiveView
+                },
+                openSettings: async () => {
+                     // Ensure Sidebar is open
+                    if (window.innerWidth < 768 && !sidebarOpen) {
+                         await ghostCursorRef.current?.click('btn-toggle-sidebar');
+                         setSidebarOpen(true);
+                         await new Promise(r => setTimeout(r, 300));
+                    }
+                    await ghostCursorRef.current?.click('btn-settings');
+                },
+                openUpdates: async () => {
+                     // Ensure Sidebar is open
+                    if (window.innerWidth < 768 && !sidebarOpen) {
+                         await ghostCursorRef.current?.click('btn-toggle-sidebar');
+                         setSidebarOpen(true);
+                         await new Promise(r => setTimeout(r, 300));
+                    }
+                    await ghostCursorRef.current?.click('btn-updates');
+                },
+                toggleCreators: async () => {
+                    // Ensure Sidebar is open
+                    if (window.innerWidth < 768 && !sidebarOpen) {
+                         await ghostCursorRef.current?.click('btn-toggle-sidebar');
+                         setSidebarOpen(true);
+                         await new Promise(r => setTimeout(r, 300));
+                    }
+                    await ghostCursorRef.current?.click('btn-creators');
+                },
+                toggleCollaborators: async () => {
+                    // Ensure Sidebar is open
+                    if (window.innerWidth < 768 && !sidebarOpen) {
+                         await ghostCursorRef.current?.click('btn-toggle-sidebar');
+                         setSidebarOpen(true);
+                         await new Promise(r => setTimeout(r, 300));
+                    }
+                    await ghostCursorRef.current?.click('btn-collaborators');
+                },
+                scrollUi: async (target: string, direction: 'up' | 'down') => {
+                    let selectorId = '';
+                    if (target === 'sidebar') selectorId = 'sidebar-content';
+                    if (target === 'chat') selectorId = 'chat-container';
+                    if (target === 'settings_content') selectorId = 'settings-content';
+                    if (target === 'settings_menu') selectorId = 'settings-menu';
+                    
+                    if (selectorId) {
+                        await ghostCursorRef.current?.scroll(selectorId, direction, 400);
+                    }
+                }
+            };
+            
             startActiveConversation(
                 generateSystemInstruction('voice', settings),
                 (isUser, text) => setLiveTranscription(text),
                 (userInput, samOutput) => {
-                    const userMessage: ChatMessage = { id: uuidv4(), author: MessageAuthor.USER, text: userInput, timestamp: Date.now() };
-                    const samMessage: ChatMessage = { id: uuidv4(), author: MessageAuthor.SAM, text: samOutput, timestamp: Date.now() };
-                    setChats(prev => prev.map(c => c.id === tempChatId ? { ...c, messages: [...c.messages, userMessage, samMessage] } : c));
+                     // Do NOT add to chat history as requested. Ephemeral voice interaction.
+                     // Unless specific tool 'send_message' or 'set_input_text' was used by the model.
                 },
                 (error) => { console.error("Voice error:", error); handleEndVoiceSession(); },
-                (state) => setActiveConversationState(state)
+                (state) => setActiveConversationState(state),
+                (volume) => setVoiceVolume(volume),
+                toolExecutors
             ).then(session => {
                 activeConversationRef.current = session;
             });
@@ -563,6 +673,18 @@ const App: React.FC = () => {
         }
     };
     
+    // Listener for voice-triggered send
+    useEffect(() => {
+        const handleVoiceSend = () => {
+            if (chatInputText.trim()) {
+                handleSendMessage(chatInputText);
+            }
+        };
+        document.addEventListener('voice-trigger-send', handleVoiceSend);
+        return () => document.removeEventListener('voice-trigger-send', handleVoiceSend);
+    }, [chatInputText, handleSendMessage]);
+
+
     const handleEndVoiceSession = () => {
         activeConversationRef.current?.close();
         activeConversationRef.current = null;
@@ -717,6 +839,7 @@ const App: React.FC = () => {
                 <div className="flex flex-col h-full w-full">
                     <header className="flex-shrink-0 flex items-center gap-2 sm:gap-4 p-2 sm:p-4 border-b border-border-subtle">
                         <button
+                            id="btn-toggle-sidebar"
                             onClick={() => setSidebarOpen(!sidebarOpen)}
                             className="p-2 text-text-secondary hover:text-text-main md:hidden"
                             aria-label="Toggle sidebar"
@@ -740,7 +863,7 @@ const App: React.FC = () => {
         switch (activeView) {
             case 'chat':
                 return currentChat ? (
-                     <div className="flex-1 overflow-y-auto p-4">
+                     <div id="chat-container" className="flex-1 overflow-y-auto p-4">
                         {currentChat.messages.map(msg => (
                             <ChatMessageItem 
                                 key={msg.id} 
@@ -779,6 +902,15 @@ const App: React.FC = () => {
 
     return (
         <div className={`flex h-screen bg-bg-main font-sans text-text-main ${settings.theme}`}>
+            <GhostCursor ref={ghostCursorRef} />
+            <VoiceOrb 
+                isActive={voiceModeState === 'activeConversation'}
+                state={activeConversationState}
+                volume={voiceVolume}
+                onClose={handleEndVoiceSession}
+                transcription={liveTranscription}
+            />
+            
             <Sidebar 
                 isOpen={sidebarOpen}
                 onClose={() => setSidebarOpen(false)}
@@ -849,6 +981,10 @@ const App: React.FC = () => {
                             onEndVoiceSession={handleEndVoiceSession}
                             usage={usage}
                             isThemeActive={isThemeActive}
+                            inputText={chatInputText}
+                            onInputTextChange={setChatInputText}
+                            isPlusMenuOpen={isPlusMenuOpen}
+                            onSetPlusMenuOpen={setIsPlusMenuOpen}
                         />
                     </div>
                 )}

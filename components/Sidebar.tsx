@@ -1,3 +1,4 @@
+
 import React, { Fragment, useState, useEffect, RefObject } from 'react';
 import { PencilSquareIcon, WindowIcon, SparklesIcon, Cog6ToothIcon, MagnifyingGlassIcon, EllipsisVerticalIcon, ViewColumnsIcon, MegaphoneIcon, UsersIcon, CheckBadgeIcon, BookOpenIcon, ChartBarIcon, CodeBracketSquareIcon } from './icons';
 import VerificationPanel from './VerificationPanel';
@@ -116,21 +117,21 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </div>
 
                 {/* Scrollable Main Area */}
-                <div className="flex-1 overflow-y-auto px-4">
+                <div id="sidebar-content" className="flex-1 overflow-y-auto px-4">
                     <div className="space-y-1">
-                        <button onClick={() => onSelectView('canvas')} className={`flex items-center gap-3 p-2 rounded-lg text-left w-full transition-colors ${activeView === 'canvas' ? 'bg-accent/10 text-accent' : 'hover:bg-surface-secondary'}`}>
+                        <button id="btn-nav-canvas" onClick={() => onSelectView('canvas')} className={`flex items-center gap-3 p-2 rounded-lg text-left w-full transition-colors ${activeView === 'canvas' ? 'bg-accent/10 text-accent' : 'hover:bg-surface-secondary'}`}>
                             <ViewColumnsIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
                             <span>Canvas</span>
                         </button>
-                         <button onClick={() => onSelectView('insights')} className={`flex items-center gap-3 p-2 rounded-lg text-left w-full transition-colors ${activeView === 'insights' ? 'bg-accent/10 text-accent' : 'hover:bg-surface-secondary'}`}>
+                         <button id="btn-nav-insights" onClick={() => onSelectView('insights')} className={`flex items-center gap-3 p-2 rounded-lg text-left w-full transition-colors ${activeView === 'insights' ? 'bg-accent/10 text-accent' : 'hover:bg-surface-secondary'}`}>
                             <MegaphoneIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
                             <span>Insights</span>
                         </button>
-                        <button onClick={() => onSelectView('documentation')} className={`flex items-center gap-3 p-2 rounded-lg text-left w-full transition-colors ${activeView === 'documentation' ? 'bg-accent/10 text-accent' : 'hover:bg-surface-secondary'}`}>
+                        <button id="btn-nav-documentation" onClick={() => onSelectView('documentation')} className={`flex items-center gap-3 p-2 rounded-lg text-left w-full transition-colors ${activeView === 'documentation' ? 'bg-accent/10 text-accent' : 'hover:bg-surface-secondary'}`}>
                             <BookOpenIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
                             <span>Documentación</span>
                         </button>
-                        <button onClick={() => onSelectView('usage')} className={`flex items-center gap-3 p-2 rounded-lg text-left w-full transition-colors ${activeView === 'usage' ? 'bg-accent/10 text-accent' : 'hover:bg-surface-secondary'}`}>
+                        <button id="btn-nav-usage" onClick={() => onSelectView('usage')} className={`flex items-center gap-3 p-2 rounded-lg text-left w-full transition-colors ${activeView === 'usage' ? 'bg-accent/10 text-accent' : 'hover:bg-surface-secondary'}`}>
                             <ChartBarIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
                             <span>Usage</span>
                         </button>
@@ -140,7 +141,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
                     <div>
                         <h3 className="text-text-secondary font-semibold text-sm mb-2 px-2">SAM IA Studios</h3>
-                         <button onClick={() => onSelectView('canvas_dev_pro')} className={`flex items-center gap-3 p-2 rounded-lg text-left w-full transition-colors ${activeView === 'canvas_dev_pro' ? 'bg-accent/10 text-accent' : 'hover:bg-surface-secondary'}`}>
+                         <button id="btn-nav-canvas_dev_pro" onClick={() => onSelectView('canvas_dev_pro')} className={`flex items-center gap-3 p-2 rounded-lg text-left w-full transition-colors ${activeView === 'canvas_dev_pro' ? 'bg-accent/10 text-accent' : 'hover:bg-surface-secondary'}`}>
                             <CodeBracketSquareIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
                             <span>Canvas Dev Pro</span>
                         </button>
@@ -183,6 +184,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <div ref={creditsRef} className="p-4 border-t border-border-subtle flex-shrink-0 relative">
                     <div className="px-2 space-y-2 mb-2">
                         <VerificationPanel
+                            id="btn-creators"
                             title="Creadores Principales"
                             icon={SparklesIcon}
                             collaborators={creators}
@@ -190,6 +192,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                             onToggle={() => setIsCreatorsOpen(!isCreatorsOpen)}
                         />
                         <VerificationPanel
+                            id="btn-collaborators"
                             title="Colaboradores Clave"
                             icon={UsersIcon}
                             collaborators={collaborators}
@@ -203,11 +206,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                          </div>
                          <span className="font-semibold text-text-main">{userName}</span>
                      </div>
-                     <button onClick={onOpenSettings} className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-secondary text-left w-full">
+                     <button id="btn-settings" onClick={onOpenSettings} className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-secondary text-left w-full">
                         <Cog6ToothIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
                         <span>Configuración</span>
                     </button>
-                     <button onClick={onShowUpdates} className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-secondary text-left w-full">
+                     <button id="btn-updates" onClick={onShowUpdates} className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-secondary text-left w-full">
                         <SparklesIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
                         <span>Actualizaciones</span>
                     </button>

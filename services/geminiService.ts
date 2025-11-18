@@ -1,6 +1,7 @@
+
 // FIX: Add missing imports for new functions
-import { GoogleGenAI, Modality, LiveServerMessage, Blob, Type, FunctionDeclaration, GenerateContentResponse } from "@google/genai";
-import type { Attachment, ChatMessage, ModeID, ModelType, EssaySection, Settings } from '../types';
+import { GoogleGenAI, Modality, LiveServerMessage, Blob, Type, FunctionDeclaration, GenerateContentResponse, Tool } from "@google/genai";
+import type { Attachment, ChatMessage, ModeID, ModelType, EssaySection, Settings, ViewID } from '../types';
 import { MessageAuthor } from '../types';
 import { generateSystemInstruction } from '../constants';
 
@@ -89,15 +90,124 @@ function createBlob(data: Float32Array): Blob {
   };
 }
 
+// --- HERRAMIENTAS (TOOLS) DE LA APP PARA CONTROL POR VOZ ---
+
+const appTools: Tool[] = [
+    {
+        functionDeclarations: [
+            {
+                name: 'set_input_text',
+                description: 'Escribe texto en la caja de entrada del chat (dictado). Úsalo cuando el usuario te pida "escribir" algo pero no enviarlo todavía.',
+                parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                        text: { type: Type.STRING, description: 'El texto que se debe escribir en la caja de chat.' }
+                    },
+                    required: ['text']
+                }
+            },
+            {
+                name: 'send_message',
+                description: 'Envía el mensaje actual que está en la caja de chat. Úsalo cuando el usuario diga "enviar" o confirme el mensaje escrito.',
+                parameters: { type: Type.OBJECT, properties: {} }
+            },
+            {
+                name: 'toggle_sidebar',
+                description: 'Abre o cierra el menú lateral de la aplicación.',
+                parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                        isOpen: { type: Type.BOOLEAN, description: 'True para abrir, False para cerrar.' }
+                    },
+                    required: ['isOpen']
+                }
+            },
+            {
+                name: 'change_mode',
+                description: 'Cambia el modo de operación de SAM. Requiere interactuar con el menú.',
+                parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                        mode: { 
+                            type: Type.STRING, 
+                            description: 'El ID del modo: "normal", "math", "canvasdev", "search", "image_generation", "architect", "voice".' 
+                        }
+                    },
+                    required: ['mode']
+                }
+            },
+            {
+                name: 'navigate_to_view',
+                description: 'Navega a una vista específica de la aplicación.',
+                parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                        view: { type: Type.STRING, description: 'El ID de la vista: "chat", "canvas", "insights", "documentation", "usage", "canvas_dev_pro".' }
+                    },
+                    required: ['view']
+                }
+            },
+            {
+                name: 'open_settings',
+                description: 'Abre el modal de configuración.',
+                parameters: { type: Type.OBJECT, properties: {} }
+            },
+            {
+                name: 'open_updates',
+                description: 'Abre el modal de novedades/actualizaciones.',
+                parameters: { type: Type.OBJECT, properties: {} }
+            },
+            {
+                name: 'toggle_creators',
+                description: 'Abre o cierra el panel de Creadores Principales en el sidebar.',
+                parameters: { type: Type.OBJECT, properties: {} }
+            },
+            {
+                name: 'toggle_collaborators',
+                description: 'Abre o cierra el panel de Colaboradores en el sidebar.',
+                parameters: { type: Type.OBJECT, properties: {} }
+            },
+            {
+                name: 'scroll_ui',
+                description: 'Hace scroll en una sección específica.',
+                parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                        target: { type: Type.STRING, description: '"sidebar", "chat", "settings_content" o "settings_menu".' },
+                        direction: { type: Type.STRING, description: '"up" o "down".' }
+                    },
+                    required: ['target', 'direction']
+                }
+            }
+        ]
+    }
+];
+
+export interface AppToolExecutors {
+    setInputText: (text: string) => void;
+    sendMessage: () => void;
+    toggleSidebar: (isOpen: boolean) => void;
+    changeMode: (mode: ModeID) => void;
+    navigateToView: (view: ViewID) => void;
+    openSettings: () => void;
+    openUpdates: () => void;
+    toggleCreators: () => void;
+    toggleCollaborators: () => void;
+    scrollUi: (target: string, direction: 'up' | 'down') => void;
+}
+
+
 /**
- * Inicia una sesión de conversación activa, con audio de entrada y salida.
+ * Inicia una sesión de conversación activa, con audio de entrada y salida + Herramientas.
  */
 export const startActiveConversation = async (
     systemInstruction: string,
     onTranscriptionUpdate: (isUser: boolean, text: string) => void,
     onTurnComplete: (userInput: string, samOutput: string) => void,
     onError: (error: Error) => void,
-    onStateChange: (state: 'LISTENING' | 'RESPONDING') => void
+    onStateChange: (state: 'LISTENING' | 'RESPONDING' | 'THINKING') => void,
+    onVolumeChange: (volume: number) => void,
+    toolExecutors: AppToolExecutors 
 ): Promise<{ close: () => void }> => {
     if (!API_KEY) {
         const error = new Error("Error de conexión con el servicio de voz. Por favor, verifica tu conexión a internet.");
@@ -115,11 +225,42 @@ export const startActiveConversation = async (
     outputNode.connect(outputAudioContext.destination);
     const sources = new Set<AudioBufferSourceNode>();
 
+    // Analyser for volume visualization
+    const analyser = outputAudioContext.createAnalyser();
+    analyser.fftSize = 32;
+    outputNode.connect(analyser);
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+    // Loop to check volume
+    let animationFrame: number;
+    const checkVolume = () => {
+        analyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for(let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+        const avg = sum / dataArray.length;
+        onVolumeChange(avg / 255); // Normalize 0-1
+        animationFrame = requestAnimationFrame(checkVolume);
+    };
+    checkVolume();
+
+
     const inputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     
     let scriptProcessor: ScriptProcessorNode | null = null;
     let mediaStreamSource: MediaStreamAudioSourceNode | null = null;
+
+    // Updated instruction to be aware of tools
+    const fullSystemInstruction = `${systemInstruction}
+    
+    IMPORTANT: You are an "Agent" capable of physically interacting with the interface. 
+    - When asked to open a menu, setting, or mode, ALWAYS use the corresponding tool.
+    - Do not just say you will do it, EXECUTE it.
+    - You can scroll lists using 'scroll_ui'.
+    - To change modes, use 'change_mode'. This will physically open the menu and click the button.
+    - If asked to check creators or collaborators, use the toggle tools.
+    - Interaction should feel natural.
+    `;
 
     const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
@@ -161,10 +302,79 @@ export const startActiveConversation = async (
                     const source = outputAudioContext.createBufferSource();
                     source.buffer = audioBuffer;
                     source.connect(outputNode);
-                    source.addEventListener('ended', () => sources.delete(source));
+                    source.addEventListener('ended', () => {
+                        sources.delete(source);
+                        if (sources.size === 0) onStateChange('LISTENING');
+                    });
                     source.start(nextStartTime);
                     nextStartTime += audioBuffer.duration;
                     sources.add(source);
+                }
+
+                // --- HANDLE TOOL CALLS ---
+                if (message.toolCall) {
+                    onStateChange('THINKING');
+                    const functionResponses: any[] = [];
+                    
+                    for (const fc of message.toolCall.functionCalls) {
+                        console.log("Executing tool:", fc.name, fc.args);
+                        let result = { result: "ok" };
+                        
+                        try {
+                            // Wrap in async to handle the UI delays
+                            await (async () => {
+                                switch (fc.name) {
+                                    case 'set_input_text':
+                                        toolExecutors.setInputText((fc.args as any).text);
+                                        break;
+                                    case 'send_message':
+                                        toolExecutors.sendMessage();
+                                        break;
+                                    case 'toggle_sidebar':
+                                        toolExecutors.toggleSidebar((fc.args as any).isOpen);
+                                        break;
+                                    case 'change_mode':
+                                        toolExecutors.changeMode((fc.args as any).mode);
+                                        break;
+                                    case 'navigate_to_view':
+                                        toolExecutors.navigateToView((fc.args as any).view);
+                                        break;
+                                    case 'open_settings':
+                                        toolExecutors.openSettings();
+                                        break;
+                                    case 'open_updates':
+                                        toolExecutors.openUpdates();
+                                        break;
+                                    case 'toggle_creators':
+                                        toolExecutors.toggleCreators();
+                                        break;
+                                    case 'toggle_collaborators':
+                                        toolExecutors.toggleCollaborators();
+                                        break;
+                                    case 'scroll_ui':
+                                        toolExecutors.scrollUi((fc.args as any).target, (fc.args as any).direction);
+                                        break;
+                                    default:
+                                        console.warn("Unknown tool call:", fc.name);
+                                        result = { result: "error: tool not found" };
+                                }
+                            })();
+                        } catch (e) {
+                            console.error("Error executing tool:", e);
+                            result = { result: "error executing tool" };
+                        }
+
+                        functionResponses.push({
+                            id: fc.id,
+                            name: fc.name,
+                            response: result
+                        });
+                    }
+
+                    // Send response back to model
+                    sessionPromise.then(session => {
+                        session.sendToolResponse({ functionResponses });
+                    });
                 }
                 
                 if (message.serverContent?.turnComplete) {
@@ -183,6 +393,7 @@ export const startActiveConversation = async (
                         sources.delete(source);
                     }
                     nextStartTime = 0;
+                    onStateChange('LISTENING');
                 }
             },
             onerror: (e: ErrorEvent) => {
@@ -190,6 +401,7 @@ export const startActiveConversation = async (
             },
             onclose: (e: CloseEvent) => {
                 console.log('Voice session closed.');
+                onStateChange('LISTENING'); // Reset state
             },
         },
         config: {
@@ -199,7 +411,8 @@ export const startActiveConversation = async (
             speechConfig: {
                 voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
             },
-            systemInstruction: systemInstruction,
+            systemInstruction: fullSystemInstruction,
+            tools: appTools // Inject tools here
         }
     });
 
@@ -212,6 +425,7 @@ export const startActiveConversation = async (
     const close = () => {
         console.log('Closing active conversation session.');
         session.close();
+        cancelAnimationFrame(animationFrame);
         stream.getTracks().forEach(track => track.stop());
         if (scriptProcessor) scriptProcessor.disconnect();
         if (mediaStreamSource) mediaStreamSource.disconnect();
