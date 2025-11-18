@@ -1,6 +1,12 @@
 
 import React, { useImperativeHandle, forwardRef, useRef, useState } from 'react';
 
+declare global {
+    interface Window {
+      anime: any;
+    }
+}
+
 export interface GhostCursorHandle {
     click: (selectorId: string, options?: { delay?: number }) => Promise<void>;
     scroll: (selectorId: string, direction: 'up' | 'down', amount?: number) => Promise<void>;
@@ -81,7 +87,8 @@ const GhostCursor = forwardRef<GhostCursorHandle, {}>((props, ref) => {
                 bubbles: true,
                 cancelable: true
             });
-            target.dispatchEvent(clickEvent);
+            target.dispatchEvent(clickEvent); // Fallback dispatch
+            target.click(); // Native click for best React compatibility
 
             if (options.delay) {
                 await new Promise(resolve => setTimeout(resolve, options.delay));

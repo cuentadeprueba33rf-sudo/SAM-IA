@@ -285,14 +285,13 @@ const ChatInput: React.FC<ChatInputProps> = ({
     
     useEffect(() => {
         if(!disabled && textareaRef.current && voiceModeState === 'inactive') {
-            // Optional focus logic
+            textareaRef.current.focus();
         }
     }, [disabled, voiceModeState]);
 
     if (voiceModeState === 'activeConversation' && !isPlusMenuOpen) {
-         // In background mode (VoiceOrb active), we usually still want to show the chat input
-         // so the user can type while talking, or so the AI can type for them.
-         // We keep the standard render.
+         // Allow regular input during active conversation for mixed modal interaction
+         // Note: VoiceOrb handles the visual "listening" state separately
     }
 
 

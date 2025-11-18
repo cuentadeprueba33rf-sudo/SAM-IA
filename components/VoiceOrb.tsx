@@ -2,6 +2,12 @@
 import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { XMarkIcon, SparklesIcon } from './icons';
 
+declare global {
+    interface Window {
+      anime: any;
+    }
+}
+
 export interface VoiceOrbHandle {
     clickElement: (selectorId: string) => Promise<void>;
     pointAtElement: (selectorId: string) => Promise<void>;

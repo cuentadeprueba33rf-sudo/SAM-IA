@@ -1058,7 +1058,7 @@ const App: React.FC = () => {
                 )}
 
                 {activeView === 'chat' && (
-                    <div className="p-4 pt-0 w-full max-w-3xl mx-auto flex flex-col gap-2">
+                    <div className="p-4 pt-0 w-full max-w-3xl mx-auto flex flex-col gap-2 mb-36">
                         {showLimitNotification && (
                             <div className="bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 p-3 rounded-xl text-sm flex items-start gap-3 border border-yellow-500/20">
                                 <ExclamationTriangleIcon className="w-5 h-5 mt-0.5 flex-shrink-0" />
