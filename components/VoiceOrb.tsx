@@ -11,6 +11,7 @@ declare global {
 export interface VoiceOrbHandle {
     clickElement: (selectorId: string) => Promise<void>;
     pointAtElement: (selectorId: string) => Promise<void>;
+    scroll: (selectorId: string, direction: 'up' | 'down') => Promise<void>;
     resetPosition: () => void;
 }
 
@@ -38,6 +39,9 @@ const VoiceOrb = forwardRef<VoiceOrbHandle, VoiceOrbProps>(({ isActive, state, v
         },
         pointAtElement: async (selectorId: string) => {
             await interactWithElement(selectorId, 'point');
+        },
+        scroll: async (selectorId: string, direction: 'up' | 'down') => {
+            await performScroll(selectorId, direction);
         },
         resetPosition: () => {
             isAiControlling.current = false;
@@ -84,6 +88,60 @@ const VoiceOrb = forwardRef<VoiceOrbHandle, VoiceOrbProps>(({ isActive, state, v
         // Reset transforms managed by idle animation to avoid stacking issues
         if (orbRef.current) {
             window.anime.set(orbRef.current, { translateY: 0, scale: 1 });
+        }
+    };
+
+    const performScroll = async (selectorId: string, direction: 'up' | 'down') => {
+        const target = document.getElementById(selectorId);
+        if (!target || !orbRef.current || typeof window.anime === 'undefined') {
+            console.warn(`VoiceOrb: Target #${selectorId} for scroll not found.`);
+            return;
+        }
+
+        isAiControlling.current = true;
+        stopIdleAnimation();
+
+        const rect = target.getBoundingClientRect();
+        // Target center
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+
+        // Move orb to center of the container
+        await window.anime({
+            targets: orbRef.current,
+            left: centerX - 32, // 32 is half width (64/2)
+            top: centerY - 32,
+            duration: 600,
+            easing: 'easeOutExpo'
+        }).finished;
+        
+        currentPos.current = { x: centerX - 32, y: centerY - 32 };
+
+        // Scroll gesture visual
+        const scrollAmount = 400;
+        const visualOffset = direction === 'down' ? 30 : -30;
+
+        // Animate orb moving slightly in scroll direction to mimic gesture
+        window.anime({
+            targets: orbRef.current,
+            translateY: [0, visualOffset],
+            duration: 500,
+            easing: 'easeInOutSine',
+            direction: 'alternate',
+            loop: 2
+        });
+
+        // Perform actual scroll
+        target.scrollBy({
+            top: direction === 'down' ? scrollAmount : -scrollAmount,
+            behavior: 'smooth'
+        });
+        
+        await new Promise(r => setTimeout(r, 1000));
+
+        if (!isDragging.current) {
+            isAiControlling.current = false;
+            startIdleAnimation();
         }
     };
 
@@ -142,6 +200,22 @@ const VoiceOrb = forwardRef<VoiceOrbHandle, VoiceOrbProps>(({ isActive, state, v
             
             // Small delay before moving away
             await new Promise(r => setTimeout(r, 200));
+            
+            // 3. RETREAT/HOVER OFF
+            // Move away slightly so user can see what happened
+            // Move 60px down and right, clamped to screen
+            const retreatX = Math.min(window.innerWidth - 80, targetX + 60);
+            const retreatY = Math.min(window.innerHeight - 80, targetY + 60);
+            
+            await window.anime({
+                 targets: orbRef.current,
+                 left: retreatX,
+                 top: retreatY,
+                 duration: 500,
+                 easing: 'easeOutQuad'
+            }).finished;
+            
+            currentPos.current = { x: retreatX, y: retreatY };
 
         } else {
             // Pointing logic (hover/pulse)

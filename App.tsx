@@ -254,6 +254,7 @@ const App: React.FC = () => {
     // Refs for UI state access in voice callbacks
     const isPlusMenuOpenRef = useRef(isPlusMenuOpen);
     const activeViewRef = useRef(activeView);
+    const sidebarOpenRef = useRef(sidebarOpen);
 
     useEffect(() => {
         isPlusMenuOpenRef.current = isPlusMenuOpen;
@@ -262,6 +263,10 @@ const App: React.FC = () => {
     useEffect(() => {
         activeViewRef.current = activeView;
     }, [activeView]);
+    
+    useEffect(() => {
+        sidebarOpenRef.current = sidebarOpen;
+    }, [sidebarOpen]);
 
     const currentChat = chats.find(c => c.id === currentChatId);
 
@@ -637,12 +642,22 @@ const App: React.FC = () => {
                      }
                 },
                 toggleSidebar: async (isOpen: boolean) => {
-                    if (isOpen && !sidebarOpen) {
-                         await voiceOrbRef.current?.clickElement('btn-toggle-sidebar');
-                         setSidebarOpen(true);
-                    } else if (!isOpen && sidebarOpen) {
-                         await voiceOrbRef.current?.clickElement('btn-toggle-sidebar'); // Assuming toggle button handles both
-                         setSidebarOpen(false);
+                    // Use current state reference for accuracy
+                    const isCurrentlyOpen = sidebarOpenRef.current;
+                    
+                    if (isOpen) {
+                        // If asked to open and it's closed, click the toggle button
+                        if (!isCurrentlyOpen) {
+                             await voiceOrbRef.current?.clickElement('btn-toggle-sidebar');
+                             setSidebarOpen(true);
+                        }
+                    } else {
+                         // If asked to close and it's open, find the CLOSE button specifically
+                        if (isCurrentlyOpen) {
+                            // Try clicking the close button inside the sidebar first
+                            await voiceOrbRef.current?.clickElement('btn-close-sidebar');
+                            setSidebarOpen(false);
+                        }
                     }
                 },
                 changeMode: async (modeRaw: string) => {
@@ -665,33 +680,34 @@ const App: React.FC = () => {
                         }
                     }
 
-                    // 2. Open Plus Menu if not open
+                    // 2. Open Plus Menu if not open. 
+                    // IMPORTANT: Use the ref to check status, but always click the button to trigger the UI change.
                     if (!isPlusMenuOpenRef.current) {
                         await voiceOrbRef.current?.clickElement('btn-plus-menu');
-                        // Do NOT force state here. Let the click handler do it.
-                        // Wait for the menu to physically appear
-                        await new Promise(r => setTimeout(r, 600)); // Time for animation + react render
+                        // Wait longer for the menu to physically appear and animate
+                        await new Promise(r => setTimeout(r, 800)); 
                     }
                     
                     // 3. Wait for specific button (Essential fix for timing issue)
                     const btnId = `btn-mode-${mode}`;
-                    const btn = await waitForElement(btnId, 4000); // Increase timeout for safety
+                    // Wait for the element to be present AND effectively visible
+                    const btn = await waitForElement(btnId, 5000); 
 
                     if (btn) {
                         await new Promise(r => setTimeout(r, 300)); // Visual delay for realism
                         await voiceOrbRef.current?.clickElement(btnId);
                     } else {
                         console.error(`Ghost Agent: Button ${btnId} not found.`);
-                        // If failed to find button, close menu to reset state
+                        // If failed to find button, try to close menu to reset state
                         if (isPlusMenuOpenRef.current) {
-                             await voiceOrbRef.current?.clickElement('btn-plus-menu'); // Close it
+                             await voiceOrbRef.current?.clickElement('btn-plus-menu');
                         }
                         throw new Error(`No pude encontrar el botón para el modo ${mode}.`);
                     }
                 },
                 navigateToView: async (view: ViewID) => {
                     // Ensure Sidebar is open for navigation if on mobile
-                    if (window.innerWidth < 768 && !sidebarOpen) {
+                    if (window.innerWidth < 768 && !sidebarOpenRef.current) {
                          await voiceOrbRef.current?.clickElement('btn-toggle-sidebar');
                          setSidebarOpen(true);
                          await new Promise(r => setTimeout(r, 300));
@@ -704,27 +720,36 @@ const App: React.FC = () => {
                          // Click triggers setActiveView
                     }
                 },
-                openSettings: async () => {
-                     // Ensure Sidebar is open
-                    if (window.innerWidth < 768 && !sidebarOpen) {
-                         await voiceOrbRef.current?.clickElement('btn-toggle-sidebar');
-                         setSidebarOpen(true);
-                         await new Promise(r => setTimeout(r, 300));
-                    }
-                    await voiceOrbRef.current?.clickElement('btn-settings');
+                toggleSettings: async (isOpen: boolean) => {
+                     if (isOpen) {
+                        // Ensure Sidebar is open
+                        if (window.innerWidth < 768 && !sidebarOpenRef.current) {
+                            await voiceOrbRef.current?.clickElement('btn-toggle-sidebar');
+                            setSidebarOpen(true);
+                            await new Promise(r => setTimeout(r, 300));
+                        }
+                        await voiceOrbRef.current?.clickElement('btn-settings');
+                     } else {
+                        // Close settings
+                        await voiceOrbRef.current?.clickElement('btn-close-settings');
+                     }
                 },
-                openUpdates: async () => {
-                     // Ensure Sidebar is open
-                    if (window.innerWidth < 768 && !sidebarOpen) {
-                         await voiceOrbRef.current?.clickElement('btn-toggle-sidebar');
-                         setSidebarOpen(true);
-                         await new Promise(r => setTimeout(r, 300));
-                    }
-                    await voiceOrbRef.current?.clickElement('btn-updates');
+                toggleUpdates: async (isOpen: boolean) => {
+                     if (isOpen) {
+                        // Ensure Sidebar is open
+                        if (window.innerWidth < 768 && !sidebarOpenRef.current) {
+                             await voiceOrbRef.current?.clickElement('btn-toggle-sidebar');
+                             setSidebarOpen(true);
+                             await new Promise(r => setTimeout(r, 300));
+                        }
+                        await voiceOrbRef.current?.clickElement('btn-updates');
+                     } else {
+                        await voiceOrbRef.current?.clickElement('btn-close-updates');
+                     }
                 },
                 toggleCreators: async () => {
                     // Ensure Sidebar is open
-                    if (window.innerWidth < 768 && !sidebarOpen) {
+                    if (window.innerWidth < 768 && !sidebarOpenRef.current) {
                          await voiceOrbRef.current?.clickElement('btn-toggle-sidebar');
                          setSidebarOpen(true);
                          await new Promise(r => setTimeout(r, 300));
@@ -733,7 +758,7 @@ const App: React.FC = () => {
                 },
                 toggleCollaborators: async () => {
                     // Ensure Sidebar is open
-                    if (window.innerWidth < 768 && !sidebarOpen) {
+                    if (window.innerWidth < 768 && !sidebarOpenRef.current) {
                          await voiceOrbRef.current?.clickElement('btn-toggle-sidebar');
                          setSidebarOpen(true);
                          await new Promise(r => setTimeout(r, 300));
@@ -748,11 +773,8 @@ const App: React.FC = () => {
                     if (target === 'settings_menu') selectorId = 'settings-menu';
                     
                     if (selectorId) {
-                         // Fallback to GhostCursor logic for scrolling if needed, or implement scroll in VoiceOrb
-                         // For now, let's use the GhostCursor logic as a fallback if it exists,
-                         // or simply scroll programmatically.
-                         // Since GhostCursor is still mounted, we can use it for scrolling which doesn't require the orb to be the mouse.
-                         await ghostCursorRef.current?.scroll(selectorId, direction, 400);
+                         // Use VoiceOrb to simulate physical scroll
+                         await voiceOrbRef.current?.scroll(selectorId, direction);
                     }
                 },
                 pointAtElement: async (elementId: string) => {

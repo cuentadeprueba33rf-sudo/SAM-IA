@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { XMarkIcon, SparklesIcon, CheckIcon } from './icons';
 
@@ -62,7 +63,7 @@ const UpdatesModal: React.FC<UpdatesModalProps> = ({ isOpen, onClose }) => {
                         <SparklesIcon className="w-6 h-6 text-accent"/>
                         <span>Novedades en SAM</span>
                     </h3>
-                    <button onClick={onClose} className="p-2 rounded-full hover:bg-surface-secondary">
+                    <button id="btn-close-updates" onClick={onClose} className="p-2 rounded-full hover:bg-surface-secondary">
                         <XMarkIcon className="w-6 h-6 text-text-secondary" />
                     </button>
                 </header>
@@ -96,8 +97,8 @@ const UpdatesModal: React.FC<UpdatesModalProps> = ({ isOpen, onClose }) => {
             </div>
              <style>{`
                 @keyframes fade-in-up {
-                    from { opacity: 0; transform: translateY(10px) scale(0.98); }
-                    to { opacity: 1; transform: translateY(0) scale(1); }
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
                 }
                 .animate-fade-in-up {
                     animation: fade-in-up 0.2s ease-out;

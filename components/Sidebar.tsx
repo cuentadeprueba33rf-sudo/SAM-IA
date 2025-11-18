@@ -110,7 +110,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                             <PencilSquareIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
                             <span>Nuevo chat</span>
                         </button>
-                        <button onClick={onClose} className="p-2 rounded-lg hover:bg-surface-secondary md:hidden">
+                        <button id="btn-close-sidebar" onClick={onClose} className="p-2 rounded-lg hover:bg-surface-secondary md:hidden">
                             <WindowIcon className="w-6 h-6 text-text-secondary st-sidebar-icon" />
                         </button>
                     </div>

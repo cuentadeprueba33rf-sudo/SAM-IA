@@ -6,7 +6,7 @@ import { MessageAuthor } from '../types';
 import { generateSystemInstruction } from '../constants';
 
 // ¡IMPORTANTE! Clave API interna para el uso de la aplicación.
-const API_KEY = 'AIzaSyD7XyzwMKSHYnyLqU--z5fp20oM9_en1rc';
+const API_KEY = process.env.API_KEY;
 
 const MODEL_MAP: Record<ModelType, string> = {
     'sm-i1': 'gemini-2.5-flash',
@@ -147,14 +147,26 @@ const appTools: Tool[] = [
                 }
             },
             {
-                name: 'open_settings',
-                description: 'Abre el modal de configuración.',
-                parameters: { type: Type.OBJECT, properties: {} }
+                name: 'toggle_settings',
+                description: 'Abre o cierra el modal de configuración.',
+                parameters: { 
+                    type: Type.OBJECT, 
+                    properties: {
+                        isOpen: { type: Type.BOOLEAN, description: 'True para abrir, False para cerrar.' }
+                    },
+                    required: ['isOpen']
+                }
             },
             {
-                name: 'open_updates',
-                description: 'Abre el modal de novedades/actualizaciones.',
-                parameters: { type: Type.OBJECT, properties: {} }
+                name: 'toggle_updates',
+                description: 'Abre o cierra el modal de novedades/actualizaciones.',
+                parameters: { 
+                    type: Type.OBJECT, 
+                    properties: {
+                        isOpen: { type: Type.BOOLEAN, description: 'True para abrir, False para cerrar.' }
+                    },
+                    required: ['isOpen']
+                }
             },
             {
                 name: 'toggle_creators',
@@ -199,8 +211,8 @@ export interface AppToolExecutors {
     toggleSidebar: (isOpen: boolean) => void;
     changeMode: (mode: ModeID) => void;
     navigateToView: (view: ViewID) => void;
-    openSettings: () => void;
-    openUpdates: () => void;
+    toggleSettings: (isOpen: boolean) => void;
+    toggleUpdates: (isOpen: boolean) => void;
     toggleCreators: () => void;
     toggleCollaborators: () => void;
     scrollUi: (target: string, direction: 'up' | 'down') => void;
@@ -236,6 +248,31 @@ export const startActiveConversation = async (
     outputNode.connect(outputAudioContext.destination);
     const sources = new Set<AudioBufferSourceNode>();
 
+    // Function to play a subtle "ping" when SAM finishes speaking
+    const playListeningCue = () => {
+        try {
+            const oscillator = outputAudioContext.createOscillator();
+            const gainNode = outputAudioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(outputAudioContext.destination);
+            
+            // Soft sine wave "ding"
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(800, outputAudioContext.currentTime); // Start at 800Hz
+            oscillator.frequency.exponentialRampToValueAtTime(400, outputAudioContext.currentTime + 0.15); // Drop fast
+            
+            // Volume envelope
+            gainNode.gain.setValueAtTime(0.05, outputAudioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, outputAudioContext.currentTime + 0.15);
+            
+            oscillator.start();
+            oscillator.stop(outputAudioContext.currentTime + 0.2);
+        } catch (e) {
+            // Ignore audio cues if context is suspended or error
+        }
+    };
+
     // Analyser for volume visualization
     const analyser = outputAudioContext.createAnalyser();
     analyser.fftSize = 32;
@@ -264,12 +301,12 @@ export const startActiveConversation = async (
     // Updated instruction to be aware of tools
     const fullSystemInstruction = `${systemInstruction}
     
-    IMPORTANT: You are an "Agent" capable of physically interacting with the interface. 
-    - Your physical body is the Floating Voice Orb on the screen. You exist within the UI.
-    - You CANNOT manipulate state directly. You MUST physically move your Orb to buttons and click them using your tools.
-    - When you want to change settings, modes, or navigate, use the corresponding tool. The Orb will animate to the button and click it.
-    - Use 'point_at_element' to gesture towards things when explaining them (e.g., "This button here opens settings").
-    - Interaction should feel natural. Don't just say you did it; do it.
+    IMPORTANT: You are an intelligent, physical "Agent" living in the interface.
+    - **BE INTELLIGENT & NATURAL**: Stop acting like a robot describing every step ("I am moving my orb to click the button now"). Instead, act naturally like a helpful human. Say things like "Sure, closing that for you", "Opening settings", "Here is the sidebar".
+    - **YOUR BODY IS THE ORB**: You physically exist on the screen. To interact, you MUST use your tools to move your orb.
+    - **SIDEBAR CONTROL**: To CLOSE the sidebar, you must use \`toggle_sidebar(false)\`. To OPEN it, use \`toggle_sidebar(true)\`.
+    - **CONTEXT AWARE**: If the user is typing, offer to help dictate. If they are looking at code, offer to debug.
+    - **PERSONALITY**: Be charming, smart, and slightly witty. You are not just a tool, you are a companion.
     `;
 
     const sessionPromise = ai.live.connect({
@@ -314,7 +351,10 @@ export const startActiveConversation = async (
                     source.connect(outputNode);
                     source.addEventListener('ended', () => {
                         sources.delete(source);
-                        if (sources.size === 0) onStateChange('LISTENING');
+                        if (sources.size === 0) {
+                            onStateChange('LISTENING');
+                            playListeningCue(); // Play cue when finished speaking
+                        }
                     });
                     source.start(nextStartTime);
                     nextStartTime += audioBuffer.duration;
@@ -349,11 +389,11 @@ export const startActiveConversation = async (
                                     case 'navigate_to_view':
                                         toolExecutors.navigateToView((fc.args as any).view);
                                         break;
-                                    case 'open_settings':
-                                        toolExecutors.openSettings();
+                                    case 'toggle_settings':
+                                        toolExecutors.toggleSettings((fc.args as any).isOpen);
                                         break;
-                                    case 'open_updates':
-                                        toolExecutors.openUpdates();
+                                    case 'toggle_updates':
+                                        toolExecutors.toggleUpdates((fc.args as any).isOpen);
                                         break;
                                     case 'toggle_creators':
                                         toolExecutors.toggleCreators();
