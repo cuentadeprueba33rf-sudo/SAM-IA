@@ -6,7 +6,7 @@ import { MessageAuthor } from '../types';
 import { generateSystemInstruction } from '../constants';
 
 // ¡IMPORTANTE! Clave API interna para el uso de la aplicación.
-const API_KEY = process.env.API_KEY;
+const API_KEY = 'AIzaSyD7XyzwMKSHYnyLqU--z5fp20oM9_en1rc';
 
 const MODEL_MAP: Record<ModelType, string> = {
     'sm-i1': 'gemini-2.5-flash',
