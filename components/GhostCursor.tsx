@@ -57,7 +57,11 @@ const GhostCursor = forwardRef<GhostCursorHandle, {}>((props, ref) => {
             ripple.style.backgroundColor = 'rgba(255, 255, 255, 0.4)';
             ripple.style.pointerEvents = 'none';
             ripple.style.transform = 'translate(-50%, -50%)';
-            target.style.position = target.style.position === 'static' ? 'relative' : target.style.position;
+            // Ensure target can hold the absolute ripple
+            const originalPosition = window.getComputedStyle(target).position;
+            if (originalPosition === 'static') {
+                target.style.position = 'relative';
+            }
             target.style.overflow = 'hidden';
             target.appendChild(ripple);
 
@@ -81,13 +85,24 @@ const GhostCursor = forwardRef<GhostCursorHandle, {}>((props, ref) => {
         scroll: async (selectorId: string, direction: 'up' | 'down', amount = 300) => {
             const target = document.getElementById(selectorId);
             if (!target) return;
+
+            // Move cursor to the scroll area for realism
+            const rect = target.getBoundingClientRect();
+            if(cursorRef.current && typeof window.anime !== 'undefined') {
+                setIsVisible(true);
+                await window.anime({
+                    targets: cursorRef.current,
+                    left: rect.left + rect.width / 2,
+                    top: rect.top + rect.height / 2,
+                    duration: 600,
+                    easing: 'easeOutQuad'
+                }).finished;
+            }
             
             target.scrollBy({
                 top: direction === 'down' ? amount : -amount,
                 behavior: 'smooth'
             });
-            
-            // Optional: Move cursor to scrollbar area visual cue
         }
     }));
 
