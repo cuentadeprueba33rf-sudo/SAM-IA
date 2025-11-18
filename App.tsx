@@ -26,7 +26,13 @@ import {
     ModelType, Artifact, ViewID, Essay, Insight, UsageTracker
 } from './types';
 import { generateSystemInstruction, MODES } from './constants';
-import { BookOpenIcon, MegaphoneIcon, ViewColumnsIcon, AcademicCapIcon, ChatBubbleLeftRightIcon, UsersIcon, ExclamationTriangleIcon, XMarkIcon, ChartBarIcon, Bars3Icon, ChevronLeftIcon } from './components/icons';
+import { 
+    BookOpenIcon, MegaphoneIcon, ViewColumnsIcon, AcademicCapIcon, 
+    ChatBubbleLeftRightIcon, UsersIcon, ExclamationTriangleIcon, 
+    XMarkIcon, ChartBarIcon, Bars3Icon, ChevronLeftIcon, 
+    MicrophoneIcon, CodeBracketIcon, CalculatorIcon, PhotoIcon,
+    ShareIcon, ChevronDownIcon, SparklesIcon
+} from './components/icons';
 
 type VoiceModeState = 'inactive' | 'activeConversation';
 type ActiveConversationState = 'LISTENING' | 'RESPONDING' | 'THINKING';
@@ -121,13 +127,110 @@ const InsightsView: React.FC<{ insights: Insight[], onAction: (action: Insight['
     </div>
 );
 
-const DocumentationView: React.FC = () => (
-    <div className="flex-1 p-8 overflow-y-auto">
-        <div className="text-center text-text-secondary mt-16">
-            <BookOpenIcon className="w-16 h-16 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold">Próximamente</h2>
-            <p>Esta sección contendrá guías detalladas y tutoriales sobre cómo usar SAM.</p>
+const DocItem: React.FC<{ title: string; icon: any; children: React.ReactNode }> = ({ title, icon: Icon, children }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    return (
+        <div className="border border-border-subtle rounded-xl bg-surface-primary overflow-hidden">
+            <button 
+                onClick={() => setIsOpen(!isOpen)} 
+                className="w-full flex items-center justify-between p-4 hover:bg-surface-secondary transition-colors"
+            >
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-accent/10 rounded-lg">
+                        <Icon className="w-5 h-5 text-accent" />
+                    </div>
+                    <span className="font-bold text-text-main">{title}</span>
+                </div>
+                <ChevronDownIcon className={`w-5 h-5 text-text-secondary transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {isOpen && (
+                <div className="p-4 pt-0 text-sm text-text-secondary leading-relaxed animate-fade-in">
+                    <div className="border-t border-border-subtle my-2"></div>
+                    {children}
+                </div>
+            )}
         </div>
+    );
+};
+
+const DocumentationView: React.FC = () => (
+    <div className="flex-1 p-6 md:p-10 overflow-y-auto">
+        <div className="max-w-3xl mx-auto space-y-8">
+            <div className="text-center mb-10">
+                <h1 className="text-3xl font-bold text-text-main mb-2">Documentación de SAM IA v1.5</h1>
+                <p className="text-text-secondary">Guía oficial de capacidades y modos de operación.</p>
+            </div>
+
+            <div className="space-y-4">
+                <h2 className="text-lg font-semibold text-text-main px-1">Características Exclusivas</h2>
+                
+                <DocItem title="Agente Físico de Voz (El Orbe)" icon={MicrophoneIcon}>
+                    <p className="mb-2">
+                        SAM v1.5 introduce una interfaz de voz revolucionaria. Al pulsar el micrófono, aparecerá un <strong>Orbe Flotante</strong> que es la manifestación física de la IA en tu pantalla.
+                    </p>
+                    <ul className="list-disc pl-5 space-y-1 mb-2">
+                        <li><strong>Control Total de la UI:</strong> Pídele que abra menús, cierre ventanas, o cambie de modo. El orbe viajará físicamente hasta el botón y lo pulsará.</li>
+                        <li><strong>Navegación y Scroll:</strong> Di "baja un poco" o "sube al principio" y el orbe desplazará el contenido por ti.</li>
+                        <li><strong>Dictado Inteligente:</strong> Di "escribe esto..." para que SAM escriba en el chat sin enviar, o "envía el mensaje" para confirmar.</li>
+                        <li><strong>Interacción Natural:</strong> SAM ahora entiende comandos coloquiales como "cierra eso" o "muéstrame el modo matemático".</li>
+                    </ul>
+                    <p className="text-xs bg-surface-secondary p-2 rounded border border-border-subtle mt-2">
+                        <strong>Pruébalo:</strong> Di "Abre la configuración", "Pon el tema oscuro", o "Activa el modo Canvas Dev".
+                    </p>
+                </DocItem>
+
+                <DocItem title="Canvas Dev Pro" icon={CodeBracketIcon}>
+                    <p className="mb-2">Un entorno de desarrollo integrado (IDE) para generar código web al instante.</p>
+                    <ul className="list-disc pl-5 space-y-1">
+                        <li>Generación de componentes HTML/CSS/JS en un solo archivo.</li>
+                        <li>Previsualización en tiempo real con pestañas de Código y Preview.</li>
+                        <li>Historial de versiones local para recuperar tus creaciones.</li>
+                        <li>Herramientas de mejora de prompt con IA para refinar tus ideas.</li>
+                    </ul>
+                </DocItem>
+
+                <DocItem title="Modo Matemático Avanzado" icon={CalculatorIcon}>
+                    <p className="mb-2">Resolución de problemas con rigor académico y renderizado LaTeX.</p>
+                    <p>Incluye una <strong>Consola de Verificación</strong> donde SAM muestra su proceso de pensamiento paso a paso (logs) antes de dar la respuesta final, asegurando precisión.</p>
+                </DocItem>
+
+                <DocItem title="Arquitecto Cognitivo" icon={ShareIcon}>
+                    <p className="mb-2">Visualización de conocimiento estructurado.</p>
+                    <p>Transforma cualquier tema complejo en un <strong>Mapa Mental Interactivo</strong>. SAM genera nodos y conexiones visuales seguidos de una explicación detallada en texto.</p>
+                </DocItem>
+
+                <DocItem title="Compositor de Ensayos" icon={AcademicCapIcon}>
+                    <p className="mb-2">Asistente de redacción académica por etapas.</p>
+                    <ul className="list-disc pl-5 space-y-1">
+                        <li>Generación de esquemas (outlines) personalizados.</li>
+                        <li>Escritura modular: genera o edita cada sección individualmente.</li>
+                        <li>Generación automática de referencias bibliográficas.</li>
+                        <li>Exportación a formato Markdown o Texto Plano.</li>
+                    </ul>
+                </DocItem>
+                
+                <DocItem title="Generación de Imágenes" icon={PhotoIcon}>
+                    <p>Utiliza el potente modelo <strong>SM-L3</strong> para crear imágenes desde cero o editar fotos existentes. Describe lo que quieres y SAM lo visualizará.</p>
+                </DocItem>
+
+                 <DocItem title="Personalización" icon={SparklesIcon}>
+                    <p>Ajusta SAM a tu estilo:</p>
+                    <ul className="list-disc pl-5 space-y-1 mt-1">
+                        <li>Temas: Claro, Oscuro y el exclusivo "Stranger Things".</li>
+                        <li>Profesión: Dile a SAM a qué te dedicas para obtener respuestas contextualizadas.</li>
+                        <li>Personalidad: Cambia entre Amable, Directo, Divertido o Intelectual.</li>
+                    </ul>
+                </DocItem>
+            </div>
+            
+            <div className="mt-10 p-4 bg-surface-secondary rounded-xl text-center">
+                <p className="text-sm text-text-secondary">SAM IA v1.5 &bull; Desarrollado por el Equipo VERCE</p>
+            </div>
+        </div>
+         <style>{`
+            @keyframes fade-in { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+            .animate-fade-in { animation: fade-in 0.2s ease-out; }
+        `}</style>
     </div>
 );
 
@@ -1080,7 +1183,7 @@ const App: React.FC = () => {
                 )}
 
                 {activeView === 'chat' && (
-                    <div className="p-4 pt-0 w-full max-w-3xl mx-auto flex flex-col gap-2 mb-48">
+                    <div className="p-4 pt-0 w-full max-w-3xl mx-auto flex flex-col gap-2 mb-6 md:mb-10 relative z-10">
                         {showLimitNotification && (
                             <div className="bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 p-3 rounded-xl text-sm flex items-start gap-3 border border-yellow-500/20">
                                 <ExclamationTriangleIcon className="w-5 h-5 mt-0.5 flex-shrink-0" />
