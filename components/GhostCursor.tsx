@@ -75,8 +75,13 @@ const GhostCursor = forwardRef<GhostCursorHandle, {}>((props, ref) => {
                 complete: () => ripple.remove()
             });
 
-            // Actual Click Trigger
-            target.click();
+            // Dispatch proper click event for React
+            const clickEvent = new MouseEvent('click', {
+                view: window,
+                bubbles: true,
+                cancelable: true
+            });
+            target.dispatchEvent(clickEvent);
 
             if (options.delay) {
                 await new Promise(resolve => setTimeout(resolve, options.delay));

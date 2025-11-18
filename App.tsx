@@ -18,14 +18,14 @@ import InstallNotification from './components/InstallNotification';
 import VoiceErrorNotification from './components/VoiceErrorNotification';
 import ForcedResetModal from './components/ForcedResetModal'; // Importar el nuevo modal
 import ChatMessageItem from './components/ChatMessage'; // Assuming a ChatMessageItem component for rendering messages.
-import VoiceOrb from './components/VoiceOrb'; // New Voice UI
+import VoiceOrb, { VoiceOrbHandle } from './components/VoiceOrb'; // New Voice UI
 import GhostCursor, { GhostCursorHandle } from './components/GhostCursor'; // IMPORTANTE: Nuevo cursor fantasma
 import { streamGenerateContent, generateImage, startActiveConversation, detectMode, AppToolExecutors } from './services/geminiService';
 import {
     Chat, ChatMessage, MessageAuthor, Attachment, ModeID, Settings,
     ModelType, Artifact, ViewID, Essay, Insight, UsageTracker
 } from './types';
-import { generateSystemInstruction } from './constants';
+import { generateSystemInstruction, MODES } from './constants';
 import { BookOpenIcon, MegaphoneIcon, ViewColumnsIcon, AcademicCapIcon, ChatBubbleLeftRightIcon, UsersIcon, ExclamationTriangleIcon, XMarkIcon, ChartBarIcon, Bars3Icon, ChevronLeftIcon } from './components/icons';
 
 type VoiceModeState = 'inactive' | 'activeConversation';
@@ -141,6 +141,57 @@ const UsageView: React.FC = () => (
     </div>
 );
 
+// Helper to wait for DOM elements to appear
+const waitForElement = (id: string, timeout = 4000): Promise<HTMLElement | null> => {
+    return new Promise((resolve) => {
+        const start = Date.now();
+        const check = () => {
+            const el = document.getElementById(id);
+            // Check if element exists and has dimensions (is visible)
+            if (el && (el.offsetParent !== null || el.getBoundingClientRect().width > 0)) {
+                return resolve(el);
+            }
+            if (Date.now() - start > timeout) return resolve(null);
+            requestAnimationFrame(check);
+        };
+        check();
+    });
+};
+
+const normalizeMode = (input: string): ModeID | undefined => {
+    const lower = input.toLowerCase().trim();
+    
+    // Direct matches from constant
+    const exactMatch = MODES.find(m => m.id === lower);
+    if(exactMatch) return exactMatch.id;
+
+    // Mapping common variations
+    const map: Record<string, ModeID> = {
+        'canvas dev': 'canvasdev',
+        'canvas-dev': 'canvasdev',
+        'developer': 'canvasdev',
+        'programación': 'canvasdev',
+        'código': 'canvasdev',
+        'math': 'math',
+        'matemáticas': 'math',
+        'cálculo': 'math',
+        'search': 'search',
+        'búsqueda': 'search',
+        'internet': 'search',
+        'architect': 'architect',
+        'arquitecto': 'architect',
+        'mapa': 'architect',
+        'image': 'image_generation',
+        'imagen': 'image_generation',
+        'generar imagen': 'image_generation',
+        'essay': 'essay',
+        'ensayo': 'essay',
+        'escribir': 'essay',
+    };
+
+    return map[lower] || (MODES.find(m => m.title.toLowerCase() === lower)?.id);
+};
+
 
 const App: React.FC = () => {
     const [settings, setSettings] = useState<Settings>(defaultSettings);
@@ -180,6 +231,12 @@ const App: React.FC = () => {
     
     // Lifted Input State (to allow voice agent to type)
     const [chatInputText, setChatInputText] = useState('');
+    // Ref to track latest text value in closures/async functions
+    const chatInputTextRef = useRef(chatInputText);
+
+    useEffect(() => {
+        chatInputTextRef.current = chatInputText;
+    }, [chatInputText]);
     
     const [isMathConsoleOpen, setIsMathConsoleOpen] = useState(true);
 
@@ -190,15 +247,21 @@ const App: React.FC = () => {
     const creditsRef = useRef<HTMLDivElement>(null);
     const verificationPanelRef = useRef<HTMLDivElement>(null);
     
-    // Ghost Cursor Ref
+    // Ghost Cursor Ref & Voice Orb Ref
     const ghostCursorRef = useRef<GhostCursorHandle>(null);
+    const voiceOrbRef = useRef<VoiceOrbHandle>(null);
     
     // Refs for UI state access in voice callbacks
     const isPlusMenuOpenRef = useRef(isPlusMenuOpen);
+    const activeViewRef = useRef(activeView);
 
     useEffect(() => {
         isPlusMenuOpenRef.current = isPlusMenuOpen;
     }, [isPlusMenuOpen]);
+
+    useEffect(() => {
+        activeViewRef.current = activeView;
+    }, [activeView]);
 
     const currentChat = chats.find(c => c.id === currentChatId);
 
@@ -561,84 +624,121 @@ const App: React.FC = () => {
             // No new chat created purely for voice session unless explicitly asked
 
             // Define Tool Executors with Ghost Cursor animations
+            // Use VoiceOrb handle for interactions if available, fall back to GhostCursor (or nothing)
             const toolExecutors: AppToolExecutors = {
                 setInputText: (text: string) => {
                     setChatInputText(prev => prev + (prev ? ' ' : '') + text);
                 },
                 sendMessage: () => {
-                     // Ghost trigger handled in event listener if needed, or straightforward logic
-                     // Usually for text input, a direct state update is fine, but if we want the ghost to hit the send button:
-                     // We need the button ID.
-                     if (chatInputText.trim()) {
-                         ghostCursorRef.current?.click('btn-send-message');
+                     // Access the latest text value from ref to ensure we don't use stale closure values
+                     if (chatInputTextRef.current.trim()) {
+                         voiceOrbRef.current?.clickElement('btn-send-message');
                          // Actual logic is handled by the button click which calls onSendMessage
                      }
                 },
                 toggleSidebar: async (isOpen: boolean) => {
                     if (isOpen && !sidebarOpen) {
-                         await ghostCursorRef.current?.click('btn-toggle-sidebar');
+                         await voiceOrbRef.current?.clickElement('btn-toggle-sidebar');
                          setSidebarOpen(true);
                     } else if (!isOpen && sidebarOpen) {
-                         await ghostCursorRef.current?.click('btn-toggle-sidebar'); // Assuming toggle button handles both
+                         await voiceOrbRef.current?.clickElement('btn-toggle-sidebar'); // Assuming toggle button handles both
                          setSidebarOpen(false);
                     }
                 },
-                changeMode: async (mode: ModeID) => {
-                    if (!isPlusMenuOpenRef.current) {
-                        await ghostCursorRef.current?.click('btn-plus-menu');
-                        setIsPlusMenuOpen(true);
-                        await new Promise(r => setTimeout(r, 300)); // Wait for animation
+                changeMode: async (modeRaw: string) => {
+                    const mode = normalizeMode(modeRaw);
+                    if (!mode) {
+                         console.warn(`Mode ${modeRaw} not found.`);
+                         return;
                     }
-                    await ghostCursorRef.current?.click(`btn-mode-${mode}`);
-                    // The actual click on the menu item handles the logic: handleModeAction -> setCurrentMode
+
+                    // 1. If we are not in 'chat' view, navigate there first
+                    if (activeViewRef.current !== 'chat') {
+                        const chatBtn = document.getElementById('btn-nav-chat') || document.querySelector('[aria-label="Volver al chat"]'); // Fallback for header btn
+                        if (chatBtn) {
+                             await voiceOrbRef.current?.clickElement(chatBtn.id || 'chat-header-btn');
+                             setActiveView('chat');
+                             await new Promise(r => setTimeout(r, 400)); // Wait for view transition
+                        } else {
+                             setActiveView('chat'); // Force it
+                             await new Promise(r => setTimeout(r, 400));
+                        }
+                    }
+
+                    // 2. Open Plus Menu if not open
+                    if (!isPlusMenuOpenRef.current) {
+                        await voiceOrbRef.current?.clickElement('btn-plus-menu');
+                        // Do NOT force state here. Let the click handler do it.
+                        // Wait for the menu to physically appear
+                        await new Promise(r => setTimeout(r, 600)); // Time for animation + react render
+                    }
+                    
+                    // 3. Wait for specific button (Essential fix for timing issue)
+                    const btnId = `btn-mode-${mode}`;
+                    const btn = await waitForElement(btnId, 4000); // Increase timeout for safety
+
+                    if (btn) {
+                        await new Promise(r => setTimeout(r, 300)); // Visual delay for realism
+                        await voiceOrbRef.current?.clickElement(btnId);
+                    } else {
+                        console.error(`Ghost Agent: Button ${btnId} not found.`);
+                        // If failed to find button, close menu to reset state
+                        if (isPlusMenuOpenRef.current) {
+                             await voiceOrbRef.current?.clickElement('btn-plus-menu'); // Close it
+                        }
+                        throw new Error(`No pude encontrar el botón para el modo ${mode}.`);
+                    }
                 },
                 navigateToView: async (view: ViewID) => {
                     // Ensure Sidebar is open for navigation if on mobile
                     if (window.innerWidth < 768 && !sidebarOpen) {
-                         await ghostCursorRef.current?.click('btn-toggle-sidebar');
+                         await voiceOrbRef.current?.clickElement('btn-toggle-sidebar');
                          setSidebarOpen(true);
                          await new Promise(r => setTimeout(r, 300));
                     }
                     
                     const viewBtnId = `btn-nav-${view}`;
-                    await ghostCursorRef.current?.click(viewBtnId);
-                    // Click triggers setActiveView
+                    // Check if we are already there
+                    if(activeViewRef.current !== view) {
+                         await voiceOrbRef.current?.clickElement(viewBtnId);
+                         // Click triggers setActiveView
+                    }
                 },
                 openSettings: async () => {
                      // Ensure Sidebar is open
                     if (window.innerWidth < 768 && !sidebarOpen) {
-                         await ghostCursorRef.current?.click('btn-toggle-sidebar');
+                         await voiceOrbRef.current?.clickElement('btn-toggle-sidebar');
                          setSidebarOpen(true);
                          await new Promise(r => setTimeout(r, 300));
                     }
-                    await ghostCursorRef.current?.click('btn-settings');
+                    await voiceOrbRef.current?.clickElement('btn-settings');
                 },
                 openUpdates: async () => {
                      // Ensure Sidebar is open
                     if (window.innerWidth < 768 && !sidebarOpen) {
-                         await ghostCursorRef.current?.click('btn-toggle-sidebar');
+                         await voiceOrbRef.current?.clickElement('btn-toggle-sidebar');
                          setSidebarOpen(true);
                          await new Promise(r => setTimeout(r, 300));
                     }
-                    await ghostCursorRef.current?.click('btn-updates');
+                    await voiceOrbRef.current?.clickElement('btn-updates');
                 },
                 toggleCreators: async () => {
                     // Ensure Sidebar is open
                     if (window.innerWidth < 768 && !sidebarOpen) {
-                         await ghostCursorRef.current?.click('btn-toggle-sidebar');
+                         await voiceOrbRef.current?.clickElement('btn-toggle-sidebar');
                          setSidebarOpen(true);
                          await new Promise(r => setTimeout(r, 300));
                     }
-                    await ghostCursorRef.current?.click('btn-creators');
+                    await voiceOrbRef.current?.clickElement('btn-creators');
                 },
                 toggleCollaborators: async () => {
                     // Ensure Sidebar is open
                     if (window.innerWidth < 768 && !sidebarOpen) {
-                         await ghostCursorRef.current?.click('btn-toggle-sidebar');
+                         await voiceOrbRef.current?.clickElement('btn-toggle-sidebar');
                          setSidebarOpen(true);
                          await new Promise(r => setTimeout(r, 300));
                     }
-                    await ghostCursorRef.current?.click('btn-collaborators');
+                    await voiceOrbRef.current?.clickElement('btn-collaborators');
                 },
                 scrollUi: async (target: string, direction: 'up' | 'down') => {
                     let selectorId = '';
@@ -648,8 +748,15 @@ const App: React.FC = () => {
                     if (target === 'settings_menu') selectorId = 'settings-menu';
                     
                     if (selectorId) {
-                        await ghostCursorRef.current?.scroll(selectorId, direction, 400);
+                         // Fallback to GhostCursor logic for scrolling if needed, or implement scroll in VoiceOrb
+                         // For now, let's use the GhostCursor logic as a fallback if it exists,
+                         // or simply scroll programmatically.
+                         // Since GhostCursor is still mounted, we can use it for scrolling which doesn't require the orb to be the mouse.
+                         await ghostCursorRef.current?.scroll(selectorId, direction, 400);
                     }
+                },
+                pointAtElement: async (elementId: string) => {
+                    await voiceOrbRef.current?.pointAtElement(elementId);
                 }
             };
             
@@ -658,7 +765,6 @@ const App: React.FC = () => {
                 (isUser, text) => setLiveTranscription(text),
                 (userInput, samOutput) => {
                      // Do NOT add to chat history as requested. Ephemeral voice interaction.
-                     // Unless specific tool 'send_message' or 'set_input_text' was used by the model.
                 },
                 (error) => { console.error("Voice error:", error); handleEndVoiceSession(); },
                 (state) => setActiveConversationState(state),
@@ -690,6 +796,8 @@ const App: React.FC = () => {
         activeConversationRef.current = null;
         setVoiceModeState('inactive');
         setLiveTranscription('');
+        // Reset Orb position
+        voiceOrbRef.current?.resetPosition();
     }
     
     const handleSaveEssay = (essay: Essay) => {
@@ -847,6 +955,7 @@ const App: React.FC = () => {
                             <Bars3Icon className="w-6 h-6" />
                         </button>
                         <button
+                            id={`btn-nav-chat`} // Add ID for targeting back button
                             onClick={() => setActiveView('chat')}
                             className="p-2 text-text-secondary hover:text-text-main"
                             aria-label="Volver al chat"
@@ -902,8 +1011,11 @@ const App: React.FC = () => {
 
     return (
         <div className={`flex h-screen bg-bg-main font-sans text-text-main ${settings.theme}`}>
+            {/* GhostCursor preserved for potential future use or fallbacks, but VoiceOrb takes lead in voice mode */}
             <GhostCursor ref={ghostCursorRef} />
+            
             <VoiceOrb 
+                ref={voiceOrbRef}
                 isActive={voiceModeState === 'activeConversation'}
                 state={activeConversationState}
                 volume={voiceVolume}

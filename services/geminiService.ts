@@ -177,6 +177,17 @@ const appTools: Tool[] = [
                     },
                     required: ['target', 'direction']
                 }
+            },
+            {
+                name: 'point_at_element',
+                description: 'Mueve tu orbe (tu cuerpo físico) para señalar un elemento en la pantalla sin hacer clic. Úsalo para explicar cosas o llamar la atención sobre un botón o área.',
+                parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                        elementId: { type: Type.STRING, description: 'El ID del elemento (ej: btn-settings, btn-mode-voice).' }
+                    },
+                    required: ['elementId']
+                }
             }
         ]
     }
@@ -193,6 +204,7 @@ export interface AppToolExecutors {
     toggleCreators: () => void;
     toggleCollaborators: () => void;
     scrollUi: (target: string, direction: 'up' | 'down') => void;
+    pointAtElement: (elementId: string) => void;
 }
 
 
@@ -253,12 +265,11 @@ export const startActiveConversation = async (
     const fullSystemInstruction = `${systemInstruction}
     
     IMPORTANT: You are an "Agent" capable of physically interacting with the interface. 
-    - When asked to open a menu, setting, or mode, ALWAYS use the corresponding tool.
-    - Do not just say you will do it, EXECUTE it.
-    - You can scroll lists using 'scroll_ui'.
-    - To change modes, use 'change_mode'. This will physically open the menu and click the button.
-    - If asked to check creators or collaborators, use the toggle tools.
-    - Interaction should feel natural.
+    - Your physical body is the Floating Voice Orb on the screen. You exist within the UI.
+    - You CANNOT manipulate state directly. You MUST physically move your Orb to buttons and click them using your tools.
+    - When you want to change settings, modes, or navigate, use the corresponding tool. The Orb will animate to the button and click it.
+    - Use 'point_at_element' to gesture towards things when explaining them (e.g., "This button here opens settings").
+    - Interaction should feel natural. Don't just say you did it; do it.
     `;
 
     const sessionPromise = ai.live.connect({
@@ -352,6 +363,9 @@ export const startActiveConversation = async (
                                         break;
                                     case 'scroll_ui':
                                         toolExecutors.scrollUi((fc.args as any).target, (fc.args as any).direction);
+                                        break;
+                                    case 'point_at_element':
+                                        toolExecutors.pointAtElement((fc.args as any).elementId);
                                         break;
                                     default:
                                         console.warn("Unknown tool call:", fc.name);

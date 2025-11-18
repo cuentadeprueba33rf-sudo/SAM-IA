@@ -33,6 +33,43 @@ interface ChatInputProps {
     onSetPlusMenuOpen: (isOpen: boolean | ((prev: boolean) => boolean)) => void;
 }
 
+const ActiveConversationUI: React.FC<{
+    onEndSession: () => void;
+    conversationState: ActiveConversationState;
+    transcription: string;
+}> = ({ onEndSession, conversationState, transcription }) => {
+    let statusText = '';
+    
+    switch (conversationState) {
+        case 'LISTENING':
+            statusText = 'Escuchando...';
+            break;
+        case 'RESPONDING':
+            statusText = 'SAM está respondiendo...';
+            break;
+        case 'THINKING':
+            statusText = 'Procesando...';
+            break;
+    }
+
+    return (
+        <div className="bg-surface-primary p-3 rounded-2xl border border-border-subtle shadow-lg w-full transition-all flex flex-col items-center gap-4 st-border">
+            <div className="flex items-center gap-2 text-text-secondary">
+                <div className={`w-2 h-2 rounded-full ${conversationState === 'LISTENING' ? 'bg-green-500' : 'bg-accent animate-pulse'}`}></div>
+                <span>{statusText}</span>
+            </div>
+            <p className="text-text-main text-center h-6 text-sm truncate w-full px-4">{transcription}</p>
+            <button
+                onClick={onEndSession}
+                className="px-4 py-2 bg-danger/10 text-danger text-sm font-semibold rounded-lg hover:bg-danger/20"
+            >
+                Finalizar Sesión
+            </button>
+        </div>
+    );
+};
+
+
 const ImageGenInput: React.FC<{
     onSend: (prompt: string, attachment?: Attachment) => void;
     disabled: boolean;
@@ -137,6 +174,9 @@ const ChatInput: React.FC<ChatInputProps> = ({
     settings,
     onSaveSettings,
     voiceModeState,
+    activeConversationState,
+    liveTranscription,
+    onEndVoiceSession,
     usage,
     isThemeActive,
     inputText,
@@ -244,12 +284,16 @@ const ChatInput: React.FC<ChatInputProps> = ({
     }, [inputText, adjustTextareaHeight]);
     
     useEffect(() => {
-        // Keep focus if not disabled, but allow blur if user clicked elsewhere
-        // Only force focus on mount or when re-enabled
         if(!disabled && textareaRef.current && voiceModeState === 'inactive') {
-           // textareaRef.current.focus(); // Optional: might be annoying if user is selecting text elsewhere
+            // Optional focus logic
         }
     }, [disabled, voiceModeState]);
+
+    if (voiceModeState === 'activeConversation' && !isPlusMenuOpen) {
+         // In background mode (VoiceOrb active), we usually still want to show the chat input
+         // so the user can type while talking, or so the AI can type for them.
+         // We keep the standard render.
+    }
 
 
     if (currentMode === 'image_generation') {
@@ -290,7 +334,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                     </button>
                     <button 
                         id="btn-plus-menu"
-                        onClick={() => onSetPlusMenuOpen(prev => !prev)}
+                        onClick={() => onSetPlusMenuOpen((prev: boolean) => !prev)}
                         className="flex-shrink-0 p-2 text-text-secondary hover:text-text-main transition-colors rounded-full focus:outline-none focus:ring-2 focus:ring-accent"
                         aria-label="More options"
                         disabled={disabled}
@@ -428,6 +472,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                     </button>
                 ) : (
                     <button
+                        id="btn-mode-voice-input" 
                         onClick={() => onModeAction('voice')}
                         disabled={disabled}
                         className={`flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors self-end st-mic-button ${voiceModeState === 'activeConversation' ? 'bg-red-500 text-white animate-pulse' : 'bg-surface-secondary text-text-main hover:bg-border-subtle disabled:opacity-50'}`}
