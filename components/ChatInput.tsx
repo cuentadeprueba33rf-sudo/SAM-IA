@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import PlusMenu from '../PlusMenu';
 import FilePreview from './FilePreview';
@@ -53,18 +52,115 @@ const ActiveConversationUI: React.FC<{
     }
 
     return (
-        <div className="bg-surface-primary p-3 rounded-2xl border border-border-subtle shadow-lg w-full transition-all flex flex-col items-center gap-4 st-border">
-            <div className="flex items-center gap-2 text-text-secondary">
-                <div className={`w-2 h-2 rounded-full ${conversationState === 'LISTENING' ? 'bg-green-500' : 'bg-accent animate-pulse'}`}></div>
-                <span>{statusText}</span>
+        <div className="bg-[#1E1F20] p-4 rounded-[2rem] border border-white/10 shadow-2xl w-full transition-all flex flex-col items-center gap-4 st-border relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 opacity-50 pointer-events-none" />
+            <div className="flex items-center gap-3 text-gray-200 z-10">
+                <div className={`w-3 h-3 rounded-full shadow-[0_0_10px_currentColor] ${conversationState === 'LISTENING' ? 'bg-green-400 text-green-400' : 'bg-white text-white animate-pulse'}`}></div>
+                <span className="font-medium tracking-wide">{statusText}</span>
             </div>
-            <p className="text-text-main text-center h-6 text-sm truncate w-full px-4">{transcription}</p>
+            <p className="text-white text-center h-6 text-sm truncate w-full px-4 font-light z-10">{transcription}</p>
             <button
                 onClick={onEndSession}
-                className="px-4 py-2 bg-danger/10 text-danger text-sm font-semibold rounded-lg hover:bg-danger/20"
+                className="px-6 py-2 bg-red-500/20 text-red-200 border border-red-500/30 text-sm font-semibold rounded-full hover:bg-red-500/30 transition-colors z-10"
             >
-                Finalizar Sesión
+                Finalizar
             </button>
+        </div>
+    );
+};
+
+// Reusable Model Selector Component
+const ModelSelector: React.FC<{
+    settings: Settings;
+    onSaveSettings: (s: Settings) => void;
+    usage: UsageTracker;
+    isChristmasModelUnlocked: boolean;
+}> = ({ settings, onSaveSettings, usage, isChristmasModelUnlocked }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+    const limit = usage.hasAttachment ? 15 : 20;
+    const usagePercentage = Math.round((usage.count / limit) * 100);
+    const isNearingLimit = usagePercentage >= 80 && usagePercentage < 100;
+    const isLimitReached = usagePercentage >= 100;
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    return (
+        <div ref={menuRef} className="relative">
+             <button 
+                onClick={() => setIsOpen(prev => !prev)} 
+                className="flex items-center gap-1 text-xs font-semibold text-text-secondary/70 hover:text-text-main transition-colors px-3 py-1 rounded-full hover:bg-surface-secondary/50 border border-transparent hover:border-border-subtle"
+            >
+                {settings.defaultModel === 'sm-i1' ? (
+                    <span>SM-I1</span>
+                ) : settings.defaultModel === 'sm-i3' ? (
+                    <span className="flex items-center gap-1"><SparklesIcon className="w-3 h-3 text-yellow-400"/>SM-I3</span>
+                ) : (
+                    <span className="flex items-center gap-1"><GiftIcon className="w-3 h-3 text-red-400" />SM-L3.9</span>
+                )}
+                <ChevronDownIcon className="w-3 h-3" />
+            </button>
+            {isOpen && (
+                <div className="absolute bottom-full mb-2 left-0 bg-surface-secondary p-1 rounded-xl shadow-xl border border-border-subtle w-60 animate-fade-in-up-sm z-50">
+                    <div className="space-y-1">
+                        {/* SM-I1 */}
+                        <button
+                            onClick={() => { onSaveSettings({...settings, defaultModel: 'sm-i1'}); setIsOpen(false); }}
+                            className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-border-subtle transition-colors"
+                        >
+                            <div className="font-medium text-text-main">SM-I1</div>
+                            <p className="text-xs text-text-secondary mt-0.5">Rápido y eficiente</p>
+                        </button>
+                        
+                        {/* SM-I3 */}
+                            <button
+                            onClick={() => { onSaveSettings({...settings, defaultModel: 'sm-i3'}); setIsOpen(false); }}
+                            className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-border-subtle transition-colors"
+                        >
+                            <div className="flex items-center gap-2 font-medium text-text-main">
+                                <SparklesIcon className="w-4 h-4 text-yellow-400"/>
+                                <span>SM-I3</span>
+                            </div>
+                            <p className="text-xs text-text-secondary mt-0.5">Para tareas complejas</p>
+                            <div className="mt-1.5 flex items-center gap-2">
+                                    <div className="flex-1 bg-border-subtle rounded-full h-1">
+                                    <div className={`h-1 rounded-full ${isLimitReached ? 'bg-danger' : isNearingLimit ? 'bg-yellow-500' : 'bg-accent'}`} style={{ width: `${Math.min(usagePercentage, 100)}%` }}></div>
+                                </div>
+                                <span className="text-[10px] text-text-secondary tabular-nums">{usage.count}/{limit}</span>
+                            </div>
+                        </button>
+
+                        {/* SM-L3.9 */}
+                            <button
+                            disabled={!isChristmasModelUnlocked}
+                            onClick={() => { 
+                                if(isChristmasModelUnlocked) {
+                                    onSaveSettings({...settings, defaultModel: 'sm-l3.9'}); 
+                                    setIsOpen(false); 
+                                }
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-border-subtle transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <div className="flex items-center gap-2 font-medium text-text-main">
+                                <GiftIcon className="w-4 h-4 text-red-400"/>
+                                <span>SM-L3.9</span>
+                                {!isChristmasModelUnlocked && <LockClosedIcon className="w-3 h-3 text-text-secondary ml-auto" />}
+                            </div>
+                            <p className="text-xs text-text-secondary mt-0.5">
+                                {isChristmasModelUnlocked ? 'Máxima potencia' : 'Disponible 2 Dic'}
+                            </p>
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -77,7 +173,11 @@ const ImageGenInput: React.FC<{
     onRemoveAttachment: () => void;
     onModeAction: (mode: ModeID, accept?: string) => void;
     onResetMode: () => void;
-}> = ({ onSend, disabled, attachment, onRemoveAttachment, onModeAction, onResetMode }) => {
+    settings: Settings;
+    onSaveSettings: (settings: Settings) => void;
+    usage: UsageTracker;
+    isChristmasModelUnlocked: boolean;
+}> = ({ onSend, disabled, attachment, onRemoveAttachment, onModeAction, onResetMode, settings, onSaveSettings, usage, isChristmasModelUnlocked }) => {
     const [prompt, setPrompt] = useState('');
 
     const handleSendClick = () => {
@@ -95,29 +195,25 @@ const ImageGenInput: React.FC<{
     };
 
     return (
-        <div className="bg-surface-primary dark:bg-[#1E1F20] p-3 rounded-2xl border border-border-subtle shadow-lg w-full transition-all relative st-border">
+        <div className="bg-surface-primary dark:bg-[#1E1F20] p-3 rounded-[2rem] border border-border-subtle shadow-lg w-full transition-all relative st-border">
             <button
                 onClick={onResetMode}
-                className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-surface-secondary transition-colors z-10"
+                className="absolute top-3 right-3 p-2 rounded-full hover:bg-surface-secondary transition-colors z-10"
                 aria-label="Salir del modo imagen"
             >
                 <XMarkIcon className="w-5 h-5 text-text-secondary st-icon" />
             </button>
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-4 px-2 pt-1">
                 <div className="flex items-center gap-2">
-                    <button className="flex items-center gap-2 font-semibold text-text-main p-2 rounded-lg bg-surface-secondary">
-                        <span>Imágenes</span>
-                        <ChevronDownIcon className="w-4 h-4 text-text-secondary st-icon"/>
-                    </button>
-                </div>
-                <div className="flex items-center gap-3 text-text-secondary mr-8">
-                    <PhotoIcon className="w-5 h-5 st-icon"/>
-                    <span className="text-sm font-medium">Flash Image</span>
-                    <div className="w-px h-4 bg-border-subtle"></div>
-                    <span className="text-sm font-medium">x1</span>
-                    <button className="p-1 rounded-full hover:bg-surface-secondary">
-                        <AdjustmentsHorizontalIcon className="w-5 h-5 st-icon"/>
-                    </button>
+                     {/* Replaced Static Button with Model Selector */}
+                     <div className="bg-surface-secondary/30 rounded-full border border-border-subtle/50">
+                         <ModelSelector 
+                            settings={settings} 
+                            onSaveSettings={onSaveSettings} 
+                            usage={usage} 
+                            isChristmasModelUnlocked={isChristmasModelUnlocked} 
+                         />
+                     </div>
                 </div>
             </div>
 
@@ -125,37 +221,37 @@ const ImageGenInput: React.FC<{
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={attachment ? "Describe los cambios que quieres hacer..." : "Genera una imagen con texto..."}
-                className="w-full bg-transparent resize-none outline-none text-text-main my-3 text-lg placeholder:text-text-secondary"
+                placeholder={attachment ? "Describe los cambios..." : "Genera una imagen..."}
+                className="w-full bg-transparent resize-none outline-none text-text-main my-3 text-lg placeholder:text-text-secondary/60 px-4"
                 rows={2}
                 disabled={disabled}
             />
 
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2 px-2 pb-1">
                 <div className="flex items-center gap-2">
                     {attachment ? (
-                        <div className="relative">
-                            <img src={attachment.data} alt="Source" className="w-16 h-16 rounded-lg object-cover"/>
-                            <button onClick={onRemoveAttachment} className="absolute -top-1 -right-1 bg-danger text-white rounded-full p-0.5">
+                        <div className="relative group">
+                            <img src={attachment.data} alt="Source" className="w-12 h-12 rounded-lg object-cover border border-border-subtle"/>
+                            <button onClick={onRemoveAttachment} className="absolute -top-1 -right-1 bg-danger text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <XMarkIcon className="w-3 h-3"/>
                             </button>
                         </div>
                     ) : (
                         <button 
                             onClick={() => onModeAction('photo_upload', 'image/*')}
-                            className="w-16 h-16 bg-surface-secondary rounded-lg flex items-center justify-center text-text-secondary hover:bg-border-subtle transition-colors"
+                            className="p-2 bg-surface-secondary rounded-full flex items-center justify-center text-text-secondary hover:bg-border-subtle transition-colors"
                         >
-                            <PlusIcon className="w-8 h-8 st-icon"/>
+                            <PlusIcon className="w-6 h-6 st-icon"/>
                         </button>
                     )}
                 </div>
                 <button
                     onClick={handleSendClick}
                     disabled={disabled || (!prompt.trim() && !attachment)}
-                    className="w-12 h-12 flex items-center justify-center rounded-full transition-colors bg-text-main text-bg-main hover:opacity-90 disabled:bg-surface-secondary disabled:text-text-secondary self-end st-mic-button"
+                    className="w-10 h-10 flex items-center justify-center rounded-full transition-colors bg-text-main text-bg-main hover:opacity-90 disabled:bg-surface-secondary disabled:text-text-secondary self-end st-mic-button"
                     aria-label="Generate image"
                 >
-                    <ArrowUpIcon className="w-6 h-6 st-icon" />
+                    <ArrowUpIcon className="w-5 h-5 st-icon" />
                 </button>
             </div>
         </div>
@@ -184,17 +280,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
     isPlusMenuOpen,
     onSetPlusMenuOpen
 }) => {
-    const [isModelMenuOpen, setIsModelMenuOpen] = useState(false);
     const [placeholder, setPlaceholder] = useState('Pregunta a SAM');
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const modelMenuRef = useRef<HTMLDivElement>(null);
 
     const currentModeData = MODES.find(m => m.id === currentMode);
-
-    const limit = usage.hasAttachment ? 15 : 20;
-    const usagePercentage = Math.round((usage.count / limit) * 100);
-    const isNearingLimit = usagePercentage >= 80 && usagePercentage < 100;
-    const isLimitReached = usagePercentage >= 100;
 
     const isChristmasModelUnlocked = useMemo(() => {
         const now = new Date();
@@ -268,18 +357,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
     }, [isThemeActive]);
 
     useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (modelMenuRef.current && !modelMenuRef.current.contains(event.target as Node)) {
-                setIsModelMenuOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, []);
-
-    useEffect(() => {
         adjustTextareaHeight();
     }, [inputText, adjustTextareaHeight]);
     
@@ -290,8 +367,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
     }, [disabled, voiceModeState]);
 
     if (voiceModeState === 'activeConversation' && !isPlusMenuOpen) {
-         // Allow regular input during active conversation for mixed modal interaction
-         // Note: VoiceOrb handles the visual "listening" state separately
+         return <ActiveConversationUI 
+            onEndSession={onEndVoiceSession} 
+            conversationState={activeConversationState}
+            transcription={liveTranscription} 
+        />;
     }
 
 
@@ -304,6 +384,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
                 onRemoveAttachment={onRemoveAttachment}
                 onModeAction={onModeAction}
                 onResetMode={onResetMode}
+                settings={settings}
+                onSaveSettings={onSaveSettings}
+                usage={usage}
+                isChristmasModelUnlocked={isChristmasModelUnlocked}
             />
         );
     }
@@ -316,37 +400,40 @@ const ChatInput: React.FC<ChatInputProps> = ({
             }} settings={settings} />}
             
             {attachment && (
-                <div className="mb-2 transition-all">
+                <div className="mb-2 transition-all ml-4">
                     <FilePreview attachment={attachment} onRemove={onRemoveAttachment} />
                 </div>
             )}
             
-            <div className="flex items-end bg-surface-primary rounded-3xl p-2 gap-2 shadow-lg border border-border-subtle st-border">
-                <div className="flex items-center self-stretch">
+            <div className="flex items-end bg-surface-primary dark:bg-[#1E1F20] rounded-[2rem] p-3 gap-3 shadow-2xl border border-border-subtle st-border relative z-20">
+                
+                {/* Left Actions (Grouped: Sidebar Toggle & Plus Menu) */}
+                <div className="flex items-center gap-2 mb-1">
                     <button 
                         id="btn-toggle-sidebar"
                         onClick={onToggleSidebar}
-                        className="flex-shrink-0 p-2 text-text-secondary hover:text-text-main transition-colors rounded-full focus:outline-none focus:ring-2 focus:ring-accent"
-                        aria-label="Toggle menu"
+                        className="flex-shrink-0 p-2.5 bg-surface-secondary dark:bg-[#2C2C2E] text-text-main hover:bg-border-subtle transition-colors rounded-full focus:outline-none focus:ring-2 focus:ring-accent"
+                        aria-label="Toggle sidebar"
                     >
-                        <Bars3Icon className="w-6 h-6 st-icon" />
+                        <Bars3Icon className="w-5 h-5 st-icon" />
                     </button>
+
                     <button 
                         id="btn-plus-menu"
                         onClick={() => onSetPlusMenuOpen((prev: boolean) => !prev)}
-                        className="flex-shrink-0 p-2 text-text-secondary hover:text-text-main transition-colors rounded-full focus:outline-none focus:ring-2 focus:ring-accent"
+                        className="flex-shrink-0 p-2.5 bg-surface-secondary dark:bg-[#2C2C2E] text-text-main hover:bg-border-subtle transition-colors rounded-full focus:outline-none focus:ring-2 focus:ring-accent"
                         aria-label="More options"
                         disabled={disabled}
                     >
-                        <svg className="w-6 h-6 st-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                        <PlusIcon className="w-5 h-5 st-icon transform transition-transform" style={{ transform: isPlusMenuOpen ? 'rotate(45deg)' : 'none' }} />
                     </button>
-                    
-                    {currentMode !== 'normal' && currentModeData && (
+
+                     {currentMode !== 'normal' && currentModeData && (
                         <div 
                             title={`Modo activo: ${currentModeData.title}`} 
-                            className="relative flex-shrink-0 self-center animate-fade-in mx-1"
+                            className="relative flex-shrink-0 self-center animate-fade-in"
                         >
-                            <div className="p-2 bg-accent/10 rounded-full flex items-center justify-center">
+                            <div className="p-2.5 bg-accent/10 rounded-full flex items-center justify-center">
                                 <currentModeData.icon className="w-5 h-5 text-accent st-icon" />
                             </div>
                             <button 
@@ -354,98 +441,24 @@ const ChatInput: React.FC<ChatInputProps> = ({
                                 className="absolute -top-1 -right-1 bg-surface-primary rounded-full p-0.5 shadow hover:scale-110 transition-transform border border-border-subtle" 
                                 aria-label={`Desactivar modo ${currentModeData.title}`}
                             >
-                                <XMarkIcon className="w-3.5 h-3.5 text-text-secondary st-icon" />
+                                <XMarkIcon className="w-3 h-3 text-text-secondary st-icon" />
                             </button>
                         </div>
                     )}
                 </div>
 
-                <div className="relative flex-1 flex flex-col">
-                     <div className="flex justify-start items-center px-2 gap-2">
-                        <div ref={modelMenuRef} className="relative">
-                            <button onClick={() => setIsModelMenuOpen(prev => !prev)} className="flex items-center gap-1 text-sm font-semibold text-text-secondary hover:text-text-main transition-colors">
-                                {settings.defaultModel === 'sm-i1' ? (
-                                    <span>SM-I1</span>
-                                ) : settings.defaultModel === 'sm-i3' ? (
-                                    <>
-                                        <SparklesIcon className="w-4 h-4 text-yellow-400"/>
-                                        <span>SM-I3</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <GiftIcon className="w-4 h-4 text-red-400" />
-                                        <span>SM-L3.9</span>
-                                    </>
-                                )}
-                                <ChevronDownIcon className="w-4 h-4" />
-                            </button>
-                            {isModelMenuOpen && (
-                                <div className="absolute bottom-full mb-2 bg-surface-secondary p-1 rounded-lg shadow-xl border border-border-subtle w-56 animate-fade-in-up-sm">
-                                    <button
-                                        onClick={() => { onSaveSettings({...settings, defaultModel: 'sm-i1'}); setIsModelMenuOpen(false); }}
-                                        className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-border-subtle"
-                                    >
-                                        SM-I1
-                                        <p className="text-xs text-text-secondary font-normal">Rápido y eficiente</p>
-                                    </button>
-                                     <button
-                                        onClick={() => { onSaveSettings({...settings, defaultModel: 'sm-i3'}); setIsModelMenuOpen(false); }}
-                                        className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-border-subtle"
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <SparklesIcon className="w-4 h-4 text-yellow-400"/>
-                                            <span>SM-I3</span>
-                                        </div>
-                                        <p className="text-xs text-text-secondary font-normal pl-6">Más potente para tareas complejas.</p>
-                                        <div className="pl-6 mt-2">
-                                            <div className="flex justify-between items-center">
-                                                <p className="text-xs text-text-secondary font-normal">Límite diario</p>
-                                                <p className={`text-xs font-semibold ${isLimitReached ? 'text-danger' : isNearingLimit ? 'text-yellow-500' : 'text-text-secondary'}`}>{usage.count} / {limit}</p>
-                                            </div>
-                                            <div className="w-full bg-border-subtle rounded-full h-1.5 mt-1">
-                                                <div className={`h-1.5 rounded-full ${isLimitReached ? 'bg-danger' : isNearingLimit ? 'bg-yellow-500' : 'bg-accent'}`} style={{ width: `${Math.min(usagePercentage, 100)}%` }}></div>
-                                            </div>
-                                        </div>
-                                    </button>
-                                     <button
-                                        disabled={!isChristmasModelUnlocked}
-                                        onClick={() => { 
-                                            if(isChristmasModelUnlocked) {
-                                                onSaveSettings({...settings, defaultModel: 'sm-l3.9'}); 
-                                                setIsModelMenuOpen(false); 
-                                            }
-                                        }}
-                                        className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-border-subtle disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <GiftIcon className="w-4 h-4 text-red-400"/>
-                                            <span>SM-L3.9</span>
-                                            {!isChristmasModelUnlocked && <LockClosedIcon className="w-3 h-3 text-text-secondary ml-auto" />}
-                                        </div>
-                                        <p className="text-xs text-text-secondary font-normal pl-6">
-                                            {isChristmasModelUnlocked ? '¡El modelo más potente!' : 'Disponible el 2 de Dic.'}
-                                        </p>
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                        {settings.defaultModel === 'sm-i3' && !settings.quickMode && (
-                             <div 
-                                className={`flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${isLimitReached ? 'bg-danger/10 text-danger' : isNearingLimit ? 'bg-yellow-500/10 text-yellow-500' : 'bg-surface-secondary text-text-secondary'}`}
-                                title={`Has usado ${usage.count} de ${limit} solicitudes para SM-I3 hoy.`}
-                            >
-                                <div className={`w-1.5 h-1.5 rounded-full ${isLimitReached ? 'bg-danger' : isNearingLimit ? 'bg-yellow-500' : 'bg-accent'}`}></div>
-                                <span>{usage.count}/{limit}</span>
-                            </div>
-                        )}
-                        <button 
-                            onClick={() => onSaveSettings({ ...settings, quickMode: !settings.quickMode })}
-                            className={`p-1 rounded-full transition-colors ${settings.quickMode ? 'text-yellow-400' : 'text-text-secondary hover:text-yellow-400'}`}
-                            title={settings.quickMode ? 'Modo Rápido Activado' : 'Activar Modo Rápido'}
-                        >
-                            <BoltIcon className="w-4 h-4" />
-                        </button>
-                    </div>
+                {/* Input Area */}
+                <div className="relative flex-1 flex flex-col justify-center min-h-[3rem]">
+                     {/* Model Selector (Floating Inside Input) */}
+                     <div className="absolute -top-1 left-0 right-0 flex justify-start z-10">
+                         <ModelSelector 
+                            settings={settings} 
+                            onSaveSettings={onSaveSettings} 
+                            usage={usage} 
+                            isChristmasModelUnlocked={isChristmasModelUnlocked} 
+                         />
+                     </div>
+
                     <textarea
                         ref={textareaRef}
                         id="chat-textarea"
@@ -453,33 +466,36 @@ const ChatInput: React.FC<ChatInputProps> = ({
                         onChange={(e) => onInputTextChange(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder={placeholder}
-                        className="w-full bg-transparent resize-none outline-none text-text-main max-h-48 py-2 px-2"
+                        className="w-full bg-transparent resize-none outline-none text-text-main max-h-48 py-2 px-2 mt-4 text-base leading-relaxed placeholder:text-text-secondary/60"
                         rows={1}
                         disabled={disabled}
                     />
                 </div>
 
-                {inputText.trim() || attachment ? (
-                    <button 
-                        id="btn-send-message"
-                        onClick={handleSend}
-                        disabled={disabled}
-                        className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors bg-text-main text-bg-main hover:opacity-90 disabled:bg-surface-secondary disabled:text-text-secondary self-end st-mic-button"
-                        aria-label="Send message"
-                    >
-                        <ArrowUpIcon className="w-6 h-6 st-icon" />
-                    </button>
-                ) : (
-                    <button
-                        id="btn-mode-voice-input" 
-                        onClick={() => onModeAction('voice')}
-                        disabled={disabled}
-                        className={`flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors self-end st-mic-button ${voiceModeState === 'activeConversation' ? 'bg-red-500 text-white animate-pulse' : 'bg-surface-secondary text-text-main hover:bg-border-subtle disabled:opacity-50'}`}
-                        aria-label="Use voice"
-                    >
-                        <MicrophoneIcon className="w-6 h-6 st-icon"/>
-                    </button>
-                )}
+                {/* Right Actions */}
+                <div className="flex items-center gap-2 mb-1">
+                    {inputText.trim() || attachment ? (
+                        <button 
+                            id="btn-send-message"
+                            onClick={handleSend}
+                            disabled={disabled}
+                            className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors bg-white text-black hover:bg-gray-200 disabled:bg-surface-secondary disabled:text-text-secondary st-mic-button"
+                            aria-label="Send message"
+                        >
+                            <ArrowUpIcon className="w-5 h-5 st-icon" />
+                        </button>
+                    ) : (
+                        <button
+                            id="btn-mode-voice-input" 
+                            onClick={() => onModeAction('voice')}
+                            disabled={disabled}
+                            className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors text-text-main hover:bg-white/10 disabled:opacity-50 st-mic-button"
+                            aria-label="Use voice"
+                        >
+                            <MicrophoneIcon className="w-6 h-6 st-icon"/>
+                        </button>
+                    )}
+                </div>
             </div>
              <style>{`
                 @keyframes fade-in {

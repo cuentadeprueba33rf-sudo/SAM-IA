@@ -2,10 +2,10 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg width='100' height='100' viewBox='0 0 100 100' fill='none' xmlns='http://www.w3.org/2000/svg'><path d='M30 20 L70 20 L70 50 L30 50 L30 80 L70 80' stroke='%233c3c3c' stroke-width='8' stroke-linecap='round'/><path d='M10 60 L50 10 L90 60 M25 45 L75 45' stroke='%233c3c3c' stroke-width='8' stroke-linecap='round'/><path d='M50 10 L50 90 M30 30 L50 50 L70 30' stroke='%233c3c3c' stroke-width='8' stroke-linecap='round'/></svg>" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg width='100' height='100' viewBox='0 0 100 100' fill='none' xmlns='http://www.w3.org/2000/svg'><path d='M30 20 L70 20 L70 50 L30 50 L30 80 L70 80' stroke='%23E50914' stroke-width='8' stroke-linecap='round'/><path d='M10 60 L50 10 L90 60 M25 45 L75 45' stroke='%23E50914' stroke-width='8' stroke-linecap='round'/><path d='M50 10 L50 90 M30 30 L50 50 L70 30' stroke='%23E50914' stroke-width='8' stroke-linecap='round'/></svg>" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <link rel="manifest" href="/manifest.json" />
-    <title>SAM IA - Interfaz Corporativa</title>
+    <title>SAM IA - Stranger Mode</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0KOVEMcApdbeLaiDfGGfnB7VqZEJcgCmcETGcOKqrASBC9yvS1mYe" crossorigin="anonymous">
@@ -34,6 +34,10 @@
         --color-accent-blue: #8ab4f8;
         --color-danger: #f28b82;
       }
+      /* Stranger Things Load Screen Variables */
+      :root {
+        --st-red: #E50914;
+      }
     </style>
     <script>
       tailwind.config = {
@@ -52,6 +56,9 @@
               'accent-blue': 'var(--color-accent-blue)',
               'danger': 'var(--color-danger)',
             },
+            fontFamily: {
+                sans: ['Inter', 'system-ui', 'sans-serif'],
+            }
           },
         },
       }
@@ -91,142 +98,155 @@
     from, to { opacity: 1; }
     50% { opacity: 0; }
   }
+
+  /* --- CINEMATIC LOADING SCREEN STYLES --- */
+  #loading-screen {
+      background-color: #050505;
+      overflow: hidden;
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+  }
+
+  /* Subtle Red Bottom Glow (Vignette) */
+  .vignette {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 60%;
+      background: radial-gradient(ellipse at bottom, rgba(229, 9, 20, 0.15) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 1;
+  }
+
+  /* Upside Down Spores/Ash */
+  .ash-container {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+      pointer-events: none;
+  }
+
+  .ash {
+      position: absolute;
+      background-color: rgba(200, 200, 200, 0.6);
+      border-radius: 50%;
+      box-shadow: 0 0 4px rgba(255, 255, 255, 0.4);
+      animation: floatAsh linear infinite;
+  }
+
+  @keyframes floatAsh {
+      0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+      20% { opacity: 0.8; }
+      80% { opacity: 0.6; }
+      100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
+  }
+
+  /* Search Bar Container */
+  .google-search-bar {
+      background: rgba(20, 20, 20, 0.6);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(229, 9, 20, 0.5); /* Sharp thin red border */
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+      border-radius: 9999px;
+      transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  }
+  
+  .google-search-bar:focus-within {
+      background: rgba(10, 10, 10, 0.9);
+      border-color: #E50914;
+      box-shadow: 0 0 20px rgba(229, 9, 20, 0.15); /* Subtle glow on focus */
+      transform: translateY(-2px);
+  }
+
+  .st-icon-stroke { stroke: #9CA3AF; transition: stroke 0.3s; }
+  .google-search-bar:focus-within .st-icon-stroke { stroke: #E50914; }
+  
+  .st-icon-fill { fill: #9CA3AF; transition: fill 0.3s; }
+  .google-search-bar:focus-within .st-icon-fill { fill: #E50914; }
+
+  /* Logo Styles - SHARP, NO NEON BLUR */
+  .sam-logo-path {
+      stroke: #E50914; /* Netflix Red */
+      stroke-width: 6; /* Thinner, cleaner lines */
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+      /* Removed drop-shadow filter for sharpness */
+  }
+
 </style>
 </head>
 <body class="bg-bg-main text-text-main">
     
-    <!-- INICIO: BLOQUE DE PANTALLA DE CARGA SAM IA (MANTENER) -->
-    <style>
-        .sam-logo-line {
-            stroke: #ffffff; /* White stroke for the new splash */
-            stroke-width: 2;
-            stroke-dasharray: 200;
-            stroke-dashoffset: 200;
-        }
-        #welcome-box {
-            margin-top: 2.5rem;
-            margin-left: auto;
-            margin-right: auto;
-            padding: 2rem;
-            border-radius: 1rem;
-            transition: all 0.5s ease;
-            transform: scale(.95) translateY(20px);
-            opacity: 0;
-            max-width: 28rem;
-            width: 90%;
-            background-color: rgba(255, 255, 255, 0.05); /* Glassmorphism effect */
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-        }
-        @keyframes gradient-x {
-          0%, 100% {
-            background-size: 200% 200%;
-            background-position: left center;
-          }
-          50% {
-            background-size: 200% 200%;
-            background-position: right center;
-          }
-        }
-        .animate-gradient-x {
-          animation: gradient-x 15s ease infinite;
-        }
-        @keyframes loading-bar {
-            0% { transform: scaleX(0); }
-            100% { transform: scaleX(1); }
-        }
-        .animate-loading-bar {
-            transform-origin: left;
-            animation: loading-bar 1.5s ease-out 0.5s forwards;
-        }
-         @keyframes char-fade-in {
-          0% {
-            opacity: 0;
-            transform: translateY(20px) scale(0.9);
-            filter: blur(5px);
-          }
-          100% {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-            filter: blur(0);
-          }
-        }
-        .animate-char-fade-in {
-            opacity: 0; /* Starts hidden */
-            animation: char-fade-in 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-        }
+    <!-- CINEMATIC LOADING SCREEN -->
+    <div id="loading-screen">
+        
+        <!-- Atmosphere -->
+        <div class="vignette"></div>
+        <div class="ash-container" id="ash-container"></div>
 
-        #subtitle {
-            opacity: 0;
-            animation: subtitle-fade-in 0.8s ease-out 1.2s forwards;
-        }
-        @keyframes subtitle-fade-in {
-            from { opacity: 0; transform: translateY(10px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-
-        #screen-shimmer-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(
-                110deg,
-                rgba(255, 255, 255, 0) 40%,
-                rgba(255, 255, 255, 0.15) 50%,
-                rgba(255, 255, 255, 0) 60%
-            );
-            transform: translateX(-100%);
-            animation: screen-shimmer 1.8s ease-in-out 0.8s forwards;
-            pointer-events: none;
-        }
-        @keyframes screen-shimmer {
-            100% {
-                transform: translateX(100%);
-            }
-        }
-    </style>
-
-    <div id="loading-screen" class="fixed inset-0 bg-black flex flex-col items-center justify-center z-50 overflow-hidden">
-        <div class="absolute inset-0 bg-gradient-to-r from-red-900/80 via-black to-red-800/70 opacity-80 animate-gradient-x"></div>
-        <div id="screen-shimmer-overlay"></div>
-
-        <div class="relative text-center text-white">
-            <svg id="sam-logo" width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="inline-block">
-                <path class="sam-logo-line" d="M30 20 L70 20 L70 50 L30 50 L30 80 L70 80" stroke-linecap="round"/>
-                <path class="sam-logo-line" d="M10 60 L50 10 L90 60 M25 45 L75 45" stroke-linecap="round"/>
-                <path class="sam-logo-line" d="M50 10 L50 90 M30 30 L50 50 L70 30" stroke-linecap="round"/>
-            </svg>
-             <h1 class="text-6xl font-black tracking-wider uppercase text-white mt-4 overflow-hidden">
-                <span class="inline-block animate-char-fade-in" style="animation-delay: 0.1s">S</span>
-                <span class="inline-block animate-char-fade-in" style="animation-delay: 0.15s">A</span>
-                <span class="inline-block animate-char-fade-in" style="animation-delay: 0.2s">M</span>
-                <span class="inline-block animate-char-fade-in" style="animation-delay: 0.25s">&nbsp;</span>
-                <span class="inline-block animate-char-fade-in" style="animation-delay: 0.3s">I</span>
-                <span class="inline-block animate-char-fade-in" style="animation-delay: 0.35s">A</span>
-            </h1>
-            <p id="subtitle" class="text-xl font-light mt-2 text-white/80">
-                <span>inteligencia</span>
-                &nbsp;
-                <span>pura</span>
-            </p>
-            <div id="welcome-box">
-                <h2 style="text-align:center; color:white; margin-bottom:.5rem;">Bienvenido a SAM IA</h2>
-                <p style="text-align:center; color:rgba(255,255,255,0.7); margin-bottom:1.5rem;">Por favor, dinos tu nombre para comenzar.</p>
-                <input type="text" id="name-input" placeholder="Escribe tu nombre aquí" style="width:100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid rgba(255,255,255,0.2); background-color: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem; text-align: center; font-size: 1rem; outline: none;">
-                <button id="continue-button" style="width:100%; padding: 0.75rem; border-radius: 0.75rem; border: none; background-color: #E50914; color: white; font-weight: 600; cursor: pointer; transition: opacity .2s;">Continuar</button>
+        <div class="relative z-10 flex flex-col items-center w-full max-w-xl px-6">
+            
+            <!-- Geometric Logo (Sharp) -->
+            <div class="mb-12 relative">
+                <svg width="120" height="120" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="overflow-visible">
+                    <path class="sam-logo-path" d="M30 20 L70 20 L70 50 L30 50 L30 80 L70 80"/>
+                    <path class="sam-logo-path" d="M10 60 L50 10 L90 60 M25 45 L75 45"/>
+                    <path class="sam-logo-path" d="M50 10 L50 90 M30 30 L50 50 L70 30"/>
+                </svg>
             </div>
-        </div>
+            
+            <!-- Search Bar Input Flow -->
+            <div id="input-group" class="hidden w-full opacity-0">
+                <div class="google-search-bar flex items-center px-5 py-3.5 w-full">
+                    <!-- Search Icon -->
+                    <svg class="w-5 h-5 mr-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path class="st-icon-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    
+                    <!-- Input -->
+                    <input type="text" id="name-input" class="flex-1 bg-transparent border-none outline-none text-gray-200 placeholder-gray-500 text-lg font-normal tracking-wide" placeholder="" autocomplete="off">
+                    
+                    <!-- Right Icons (Mic & Camera) -->
+                    <div class="flex items-center gap-4 ml-3 pl-4 border-l border-gray-800">
+                         <!-- Mic -->
+                        <svg class="w-5 h-5 cursor-pointer hover:opacity-80 transition-opacity" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path class="st-icon-fill" d="M12 14C13.66 14 15 12.66 15 11V5C15 3.34 13.66 2 12 2C10.34 2 9 3.34 9 5V11C9 12.66 10.34 14 12 14Z" />
+                            <path class="st-icon-fill" d="M19 11C19 14.87 15.87 18 12 18C8.13 18 5 14.87 5 11H3C3 15.53 6.39 19.26 10.71 19.88V22H13.29V19.88C17.61 19.26 21 15.53 21 11H19Z" />
+                        </svg>
+                        <!-- Camera -->
+                        <svg class="w-5 h-5 cursor-pointer hover:opacity-80 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path class="st-icon-stroke" d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                            <circle class="st-icon-stroke" cx="12" cy="13" r="4"></circle>
+                        </svg>
+                    </div>
+                </div>
+                
+                <!-- Search Buttons -->
+                <div class="flex justify-center gap-3 mt-8 opacity-0" id="search-buttons">
+                     <button id="continue-button" class="px-5 py-2.5 bg-[#303134] hover:bg-[#3c4043] text-[#e8eaed] text-sm rounded border border-transparent hover:border-[#5f6368] transition-all">
+                        Buscar en SAM
+                    </button>
+                    <button class="px-5 py-2.5 bg-[#303134] hover:bg-[#3c4043] text-[#e8eaed] text-sm rounded border border-transparent hover:border-[#5f6368] transition-all">
+                        Voy a tener suerte
+                    </button>
+                </div>
+            </div>
 
-        <div class="absolute bottom-10 left-1/4 w-1/2 h-0.5 bg-white/20 overflow-hidden rounded-full">
-            <div class="h-full bg-white animate-loading-bar"></div>
         </div>
     </div>
 
 
     <script>
-        // Immediately set theme from localStorage to prevent flash
+        // Theme init
         (function() {
             try {
                 const settings = JSON.parse(localStorage.getItem('sam-settings'));
@@ -238,89 +258,137 @@
             } catch (e) { /* ignore */ }
         })();
 
-        function animateLogo() {
-            try {
-                if(typeof anime === 'undefined') return Promise.resolve();
-                return anime({
-                    targets: '.sam-logo-line',
-                    strokeDashoffset: [anime.setDashoffset, 0],
-                    easing: 'easeInOutSine',
-                    duration: 1500,
-                    delay: anime.stagger(200),
-                }).finished;
-            } catch (e) {
-                return Promise.resolve();
+        // Generate Ash Particles
+        function createAsh() {
+            const container = document.getElementById('ash-container');
+            const particleCount = 30; // Not too many, keep it clean
+
+            for (let i = 0; i < particleCount; i++) {
+                const ash = document.createElement('div');
+                ash.classList.add('ash');
+                
+                const size = Math.random() * 3 + 1; // 1px to 4px
+                const left = Math.random() * 100;
+                const duration = Math.random() * 10 + 10; // 10s to 20s
+                const delay = Math.random() * 10;
+
+                ash.style.width = `${size}px`;
+                ash.style.height = `${size}px`;
+                ash.style.left = `${left}%`;
+                ash.style.animationDuration = `${duration}s`;
+                ash.style.animationDelay = `-${delay}s`; // Start immediately at random positions
+                
+                container.appendChild(ash);
             }
         }
-        
-        function hideLoadingScreen() {
-            const loadingScreen = document.getElementById('loading-screen');
-            if (!loadingScreen) return;
-            loadingScreen.style.transition = 'opacity 0.5s ease-out';
-            loadingScreen.style.opacity = '0';
-            setTimeout(() => {
-                loadingScreen.style.display = 'none';
-                window.dispatchEvent(new CustomEvent('loadingScreenHidden'));
-            }, 500);
-        }
 
-        (function initLoading() {
-            const guestName = localStorage.getItem('sam_ia_guest_name');
-            const welcomeBox = document.getElementById('welcome-box');
+        // Animation Logic
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof anime === 'undefined') return;
             
-            // Start the logo animation immediately.
-            const logoAnimationPromise = animateLogo();
+            createAsh();
 
-            if (guestName) {
-                // User is returning. Hide the welcome box.
-                if (welcomeBox) welcomeBox.style.display = 'none';
+            // 1. Draw the Logo (Sharp, Precise)
+            anime({
+                targets:('.sam-logo-path'),
+                strokeDashoffset: [anime.setDashoffset, 0],
+                easing: 'easeInOutQuart',
+                duration: 2200,
+                delay: function(el, i) { return i * 100 },
+                direction: 'normal',
+                loop: false,
+                complete: () => {
+                    checkUserStatus();
+                }
+            });
+
+            function checkUserStatus() {
+                const guestName = localStorage.getItem('sam_ia_guest_name');
                 
-                // Wait for the animation to finish, then wait a bit and hide the screen.
-                logoAnimationPromise.then(() => {
-                    setTimeout(hideLoadingScreen, 1200); // Increased delay for animations to finish
-                });
-
-            } else {
-                // First-time user. Show the welcome box after the animation.
-                const nameInput = document.getElementById('name-input');
-                const continueBtn = document.getElementById('continue-button');
-
-                const showNamePrompt = () => {
-                    logoAnimationPromise.then(() => {
-                        if (welcomeBox) {
-                            welcomeBox.style.opacity = '1';
-                            welcomeBox.style.transform = 'scale(1) translateY(0)';
-                        }
-                        if (nameInput) nameInput.focus();
+                if (guestName) {
+                    // Existent User - Fade out efficiently
+                    setTimeout(() => {
+                        anime({
+                            targets: '#loading-screen',
+                            opacity: 0,
+                            duration: 800,
+                            easing: 'easeOutQuad',
+                            complete: () => {
+                                document.getElementById('loading-screen').style.display = 'none';
+                                window.dispatchEvent(new CustomEvent('loadingScreenHidden'));
+                            }
+                        });
+                    }, 500);
+                } else {
+                    // New User - Reveal Search Bar
+                    const inputGroup = document.getElementById('input-group');
+                    const buttons = document.getElementById('search-buttons');
+                    inputGroup.style.display = 'block';
+                    
+                    // Slide up animation
+                    anime({
+                        targets: inputGroup,
+                        opacity: [0, 1],
+                        translateY: [30, 0],
+                        duration: 1000,
+                        easing: 'easeOutExpo'
                     });
-                };
+                    
+                    // Buttons fade in slightly later
+                    anime({
+                        targets: buttons,
+                        opacity: [0, 1],
+                        duration: 800,
+                        delay: 400,
+                        easing: 'linear'
+                    });
 
-                const handleContinue = () => {
-                    const name = nameInput.value.trim();
-                    if (name) {
-                        localStorage.setItem('sam_ia_guest_name', name);
-                        hideLoadingScreen();
-                    } else {
-                        nameInput.style.borderColor = 'var(--color-danger)';
-                        nameInput.focus();
-                    }
-                };
-                
-                continueBtn.addEventListener('click', handleContinue);
-                nameInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        handleContinue();
-                    }
-                });
-                nameInput.addEventListener('input', () => {
-                    nameInput.style.borderColor = 'rgba(255,255,255,0.2)';
-                });
-                
-                showNamePrompt();
+                    setTimeout(() => {
+                        const input = document.getElementById('name-input');
+                        input.focus();
+                        input.placeholder = "Ingresa tu nombre..."; 
+                    }, 300);
+                }
             }
-        })();
+
+            // Button Handler
+            const handleContinue = () => {
+                const nameInput = document.getElementById('name-input');
+                const name = nameInput.value.trim();
+                if (name) {
+                    localStorage.setItem('sam_ia_guest_name', name);
+                    
+                    // Professional Exit
+                    anime({
+                        targets: '#loading-screen',
+                        opacity: 0,
+                        scale: 1.05, // Slight zoom out effect
+                        duration: 800,
+                        easing: 'easeInOutQuad',
+                        complete: () => {
+                            document.getElementById('loading-screen').style.display = 'none';
+                            window.dispatchEvent(new CustomEvent('loadingScreenHidden'));
+                        }
+                    });
+                } else {
+                    // Subtle Shake
+                    anime({
+                        targets: '.google-search-bar',
+                        translateX: [-4, 4, -4, 4, 0],
+                        duration: 300,
+                        easing: 'easeInOutSine'
+                    });
+                    nameInput.focus();
+                }
+            };
+
+            document.getElementById('continue-button').addEventListener('click', handleContinue);
+            document.getElementById('name-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleContinue();
+            });
+        });
     </script>
-    <!-- FIN: BLOQUE DE PANTALLA DE CARGA SAM IA (MANTENER) -->
+    <!-- FIN: BLOQUE DE PANTALLA DE CARGA SAM IA -->
     <style>
       .stranger-things-theme {
         --st-red: #E50914;
