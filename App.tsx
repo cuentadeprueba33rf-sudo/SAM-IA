@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import Sidebar from './components/Sidebar';
@@ -20,6 +19,7 @@ import ForcedResetModal from './components/ForcedResetModal'; // Importar el nue
 import ChatMessageItem from './components/ChatMessage'; // Assuming a ChatMessageItem component for rendering messages.
 import VoiceOrb, { VoiceOrbHandle } from './components/VoiceOrb'; // New Voice UI
 import GhostCursor, { GhostCursorHandle } from './components/GhostCursor'; // IMPORTANTE: Nuevo cursor fantasma
+import SamStudios from './components/SamStudios'; // New Sam Studios component
 import { streamGenerateContent, generateImage, startActiveConversation, detectMode, AppToolExecutors } from './services/geminiService';
 import {
     Chat, ChatMessage, MessageAuthor, Attachment, ModeID, Settings,
@@ -1057,12 +1057,24 @@ const App: React.FC = () => {
             usage: {
                 title: 'Uso',
                 component: <UsageView />
+            },
+            sam_studios: {
+                title: 'SAM Studios',
+                component: <SamStudios 
+                    onNavigateBack={() => setActiveView('chat')} 
+                    onOpenApp={(appId) => setActiveView(appId as ViewID)} 
+                />
             }
         };
 
         const viewConfig = secondaryViews[activeView];
 
         if (viewConfig) {
+            // Special handling for SamStudios which provides its own layout/header
+            if(activeView === 'sam_studios') {
+                 return viewConfig.component;
+            }
+
             return (
                 <div className="flex flex-col h-full w-full">
                     <header className="flex-shrink-0 flex items-center gap-2 sm:gap-4 p-2 sm:p-4 border-b border-border-subtle">
