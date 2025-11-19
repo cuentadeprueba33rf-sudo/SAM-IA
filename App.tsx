@@ -595,21 +595,16 @@ const App: React.FC = () => {
         };
 
         if (effectiveMode === 'image_generation') {
-            if (modelToUse !== 'sm-l3' && modelToUse !== 'sm-l3.9') {
-                updateSamMessage({ text: "La generación de imágenes solo está disponible para los modelos SM-L3. Por favor, selecciónalo en la configuración o desde el menú de modelos.", generatingArtifact: false });
-                setIsLoading(false);
-                // Revert usage count if it was a premium model
-                if (modelToUse === 'sm-i3') {
-                    setUsage(prev => ({ ...prev, count: Math.max(0, prev.count - 1) }));
-                }
-                return;
-            }
+             // Allow image generation for ALL models, but handle quality/watermark in service
              try {
-                const generatedImage = await generateImage({ prompt, attachment: messageAttachment });
+                const generatedImage = await generateImage({ prompt, attachment: messageAttachment, modelName: modelToUse });
                 updateSamMessage({ text: "Aquí tienes la imagen que generé.", attachment: generatedImage, generatingArtifact: false });
             } catch (error) {
                 const err = error instanceof Error ? error : new Error("Ocurrió un error desconocido.");
                 updateSamMessage({ text: err.message, generatingArtifact: false });
+                 if (modelToUse === 'sm-i3' || modelToUse === 'sm-l3' || modelToUse === 'sm-l3.9') {
+                    setUsage(prev => ({ ...prev, count: Math.max(0, prev.count - 1) })); // Revert usage
+                }
             } finally {
                 setIsLoading(false);
             }

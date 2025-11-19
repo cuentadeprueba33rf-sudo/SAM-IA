@@ -37,6 +37,48 @@ const fileToGenerativePart = async (attachment: Attachment) => {
     };
 };
 
+const applyWatermark = async (base64Data: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                resolve(base64Data);
+                return;
+            }
+            ctx.drawImage(img, 0, 0);
+            
+            // Watermark configuration
+            const fontSize = Math.max(24, Math.floor(img.width / 25));
+            ctx.font = `bold ${fontSize}px sans-serif`;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; // White with some transparency
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'bottom';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.8)'; // Black shadow for visibility
+            ctx.shadowBlur = 4;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+
+            // Text to draw
+            const text = "SAM IA • SM-L1 Generated";
+            const padding = fontSize;
+            
+            ctx.fillText(text, canvas.width - padding, canvas.height - padding);
+
+            resolve(canvas.toDataURL('image/png'));
+        };
+        img.onerror = (err) => {
+             console.error("Error loading image for watermark", err);
+             resolve(base64Data); // Fail safe return original
+        };
+        img.src = base64Data;
+    });
+};
+
 // --- Funciones para Live API (Voz) ---
 
 function encode(bytes: Uint8Array) {
@@ -596,19 +638,46 @@ export const streamGenerateContent = async ({
     }
 };
 
-export const generateImage = async ({ prompt, attachment }: { prompt: string; attachment?: Attachment | null; }): Promise<Attachment> => {
+export const generateImage = async ({ prompt, attachment, modelName }: { prompt: string; attachment?: Attachment | null; modelName: ModelType }): Promise<Attachment> => {
+    if (!API_KEY) throw new Error("API key not configured.");
+    const ai = new GoogleGenAI({ apiKey: API_KEY });
+
+    const isPremium = modelName === 'sm-l3';
+
+    // Try premium generation first if selected
+    if (isPremium) {
+        try {
+             const response = await ai.models.generateImages({
+                model: 'imagen-4.0-generate-001',
+                prompt: prompt,
+                config: {
+                  numberOfImages: 1,
+                  outputMimeType: 'image/jpeg',
+                  aspectRatio: '1:1',
+                },
+            });
+            const base64ImageBytes = response.generatedImages[0].image.imageBytes;
+            return {
+                name: `generated-imagen-${Date.now()}.jpg`,
+                type: 'image/jpeg',
+                data: `data:image/jpeg;base64,${base64ImageBytes}`,
+            };
+        } catch (e) {
+             console.warn("Imagen generation failed, falling back to Flash Image", e);
+             // Fall through to standard generation
+        }
+    }
+
+    // Standard Generation (Gemini 2.5 Flash Image)
+    const contents: any = { parts: [] };
+    if (attachment) {
+        contents.parts.push(await fileToGenerativePart(attachment));
+    }
+    if (prompt) {
+        contents.parts.push({ text: prompt });
+    }
+
     try {
-        if (!API_KEY) throw new Error("API key not configured.");
-        const ai = new GoogleGenAI({ apiKey: API_KEY });
-
-        const contents: any = { parts: [] };
-        if (attachment) {
-            contents.parts.push(await fileToGenerativePart(attachment));
-        }
-        if (prompt) {
-            contents.parts.push({ text: prompt });
-        }
-
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash-image',
             contents: contents,
@@ -619,11 +688,19 @@ export const generateImage = async ({ prompt, attachment }: { prompt: string; at
 
         for (const part of response.candidates[0].content.parts) {
             if (part.inlineData) {
-                const base64ImageBytes: string = part.inlineData.data;
+                let base64ImageBytes = part.inlineData.data;
+                let mimeType = part.inlineData.mimeType || 'image/png';
+                let dataUrl = `data:${mimeType};base64,${base64ImageBytes}`;
+
+                // Apply Watermark if NOT premium
+                if (!isPremium) {
+                    dataUrl = await applyWatermark(dataUrl);
+                }
+
                 return {
-                    name: `generated-${Date.now()}.png`,
-                    type: part.inlineData.mimeType || 'image/png',
-                    data: `data:${part.inlineData.mimeType || 'image/png'};base64,${base64ImageBytes}`,
+                    name: `generated-${Date.now()}.${mimeType.split('/')[1]}`,
+                    type: mimeType,
+                    data: dataUrl,
                 };
             }
         }
