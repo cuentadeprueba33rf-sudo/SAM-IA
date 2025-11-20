@@ -3,6 +3,8 @@
 
 
 
+
+
 import React, { useEffect, useRef } from 'react';
 import { XMarkIcon, MicrophoneIcon, SparklesIcon, SpeakerWaveIcon } from './icons';
 
@@ -116,10 +118,10 @@ const VoiceOrb: React.FC<VoiceOrbProps> = ({ isActive, state, volume, onClose, o
                                 </div>
                                 <div className="flex-1">
                                     <h3 className="text-xl font-bold text-white mb-2 group-hover:text-accent transition-colors">
-                                        {point.title}
+                                        {point.title || `Punto ${index + 1}`}
                                     </h3>
                                     <p className="text-white/70 text-sm leading-relaxed font-medium">
-                                        {point.description}
+                                        {point.description || "Sin descripción disponible."}
                                     </p>
                                 </div>
                             </div>

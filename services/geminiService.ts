@@ -229,22 +229,21 @@ const appTools: Tool[] = [
             },
             {
                 name: 'visual_explain',
-                description: 'Genera un panel visual detallado para explicar un tema complejo. Úsalo cuando el usuario pida una explicación, resumen o "muéstramelo". Debes proporcionar 4 puntos con TÍTULO y DESCRIPCIÓN detallada para cada uno.',
+                description: 'Display a visual dashboard. Params: topic (string), points (array of objects with title and description).',
                 parameters: {
                     type: Type.OBJECT,
                     properties: {
-                        topic: { type: Type.STRING, description: 'El tema central de la explicación.' },
+                        topic: { type: Type.STRING },
                         points: { 
                             type: Type.ARRAY, 
                             items: { 
                                 type: Type.OBJECT,
                                 properties: {
-                                    title: { type: Type.STRING, description: 'Título corto del punto clave (max 5 palabras).' },
-                                    description: { type: Type.STRING, description: 'Explicación clara y detallada del punto (20-40 palabras). Debe ser informativa.' }
+                                    title: { type: Type.STRING },
+                                    description: { type: Type.STRING }
                                 },
                                 required: ['title', 'description']
-                            },
-                            description: 'Array de exactamente 4 puntos clave detallados.' 
+                            }
                         }
                     },
                     required: ['topic', 'points']
@@ -361,7 +360,7 @@ export const startActiveConversation = async (
     - **NATURAL CONTROL**: You can control the UI directly using your tools. No need to explain how you do it, just do it naturally.
     - **CONTEXT AWARE**: Use \`read_last_message\` if the user asks to explain the previous chat response or says "explain that".
     - **VISUAL EXPLANATION**: If the user asks for an explanation, a summary, or to "explain visually", use \`visual_explain\` to move to the center and show a dashboard. 
-    - **CRITICAL**: When using \`visual_explain\`, you MUST provide a \`description\` for each point that is informative and roughly 20-40 words long. The user relies on these descriptions to understand the topic.
+    - **CRITICAL**: When using \`visual_explain\`, keep the \`description\` for each point SHORT (max 20 words). Long descriptions cause connection errors.
     - **SIDEBAR CONTROL**: To CLOSE the sidebar, use \`toggle_sidebar(false)\`. To OPEN it, use \`toggle_sidebar(true)\`.
     - **PERSONALITY**: Be charming, smart, and helpful. You are the central brain of the app.
     `;

@@ -5,6 +5,8 @@
 
 
 
+
+
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import Sidebar from './components/Sidebar';
@@ -774,7 +776,10 @@ const App: React.FC = () => {
                 },
                 visualExplain: (topic: string, points: {title: string, description: string}[]) => {
                     setVoiceOrbMode('explaining');
-                    setExplanationData({ topic, points });
+                    // Delay state update slightly to allow smoother transition and ensure object integrity
+                    setTimeout(() => {
+                        setExplanationData({ topic, points });
+                    }, 100);
                 },
                 closeVisualExplanation: () => {
                     setVoiceOrbMode('default');
@@ -786,7 +791,11 @@ const App: React.FC = () => {
                 generateSystemInstruction('voice', settings),
                 (isUser, text) => setLiveTranscription(text),
                 (userInput, samOutput) => {},
-                (error) => { console.error("Voice error:", error); handleEndVoiceSession(); },
+                (error) => { 
+                    console.error("Voice error:", error); 
+                    setShowVoiceErrorNotification(true);
+                    handleEndVoiceSession(); 
+                },
                 (state) => setActiveConversationState(state),
                 (volume) => setVoiceVolume(volume),
                 toolExecutors
