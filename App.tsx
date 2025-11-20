@@ -7,14 +7,17 @@
 
 
 
+
+
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import Sidebar from './components/Sidebar';
 import ChatInput from './components/ChatInput';
-import SettingsModal from './SettingsModal';
+import SettingsModal from './components/SettingsModal';
 import UpdatesModal from './components/UpdatesModal';
 import ContextMenu from './components/ContextMenu';
 import Photosam from './components/Photosam';
+import InsightsView from './components/InsightsView';
 import EssayComposer from './components/EssayComposer';
 import CameraCaptureModal from './components/CameraCaptureModal';
 import ImagePreviewModal from './components/ImagePreviewModal';
@@ -66,30 +69,6 @@ const defaultEssay: Essay = {
     status: 'briefing',
 };
 
-const DUMMY_INSIGHTS: Insight[] = [
-    {
-        id: '1',
-        icon: AcademicCapIcon,
-        title: "Crear un Ensayo Académico",
-        description: "Utiliza el asistente de IA para generar esquemas, redactar secciones y obtener referencias para tus trabajos.",
-        actions: [{ label: "Empezar Ensayo", type: 'new_chat_with_prompt', data: { title: "Nuevo Ensayo", prompt: "Ayúdame a crear un ensayo." } }]
-    },
-    {
-        id: '2',
-        icon: ChatBubbleLeftRightIcon,
-        title: "Practicar una Entrevista",
-        description: "Simula una entrevista de trabajo. SAM puede actuar como entrevistador y darte feedback.",
-        actions: [{ label: "Iniciar Simulación", type: 'new_chat_with_prompt', data: { title: "Simulación de Entrevista", prompt: "Actúa como un entrevistador para un puesto de desarrollador de software y hazme preguntas." } }]
-    },
-    {
-        id: '3',
-        icon: UsersIcon,
-        title: "Explorar Roles en un Debate",
-        description: "Pide a SAM que adopte diferentes posturas sobre un tema para entender múltiples perspectivas.",
-        actions: [{ label: "Comenzar Debate", type: 'new_chat_with_prompt', data: { title: "Debate sobre IA", prompt: "Vamos a debating sobre los pros y los contras de la inteligencia artificial en la sociedad. Toma la postura a favor." } }]
-    }
-];
-
 const CanvasView: React.FC<{ pinnedArtifacts: Artifact[], onOpenArtifact: (artifact: Artifact) => void }> = ({ pinnedArtifacts, onOpenArtifact }) => (
     <div className="flex-1 p-8 overflow-y-auto">
         {pinnedArtifacts.length === 0 ? (
@@ -108,30 +87,6 @@ const CanvasView: React.FC<{ pinnedArtifacts: Artifact[], onOpenArtifact: (artif
                 ))}
             </div>
         )}
-    </div>
-);
-
-const InsightsView: React.FC<{ insights: Insight[], onAction: (action: Insight['actions'][0]) => void }> = ({ insights, onAction }) => (
-    <div className="flex-1 p-8 overflow-y-auto">
-        <p className="text-text-secondary mb-8 max-w-2xl">Descubre nuevas formas de utilizar SAM para potenciar tu creatividad, aprendizaje y productividad. Aquí tienes algunas ideas para empezar.</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {insights.map(insight => (
-                <div key={insight.id} className="bg-surface-primary rounded-xl p-6 border border-border-subtle flex flex-col">
-                    <div className="bg-surface-secondary p-3 rounded-full w-fit mb-4">
-                        <insight.icon className="w-6 h-6 text-accent" />
-                    </div>
-                    <h3 className="font-bold text-text-main text-lg">{insight.title}</h3>
-                    <p className="text-sm text-text-secondary mt-2 flex-1">{insight.description}</p>
-                    <div className="mt-6">
-                        {insight.actions.map((action, index) => (
-                             <button key={index} onClick={() => onAction(action)} className="w-full text-center bg-accent text-white font-semibold px-4 py-2 rounded-lg hover:opacity-90 transition-opacity text-sm">
-                                {action.label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            ))}
-        </div>
     </div>
 );
 
@@ -958,7 +913,7 @@ const App: React.FC = () => {
             },
             insights: {
                 title: 'Insights',
-                component: <InsightsView insights={DUMMY_INSIGHTS} onAction={handleInsightAction} />
+                component: <InsightsView onAction={handleInsightAction} />
             },
             documentation: {
                 title: 'Documentación',
@@ -980,7 +935,7 @@ const App: React.FC = () => {
         const viewConfig = secondaryViews[activeView];
 
         if (viewConfig) {
-            if(activeView === 'sam_studios') {
+            if(activeView === 'sam_studios' || activeView === 'insights') {
                  return viewConfig.component;
             }
 

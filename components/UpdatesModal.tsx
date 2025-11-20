@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { XMarkIcon, SparklesIcon, CheckIcon } from './icons';
+import { XMarkIcon, SparklesIcon, CheckIcon, ClockIcon } from './icons';
 
 interface UpdatesModalProps {
     isOpen: boolean;
@@ -9,23 +9,32 @@ interface UpdatesModalProps {
 
 const updates = [
   {
+    version: "v1.5.0",
+    date: "27 de Octubre, 2024",
+    badge: "Navidad",
+    highlight: true,
+    changes: [
+      "¡Pre-inscripción para SM-l3.9! Asegura tu acceso al modelo más potente para esta Navidad.",
+      "Nueva interfaz 'Voice Orb' con efectos visuales y mapa conceptual holográfico.",
+      "Rediseño completo de Ajustes, Insights y Novedades.",
+      "Photosam: Ahora con soporte para ingredientes múltiples y estilos predefinidos.",
+    ],
+  },
+  {
     version: "v1.4.0",
     date: "23 de Julio, 2024",
     changes: [
-      "¡Desbloqueo del Modelo Premium SM-I3! Activa el modo premium en la configuración usando tu código de acceso único.",
-      "Nuevas capacidades en SM-I3: respuestas más elaboradas, chat de voz en tiempo real y acceso a moderación.",
-      "Añadida notificación en la pantalla de chat para guiar a los usuarios hacia la activación del modo premium.",
-      "Soporte completo para HTML, CSS, y JavaScript en Canvas Dev ahora exclusivo para el modelo SM-I3.",
+      "¡Desbloqueo del Modelo Premium SM-I3! Activa el modo premium en la configuración.",
+      "Chat de voz en tiempo real (Live API) con latencia ultrabaja.",
+      "Soporte completo para HTML, CSS, y JavaScript en el generador de código.",
     ],
   },
   {
     version: "v1.3.0",
     date: "22 de Julio, 2024",
     changes: [
-      "¡Panel de Configuración Rediseñado! Interfaz más elegante y organizada con nuevas secciones.",
-      "Separación de Creadores y Colaboradores en el panel lateral para mayor claridad.",
-      "Rediseño profesional del panel de 'Novedades' (lo estás viendo ahora).",
-      "Corregido un error visual con el ícono de configuración.",
+      "Panel de Configuración organizado por categorías.",
+      "Separación de Creadores y Colaboradores en el panel lateral.",
     ],
   },
   {
@@ -33,18 +42,7 @@ const updates = [
     date: "15 de Julio, 2024",
     changes: [
       "Indicador de búsqueda web y visualización de fuentes.",
-      "Mejora en la barra de progreso para el modo 'Canvas Dev'.",
-      "Rediseño de la interfaz con cabecera y pie de página flotantes.",
-      "Actualización a los modelos de IA SM-I1 y SM-I3 para un rendimiento superior.",
-    ],
-  },
-  {
-    version: "v1.1.0",
-    date: "8 de Julio, 2024",
-    changes: [
-      "Implementación del modo 'Canvas Dev' para la generación de código interactivo.",
-      "Añadido selector de modelo (Standard / Flash).",
-      "Correcciones de estabilidad y rendimiento.",
+      "Rediseño de la interfaz con cabecera flotante.",
     ],
   },
 ];
@@ -53,32 +51,54 @@ const UpdatesModal: React.FC<UpdatesModalProps> = ({ isOpen, onClose }) => {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
             <div 
-                className="bg-surface-primary rounded-2xl p-6 max-w-lg w-full shadow-2xl animate-fade-in-up border border-border-subtle max-h-[90vh] flex flex-col" 
+                className="bg-surface-primary rounded-3xl max-w-2xl w-full shadow-2xl animate-scale-in border border-border-subtle max-h-[85vh] flex flex-col overflow-hidden relative" 
                 onClick={e => e.stopPropagation()}
             >
-                <header className="flex justify-between items-center mb-6 flex-shrink-0">
-                    <h3 className="text-xl font-semibold text-text-main flex items-center gap-2">
-                        <SparklesIcon className="w-6 h-6 text-accent"/>
-                        <span>Novedades en SAM</span>
-                    </h3>
-                    <button id="btn-close-updates" onClick={onClose} className="p-2 rounded-full hover:bg-surface-secondary">
-                        <XMarkIcon className="w-6 h-6 text-text-secondary" />
+                {/* Header with gradient background */}
+                <div className="bg-gradient-to-r from-accent to-accent-blue p-8 pb-12 text-white relative overflow-hidden shrink-0">
+                     <div className="absolute -right-10 -top-10 opacity-20">
+                         <SparklesIcon className="w-48 h-48" />
+                     </div>
+                     <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md transition-colors z-10">
+                        <XMarkIcon className="w-5 h-5 text-white" />
                     </button>
-                </header>
+                    <h2 className="text-3xl font-black tracking-tight relative z-10">Novedades</h2>
+                    <p className="text-white/80 mt-2 relative z-10">Descubre lo último en SAM IA.</p>
+                </div>
                 
-                <main className="flex-1 overflow-y-auto -mr-4 pr-4">
-                    <div className="space-y-6">
+                <main className="flex-1 overflow-y-auto p-0 bg-surface-primary -mt-6 rounded-t-3xl relative z-20">
+                    <div className="p-8 space-y-8">
                         {updates.map((update, index) => (
-                            <div key={update.version} className="bg-surface-secondary/50 p-5 rounded-xl border border-border-subtle">
-                                <div className="flex items-center justify-between mb-3">
-                                    <span className="font-bold text-lg text-text-main bg-accent/10 text-accent px-3 py-1 rounded-full">{update.version}</span>
-                                    <span className="text-sm text-text-secondary">{update.date}</span>
+                            <div key={update.version} className="relative pl-8 border-l-2 border-border-subtle last:border-0 pb-8 last:pb-0 group">
+                                {/* Timeline Dot */}
+                                <div className={`absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 border-surface-primary ${index === 0 ? 'bg-accent' : 'bg-border-subtle group-hover:bg-text-secondary'} transition-colors`}></div>
+                                
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-3">
+                                    <span className={`text-lg font-bold ${index === 0 ? 'text-text-main' : 'text-text-secondary'}`}>
+                                        {update.version}
+                                    </span>
+                                    {update.badge && (
+                                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-gradient-to-r from-red-500 to-pink-500 text-white w-fit">
+                                            {update.badge}
+                                        </span>
+                                    )}
+                                    <div className="flex items-center gap-1 text-xs text-text-secondary sm:ml-auto bg-surface-secondary px-2 py-1 rounded-md w-fit">
+                                        <ClockIcon className="w-3 h-3" />
+                                        {update.date}
+                                    </div>
                                 </div>
-                                <ul className="space-y-2">
-                                    {update.changes.map((change, changeIndex) => (
-                                        <li key={changeIndex} className="flex items-start gap-3 text-sm text-text-main">
+
+                                {update.highlight && (
+                                    <div className="mb-4 p-4 bg-accent/5 border border-accent/20 rounded-xl">
+                                        <p className="text-accent font-medium text-sm">¡Actualización Destacada!</p>
+                                    </div>
+                                )}
+
+                                <ul className="space-y-3">
+                                    {update.changes.map((change, i) => (
+                                        <li key={i} className="flex items-start gap-3 text-sm text-text-main leading-relaxed">
                                             <CheckIcon className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
                                             <span>{change}</span>
                                         </li>
@@ -88,21 +108,21 @@ const UpdatesModal: React.FC<UpdatesModalProps> = ({ isOpen, onClose }) => {
                         ))}
                     </div>
                 </main>
-
-                <footer className="mt-8 flex-shrink-0">
-                    <button onClick={onClose} className="bg-accent text-white font-semibold px-4 py-2 rounded-lg w-full hover:opacity-90 transition-opacity">
-                        Entendido
+                
+                <div className="p-4 border-t border-border-subtle bg-surface-primary/90 backdrop-blur-sm absolute bottom-0 left-0 right-0">
+                    <button onClick={onClose} className="w-full bg-surface-secondary hover:bg-border-subtle text-text-main font-semibold py-3 rounded-xl transition-colors">
+                        Cerrar
                     </button>
-                </footer>
+                </div>
+                 {/* Spacer for the fixed footer */}
+                 <div className="h-20 shrink-0 bg-surface-primary"></div>
             </div>
              <style>{`
-                @keyframes fade-in-up {
-                    from { opacity: 0; transform: translateY(10px); }
-                    to { opacity: 1; transform: translateY(0); }
+                @keyframes scale-in {
+                    from { opacity: 0; transform: scale(0.95); }
+                    to { opacity: 1; transform: scale(1); }
                 }
-                .animate-fade-in-up {
-                    animation: fade-in-up 0.2s ease-out;
-                }
+                .animate-scale-in { animation: scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
             `}</style>
         </div>
     );

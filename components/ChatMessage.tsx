@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { MessageAuthor } from '../types';
-import type { ChatMessage, Attachment, Essay } from '../types';
+import type { ChatMessage, Attachment, Essay, Artifact } from '../types';
 import MessageActions from './MessageActions';
 import { DocumentTextIcon, GlobeAltIcon, CodeBracketIcon, AcademicCapIcon, SparklesIcon, ShareIcon } from './icons';
 
@@ -211,9 +211,18 @@ interface ChatMessageItemProps {
     isStreaming: boolean;
     onPreviewImage: (attachment: Attachment) => void;
     onOpenEssay: (essay: Essay, messageId: string) => void;
+    onOpenArtifact: (artifact: Artifact) => void;
+    onPinArtifact: (artifact: Artifact) => void;
 }
 
-const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, isStreaming, onPreviewImage, onOpenEssay }) => {
+const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ 
+    message, 
+    isStreaming, 
+    onPreviewImage, 
+    onOpenEssay,
+    onOpenArtifact,
+    onPinArtifact 
+}) => {
     
     const contentRef = useRef<HTMLDivElement>(null);
     
