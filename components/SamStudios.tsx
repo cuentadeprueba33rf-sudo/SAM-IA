@@ -1,5 +1,5 @@
 import React from 'react';
-import { CodeBracketSquareIcon, ChevronLeftIcon, MagnifyingGlassIcon } from './icons';
+import { ChevronLeftIcon, MagnifyingGlassIcon, PencilSquareIcon } from './icons';
 
 interface SamStudiosProps {
     onNavigateBack: () => void;
@@ -32,26 +32,44 @@ const SamStudios: React.FC<SamStudiosProps> = ({ onNavigateBack, onOpenApp }) =>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {/* Canvas Dev Pro Card */}
-                        <div className="bg-surface-primary border border-border-subtle rounded-xl p-4 hover:border-accent transition-colors cursor-pointer flex flex-col h-full" onClick={() => onOpenApp('canvas_dev_pro')}>
+                        {/* Photosam Card */}
+                        <div className="bg-surface-primary border border-border-subtle rounded-xl p-4 hover:border-accent transition-colors cursor-pointer flex flex-col h-full" onClick={() => onOpenApp('photosam')}>
                             <div className="flex items-start gap-4 mb-3">
-                                <div className="w-12 h-12 rounded-full bg-[#1e1e1e] flex items-center justify-center flex-shrink-0 border border-white/10">
-                                    <CodeBracketSquareIcon className="w-7 h-7 text-white" />
+                                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center flex-shrink-0 border border-white/10">
+                                    <PencilSquareIcon className="w-7 h-7 text-white" />
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-text-main text-lg">Canvas Dev Pro</h3>
-                                    <p className="text-xs text-text-secondary mt-0.5">Por Equipo VERCE</p>
+                                    <h3 className="font-bold text-text-main text-lg">Photosam</h3>
+                                    <p className="text-xs text-text-secondary mt-0.5">Por SAM Studios</p>
                                 </div>
                             </div>
                             <p className="text-sm text-text-secondary mb-4 flex-1">
-                                Un entorno de desarrollo integrado con IA para generar, visualizar y editar componentes web en tiempo real.
+                                Un editor y generador de imágenes avanzado con IA para dar vida a tus ideas.
                             </p>
                              <div className="text-xs font-medium text-accent bg-accent/10 px-2 py-1 rounded w-fit">
-                                4.9 ★ - Developer Tool
+                                5.0 ★ - Creative Tool
                             </div>
                         </div>
-
-                        {/* Placeholder for future apps to fill the grid look */}
+                        
+                        {/* Image Editor AI Card */}
+                        <div className="bg-surface-primary border border-border-subtle rounded-xl p-4 opacity-50 cursor-not-allowed flex flex-col h-full">
+                           <div className="flex items-start gap-4 mb-3">
+                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-teal-600 flex items-center justify-center flex-shrink-0 border border-white/10">
+                                    <PencilSquareIcon className="w-7 h-7 text-white" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-text-main text-lg">Image Editor AI</h3>
+                                    <p className="text-xs text-text-secondary mt-0.5">Por SAM Studios</p>
+                                </div>
+                            </div>
+                            <p className="text-sm text-text-secondary mb-4 flex-1">
+                                Potente editor de imágenes con herramientas de IA para retoques profesionales.
+                            </p>
+                             <div className="text-xs font-medium text-text-secondary bg-surface-secondary px-2 py-1 rounded w-fit">
+                                Coming Soon
+                            </div>
+                        </div>
+                        
                         <div className="bg-surface-primary border border-border-subtle rounded-xl p-4 opacity-50 cursor-not-allowed flex flex-col h-full">
                             <div className="flex items-start gap-4 mb-3">
                                 <div className="w-12 h-12 rounded-full bg-surface-secondary flex items-center justify-center flex-shrink-0">
@@ -62,10 +80,12 @@ const SamStudios: React.FC<SamStudiosProps> = ({ onNavigateBack, onOpenApp }) =>
                                     <div className="h-3 w-20 bg-surface-secondary rounded"></div>
                                 </div>
                             </div>
-                            <div className="space-y-2 mb-4 flex-1">
-                                <div className="h-3 w-full bg-surface-secondary rounded"></div>
-                                <div className="h-3 w-5/6 bg-surface-secondary rounded"></div>
-                            </div>
+                            <p className="text-sm text-text-secondary mb-4 flex-1">
+                                <div className="space-y-2">
+                                    <div className="h-3 w-full bg-surface-secondary rounded"></div>
+                                    <div className="h-3 w-5/6 bg-surface-secondary rounded"></div>
+                                </div>
+                            </p>
                              <div className="text-xs font-medium text-text-secondary">
                                 Próximamente
                             </div>

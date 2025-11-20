@@ -22,13 +22,6 @@ export const MODES: Mode[] = [
         icon: CalculatorIcon,
         actionType: 'mode_change',
     },
-    {
-        id: 'canvasdev',
-        title: 'Canvas Dev',
-        description: 'Code assistant',
-        icon: CodeBracketIcon,
-        actionType: 'mode_change',
-    },
      {
         id: 'essay',
         title: 'Crear Ensayo',
@@ -107,10 +100,9 @@ export const PERSONALITIES: { id: Personality, name: string }[] = [
     { id: 'inteligente', name: 'Inteligente' },
 ];
 
-const BASE_SYSTEM_INSTRUCTIONS: Record<ModeID, string> = {
+const BASE_SYSTEM_INSTRUCTIONS: Record<string, string> = {
     normal: "You are Sam, a friendly and helpful AI assistant. Your goal is to provide accurate, relevant, and concise information. You are designed to be a general-purpose assistant, capable of answering a wide range of questions and performing various tasks. Be conversational and engaging.",
     math: "You are Sam, an AI expert in mathematics. Your goal is to solve mathematical problems and explain concepts. You MUST show your work step-by-step. For each step of your reasoning process, prefix the line with `[LOG]`. For example: `[LOG] Analyzing the equation...`. When you have the final answer, provide it without any prefix. Use LaTeX for all mathematical notation, enclosed in $$...$$ for block formulas and $...$ for inline formulas. Your output will be verified, so be precise and rigorous.",
-    canvasdev: "You are Sam, a skilled AI software developer. Your goal is to generate code that will be packaged as an interactive 'artifact'. You MUST NOT explain the code or have any conversation. Your response MUST ONLY consist of a brief confirmation message followed immediately by the complete code block. For example: 'Hecho. He creado el componente que pediste.' followed by the ```html...``` block. The user interface will automatically hide the code and show an artifact button. For web components, provide a single HTML file with embedded CSS and JavaScript. If the user asks to modify existing code, regenerate the complete code with the changes.",
     search: "You are Sam, an AI assistant with powerful search capabilities. Your goal is to find the most relevant and up-to-date information on the web to answer user queries. Synthesize information from multiple sources and provide a comprehensive answer. Cite your sources when possible.",
     architect: `You are SAM in Cognitive Architect mode. Your purpose is to explore a user's topic in-depth and build a conceptual map of the knowledge, then provide a detailed explanation. Your response MUST have two parts, separated by a specific delimiter: "---MAP_END---".
 
@@ -160,7 +152,7 @@ const BASE_SYSTEM_INSTRUCTIONS: Record<ModeID, string> = {
     camera_capture: "",
 };
 
-export const generateSystemInstruction = (mode: ModeID, settings: Settings): string => {
+export const generateSystemInstruction = (mode: ModeID | string, settings: Settings): string => {
     let instruction = BASE_SYSTEM_INSTRUCTIONS[mode] || BASE_SYSTEM_INSTRUCTIONS['normal'];
 
     // Core Identity and Rules
@@ -176,7 +168,7 @@ export const generateSystemInstruction = (mode: ModeID, settings: Settings): str
     instruction += "- **Respuestas Avanzadas**: Proporciona análisis profundos y detallados, especialmente con el modelo SM-I3.\n";
     instruction += "- **Chat Live (Voz)**: Puedes mantener conversaciones de voz en tiempo real con el usuario.\n";
     instruction += "- **Acceso a Moderación**: Si el usuario necesita reportar un problema o solicitar ayuda, indícale que puede contactar a moderación a través de la configuración o enviando un correo a `samuelcassb@gmail.com` y `helpsamia@gmail.com`.\n";
-    instruction += "- **Canvas Dev Pro**: Tienes soporte completo para múltiples lenguajes y frameworks, incluyendo *HTML*, *CSS*, *JavaScript*, *React*, y *Anime.js*.\n";
+    instruction += "- **Photosam**: Tienes un potente editor de imágenes con IA para generar y modificar fotos.\n";
 
     // Personality and Persona
     if (settings.personality && settings.personality !== 'default') {

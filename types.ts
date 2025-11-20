@@ -6,18 +6,17 @@ export enum MessageAuthor {
   SYSTEM = 'system',
 }
 
-export interface Artifact {
-  id: string;
-  title: string;
-  filepath: string;
-  code: string;
-  language: string;
-}
-
 export interface Attachment {
   name:string;
   type: string; // mime type
   data: string; // base64 data url
+}
+
+export interface Artifact {
+  id: string;
+  title: string;
+  language: string;
+  content: string;
 }
 
 export interface ChatMessage {
@@ -27,7 +26,6 @@ export interface ChatMessage {
   timestamp: number;
   mode?: ModeID;
   attachment?: Attachment;
-  artifacts?: Artifact[];
   prelude?: string;
   groundingMetadata?: any[];
   generatingArtifact?: boolean;
@@ -35,6 +33,7 @@ export interface ChatMessage {
   consoleLogs?: string[];
   fromAdmin?: boolean; // Flag for admin-sent messages
   essayContent?: Essay; // The entire essay object is now part of the message
+  artifacts?: Artifact[];
 }
 
 export interface Chat {
@@ -46,7 +45,7 @@ export interface Chat {
   isTemporary?: boolean; // For ephemeral chats on app load
 }
 
-export type ModeID = 'normal' | 'math' | 'canvasdev' | 'search' | 'image' | 'document' | 'architect' | 'photo_upload' | 'camera_capture' | 'image_generation' | 'essay' | 'voice';
+export type ModeID = 'normal' | 'math' | 'search' | 'image' | 'document' | 'architect' | 'photo_upload' | 'camera_capture' | 'image_generation' | 'essay' | 'voice';
 
 export interface Mode {
   id: ModeID;
@@ -60,7 +59,7 @@ export interface Mode {
   disabled?: boolean;
 }
 
-export type ModelType = 'sm-i1' | 'sm-i3' | 'sm-l3';
+export type ModelType = 'sm-i1' | 'sm-i3' | 'sm-l3' | 'sm-l3.9';
 export type Theme = 'light' | 'dark';
 export type Personality = 'default' | 'amable' | 'directo' | 'divertido' | 'inteligente';
 
@@ -95,7 +94,7 @@ export interface Essay {
     currentSectionId?: string; // Tracks the ID of the section being written
 }
 
-export type ViewID = 'chat' | 'canvas' | 'insights' | 'documentation' | 'usage' | 'canvas_dev_pro' | 'sam_studios';
+export type ViewID = 'chat' | 'insights' | 'documentation' | 'usage' | 'photosam' | 'sam_studios' | 'canvas';
 
 export interface Insight {
     id: string;

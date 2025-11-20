@@ -78,7 +78,7 @@ const WelcomeTutorial: React.FC<WelcomeTutorialProps> = ({ step, targetRect }) =
     };
 
     return (
-        <div className="fixed inset-0 z-[200]">
+        <div className="fixed inset-0 z-[200] pointer-events-none">
             <div style={spotlightStyle} />
 
             <div style={wrapperStyles}>

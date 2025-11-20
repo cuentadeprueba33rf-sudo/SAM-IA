@@ -5,8 +5,7 @@ import ChatInput from './components/ChatInput';
 import SettingsModal from './SettingsModal';
 import UpdatesModal from './components/UpdatesModal';
 import ContextMenu from './components/ContextMenu';
-import CodeCanvas from './components/CodeCanvas';
-import CanvasDevPro from './components/CanvasDevPro';
+import Photosam from './components/Photosam';
 import EssayComposer from './components/EssayComposer';
 import CameraCaptureModal from './components/CameraCaptureModal';
 import ImagePreviewModal from './components/ImagePreviewModal';
@@ -15,11 +14,11 @@ import WelcomeTutorial from './components/WelcomeTutorial';
 import StThemeNotification from './components/StThemeNotification';
 import InstallNotification from './components/InstallNotification';
 import VoiceErrorNotification from './components/VoiceErrorNotification';
-import ForcedResetModal from './components/ForcedResetModal'; // Importar el nuevo modal
-import ChatMessageItem from './components/ChatMessage'; // Assuming a ChatMessageItem component for rendering messages.
-import VoiceOrb, { VoiceOrbHandle } from './components/VoiceOrb'; // New Voice UI
-import GhostCursor, { GhostCursorHandle } from './components/GhostCursor'; // IMPORTANTE: Nuevo cursor fantasma
-import SamStudios from './components/SamStudios'; // New Sam Studios component
+import ForcedResetModal from './components/ForcedResetModal';
+import PreregistrationModal from './components/PreregistrationModal';
+import ChatMessageItem from './components/ChatMessage';
+import GhostCursor, { GhostCursorHandle } from './components/GhostCursor';
+import SamStudios from './components/SamStudios';
 import { streamGenerateContent, generateImage, startActiveConversation, detectMode, AppToolExecutors } from './services/geminiService';
 import {
     Chat, ChatMessage, MessageAuthor, Attachment, ModeID, Settings,
@@ -164,28 +163,28 @@ const DocumentationView: React.FC = () => (
             <div className="space-y-4">
                 <h2 className="text-lg font-semibold text-text-main px-1">Características Exclusivas</h2>
                 
-                <DocItem title="Agente Físico de Voz (El Orbe)" icon={MicrophoneIcon}>
+                <DocItem title="Agente Físico de Voz (El Cursor)" icon={MicrophoneIcon}>
                     <p className="mb-2">
-                        SAM v1.5 introduce una interfaz de voz revolucionaria. Al pulsar el micrófono, aparecerá un <strong>Orbe Flotante</strong> que es la manifestación física de la IA en tu pantalla.
+                        SAM v1.5 introduce una interfaz de voz revolucionaria. Al pulsar el micrófono, aparecerá un <strong>Cursor Fantasma</strong> que es la manifestación física de la IA en tu pantalla.
                     </p>
                     <ul className="list-disc pl-5 space-y-1 mb-2">
-                        <li><strong>Control Total de la UI:</strong> Pídele que abra menús, cierre ventanas, o cambie de modo. El orbe viajará físicamente hasta el botón y lo pulsará.</li>
-                        <li><strong>Navegación y Scroll:</strong> Di "baja un poco" o "sube al principio" y el orbe desplazará el contenido por ti.</li>
+                        <li><strong>Control Total de la UI:</strong> Pídele que abra menús, cierre ventanas, o cambie de modo. El cursor viajará físicamente hasta el botón y lo pulsará.</li>
+                        <li><strong>Navegación y Scroll:</strong> Di "baja un poco" o "sube al principio" y el cursor desplazará el contenido por ti.</li>
                         <li><strong>Dictado Inteligente:</strong> Di "escribe esto..." para que SAM escriba en el chat sin enviar, o "envía el mensaje" para confirmar.</li>
                         <li><strong>Interacción Natural:</strong> SAM ahora entiende comandos coloquiales como "cierra eso" o "muéstrame el modo matemático".</li>
                     </ul>
                     <p className="text-xs bg-surface-secondary p-2 rounded border border-border-subtle mt-2">
-                        <strong>Pruébalo:</strong> Di "Abre la configuración", "Pon el tema oscuro", o "Activa el modo Canvas Dev".
+                        <strong>Pruébalo:</strong> Di "Abre la configuración", "Pon el tema oscuro", o "Activa Photosam".
                     </p>
                 </DocItem>
 
-                <DocItem title="Canvas Dev Pro" icon={CodeBracketIcon}>
-                    <p className="mb-2">Un entorno de desarrollo integrado (IDE) para generar código web al instante.</p>
+                <DocItem title="Photosam" icon={PhotoIcon}>
+                    <p className="mb-2">Un estudio de creación de imágenes con IA para generar y editar fotos al instante.</p>
                     <ul className="list-disc pl-5 space-y-1">
-                        <li>Generación de componentes HTML/CSS/JS en un solo archivo.</li>
-                        <li>Previsualización en tiempo real con pestañas de Código y Preview.</li>
-                        <li>Historial de versiones local para recuperar tus creaciones.</li>
-                        <li>Herramientas de mejora de prompt con IA para refinar tus ideas.</li>
+                        <li>Generación de imágenes a partir de texto con el modelo <strong>SM-L3</strong>.</li>
+                        <li>Edición de imágenes existentes con prompts de texto.</li>
+                        <li>Combinación de múltiples imágenes ("ingredientes") para crear composiciones únicas.</li>
+                        <li>Selección de estilos artísticos: Realista, Animado, Comics y Pixelado.</li>
                     </ul>
                 </DocItem>
 
@@ -209,10 +208,6 @@ const DocumentationView: React.FC = () => (
                     </ul>
                 </DocItem>
                 
-                <DocItem title="Generación de Imágenes" icon={PhotoIcon}>
-                    <p>Utiliza el potente modelo <strong>SM-L3</strong> para crear imágenes desde cero o editar fotos existentes. Describe lo que quieres y SAM lo visualizará.</p>
-                </DocItem>
-
                  <DocItem title="Personalización" icon={SparklesIcon}>
                     <p>Ajusta SAM a tu estilo:</p>
                     <ul className="list-disc pl-5 space-y-1 mt-1">
@@ -264,17 +259,10 @@ const waitForElement = (id: string, timeout = 4000): Promise<HTMLElement | null>
 const normalizeMode = (input: string): ModeID | undefined => {
     const lower = input.toLowerCase().trim();
     
-    // Direct matches from constant
     const exactMatch = MODES.find(m => m.id === lower);
     if(exactMatch) return exactMatch.id;
 
-    // Mapping common variations
     const map: Record<string, ModeID> = {
-        'canvas dev': 'canvasdev',
-        'canvas-dev': 'canvasdev',
-        'developer': 'canvasdev',
-        'programación': 'canvasdev',
-        'código': 'canvasdev',
         'math': 'math',
         'matemáticas': 'math',
         'cálculo': 'math',
@@ -320,9 +308,11 @@ const App: React.FC = () => {
     const [showVoiceErrorNotification, setShowVoiceErrorNotification] = useState(false);
     const [activeView, setActiveView] = useState<ViewID>('chat');
     const [showForcedResetModal, setShowForcedResetModal] = useState(false);
-    const [isThemeActive, setIsThemeActive] = useState(false); // Tracks if the initial 10-second wait is over
+    const [isThemeActive, setIsThemeActive] = useState(false);
     const [showStThemeNotification, setShowStThemeNotification] = useState(false);
-    const [isPlusMenuOpen, setIsPlusMenuOpen] = useState(false); // Lifted state for Ghost Cursor interaction
+    const [isPlusMenuOpen, setIsPlusMenuOpen] = useState(false);
+    const [isPreregistrationModalOpen, setIsPreregistrationModalOpen] = useState(false);
+    const [isPreregisteredForSML3_9, setIsPreregisteredForSML3_9] = useState(false);
     
     const [usage, setUsage] = useState<UsageTracker>({ date: new Date().toISOString().split('T')[0], count: 0, hasAttachment: false });
 
@@ -332,9 +322,7 @@ const App: React.FC = () => {
     const [liveTranscription, setLiveTranscription] = useState<string>('');
     const [voiceVolume, setVoiceVolume] = useState(0);
     
-    // Lifted Input State (to allow voice agent to type)
     const [chatInputText, setChatInputText] = useState('');
-    // Ref to track latest text value in closures/async functions
     const chatInputTextRef = useRef(chatInputText);
 
     useEffect(() => {
@@ -343,18 +331,14 @@ const App: React.FC = () => {
     
     const [isMathConsoleOpen, setIsMathConsoleOpen] = useState(true);
 
-
     const abortControllerRef = useRef<AbortController | null>(null);
     const chatEndRef = useRef<HTMLDivElement>(null);
     const activeConversationRef = useRef<{ close: () => void } | null>(null);
     const creditsRef = useRef<HTMLDivElement>(null);
     const verificationPanelRef = useRef<HTMLDivElement>(null);
     
-    // Ghost Cursor Ref & Voice Orb Ref
     const ghostCursorRef = useRef<GhostCursorHandle>(null);
-    const voiceOrbRef = useRef<VoiceOrbHandle>(null);
     
-    // Refs for UI state access in voice callbacks
     const isPlusMenuOpenRef = useRef(isPlusMenuOpen);
     const activeViewRef = useRef(activeView);
     const sidebarOpenRef = useRef(sidebarOpen);
@@ -373,16 +357,13 @@ const App: React.FC = () => {
 
     const currentChat = chats.find(c => c.id === currentChatId);
 
-    // ... State and useEffects for loading, saving, etc. ...
     useEffect(() => {
-        // Check for forced reset first
         const hasReset = localStorage.getItem('sam_ia_forced_reset_v1.5');
         if (!hasReset) {
             setShowForcedResetModal(true);
-            return; // Halt further execution until reset is done
+            return;
         }
 
-        // Load settings from localStorage
         try {
             const savedSettings = localStorage.getItem('sam-settings');
             if (savedSettings) {
@@ -393,8 +374,10 @@ const App: React.FC = () => {
             console.error("Failed to load/parse settings, resetting.", error);
             localStorage.removeItem('sam-settings');
         }
+
+        const preregistered = localStorage.getItem('sam_ia_preregistered_sml3.9') === 'true';
+        setIsPreregisteredForSML3_9(preregistered);
         
-        // Load Usage Tracker
         try {
             const savedUsage = localStorage.getItem('sam_ia_usage');
             const today = new Date().toISOString().split('T')[0];
@@ -403,7 +386,6 @@ const App: React.FC = () => {
                 if(parsedUsage.date === today) {
                     setUsage(parsedUsage);
                 } else {
-                    // It's a new day, reset the tracker
                     const newUsage = { date: today, count: 0, hasAttachment: false };
                     setUsage(newUsage);
                     localStorage.setItem('sam_ia_usage', JSON.stringify(newUsage));
@@ -417,7 +399,6 @@ const App: React.FC = () => {
              console.error("Failed to load usage tracker.", error);
         }
 
-        // Load chats from localStorage
         try {
             const savedChats = localStorage.getItem('sam-chats');
             if (savedChats) {
@@ -438,7 +419,6 @@ const App: React.FC = () => {
             localStorage.removeItem('sam-current-chat-id');
         }
         
-        // Load pinned artifacts from localStorage
         try {
             const savedPinnedArtifacts = localStorage.getItem('sam-pinned-artifacts');
             if (savedPinnedArtifacts) {
@@ -451,7 +431,6 @@ const App: React.FC = () => {
 
     }, []);
 
-    // This effect handles the 10s theme activation delay, runs only once
     useEffect(() => {
         const themeActivatedBefore = localStorage.getItem('st_theme_activated');
         if (themeActivatedBefore) {
@@ -469,7 +448,6 @@ const App: React.FC = () => {
         }
     }, []);
 
-    // This effect manages the theme class on the body and the notification
     useEffect(() => {
         const notificationShownBefore = localStorage.getItem('st_notification_shown');
 
@@ -547,7 +525,7 @@ const App: React.FC = () => {
         const userMessage: ChatMessage = { id: uuidv4(), author: MessageAuthor.USER, text: prompt, timestamp: Date.now(), attachment: messageAttachment ?? undefined };
         setChats(prev => prev.map(c => c.id === tempChatId ? { ...c, messages: [...c.messages, userMessage] } : c));
         setAttachment(null);
-        setChatInputText(''); // Clear input when sending
+        setChatInputText('');
         
         if (modelToUse === 'sm-i3' || modelToUse === 'sm-l3' || modelToUse === 'sm-l3.9') {
             setUsage(prev => ({ ...prev, count: prev.count + 1, hasAttachment: prev.hasAttachment || !!messageAttachment }));
@@ -583,7 +561,7 @@ const App: React.FC = () => {
             text: '',
             timestamp: Date.now(),
             mode: effectiveMode,
-            generatingArtifact: effectiveMode === 'canvasdev',
+            generatingArtifact: false,
             isSearching: effectiveMode === 'search' || effectiveMode === 'architect',
         };
 
@@ -595,15 +573,14 @@ const App: React.FC = () => {
         };
 
         if (effectiveMode === 'image_generation') {
-             // Allow image generation for ALL models, but handle quality/watermark in service
              try {
                 const generatedImage = await generateImage({ prompt, attachment: messageAttachment, modelName: modelToUse });
-                updateSamMessage({ text: "Aquí tienes la imagen que generé.", attachment: generatedImage, generatingArtifact: false });
+                updateSamMessage({ text: "Aquí tienes la imagen que generé.", attachment: generatedImage });
             } catch (error) {
                 const err = error instanceof Error ? error : new Error("Ocurrió un error desconocido.");
-                updateSamMessage({ text: err.message, generatingArtifact: false });
+                updateSamMessage({ text: err.message });
                  if (modelToUse === 'sm-i3' || modelToUse === 'sm-l3' || modelToUse === 'sm-l3.9') {
-                    setUsage(prev => ({ ...prev, count: Math.max(0, prev.count - 1) })); // Revert usage
+                    setUsage(prev => ({ ...prev, count: Math.max(0, prev.count - 1) }));
                 }
             } finally {
                 setIsLoading(false);
@@ -639,31 +616,17 @@ const App: React.FC = () => {
                 }));
             },
             onComplete: (fullText, groundingChunks, consoleLogs) => {
-                let finalUpdates: Partial<ChatMessage> = { generatingArtifact: false, isSearching: false };
+                let finalUpdates: Partial<ChatMessage> = { isSearching: false };
                 if (groundingChunks) finalUpdates.groundingMetadata = groundingChunks;
                 if (effectiveMode === 'math' && consoleLogs) finalUpdates.consoleLogs = consoleLogs;
-                if (effectiveMode === 'canvasdev') {
-                    const codeBlockRegex = /```(\w+)\n([\s\S]*?)```/g;
-                    const match = fullText.match(codeBlockRegex);
-                    if (match) {
-                        const artifact: Artifact = {
-                            id: uuidv4(),
-                            title: `Componente ${Math.floor(Math.random() * 1000)}`,
-                            filepath: `component-${Math.floor(Math.random() * 1000)}.html`,
-                            code: match[2].trim(),
-                            language: match[1],
-                        };
-                        finalUpdates.artifacts = [artifact];
-                    }
-                }
                 updateSamMessage(finalUpdates);
                 setIsLoading(false);
             },
             onError: (error) => {
-                updateSamMessage({ text: error.message, generatingArtifact: false, isSearching: false });
+                updateSamMessage({ text: error.message, isSearching: false });
                 setIsLoading(false);
                  if (modelToUse === 'sm-i3' || modelToUse === 'sm-l3' || modelToUse === 'sm-l3.9') {
-                    setUsage(prev => ({ ...prev, count: Math.max(0, prev.count - 1) })); // Revert count on error
+                    setUsage(prev => ({ ...prev, count: Math.max(0, prev.count - 1) }));
                 }
             }
         });
@@ -681,13 +644,35 @@ const App: React.FC = () => {
         if (currentChatId !== id) {
              setActiveView('chat');
              setCurrentChatId(id);
-             setCurrentMode('normal'); // Reset mode when switching chats
+             setCurrentMode('normal');
              setChatInputText('');
         }
     }
     
      const handleSaveSettings = (newSettings: Settings) => {
         setSettings(newSettings);
+    };
+
+    const playActivationSound = () => {
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        if (!audioContext) return;
+    
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+    
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+    
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+        gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+    
+        gainNode.gain.linearRampToValueAtTime(0.15, audioContext.currentTime + 0.05);
+        oscillator.frequency.exponentialRampToValueAtTime(900, audioContext.currentTime + 0.15);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.3);
+    
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.3);
     };
     
     const handleModeAction = (mode: ModeID, accept?: string, capture?: string) => {
@@ -719,149 +704,113 @@ const App: React.FC = () => {
         } else if (mode === 'voice') {
             if (voiceModeState !== 'inactive') return;
             
-            // setShowVoiceErrorNotification(true); // Temporarily removed for new UX
-
+            playActivationSound();
             setVoiceModeState('activeConversation');
             setLiveTranscription('');
 
-            // No new chat created purely for voice session unless explicitly asked
-
-            // Define Tool Executors with Ghost Cursor animations
-            // Use VoiceOrb handle for interactions if available, fall back to GhostCursor (or nothing)
             const toolExecutors: AppToolExecutors = {
                 setInputText: (text: string) => {
                     setChatInputText(prev => prev + (prev ? ' ' : '') + text);
                 },
                 sendMessage: () => {
-                     // Access the latest text value from ref to ensure we don't use stale closure values
                      if (chatInputTextRef.current.trim()) {
-                         voiceOrbRef.current?.clickElement('btn-send-message');
-                         // Actual logic is handled by the button click which calls onSendMessage
+                         ghostCursorRef.current?.click('btn-send-message');
                      }
                 },
                 toggleSidebar: async (isOpen: boolean) => {
-                    // Use current state reference for accuracy
                     const isCurrentlyOpen = sidebarOpenRef.current;
-                    
-                    if (isOpen) {
-                        // If asked to open and it's closed, click the toggle button
-                        if (!isCurrentlyOpen) {
-                             await voiceOrbRef.current?.clickElement('btn-toggle-sidebar');
-                             setSidebarOpen(true);
-                        }
-                    } else {
-                         // If asked to close and it's open, find the CLOSE button specifically
-                        if (isCurrentlyOpen) {
-                            // Try clicking the close button inside the sidebar first
-                            await voiceOrbRef.current?.clickElement('btn-close-sidebar');
-                            setSidebarOpen(false);
-                        }
+                    if (isOpen && !isCurrentlyOpen) {
+                         await ghostCursorRef.current?.click('btn-toggle-sidebar');
+                         setSidebarOpen(true);
+                    } else if (!isOpen && isCurrentlyOpen) {
+                        await ghostCursorRef.current?.click('btn-close-sidebar');
+                        setSidebarOpen(false);
                     }
                 },
                 changeMode: async (modeRaw: string) => {
                     const mode = normalizeMode(modeRaw);
-                    if (!mode) {
-                         console.warn(`Mode ${modeRaw} not found.`);
-                         return;
-                    }
+                    if (!mode) return;
 
-                    // 1. If we are not in 'chat' view, navigate there first
                     if (activeViewRef.current !== 'chat') {
-                        const chatBtn = document.getElementById('btn-nav-chat') || document.querySelector('[aria-label="Volver al chat"]'); // Fallback for header btn
+                        const chatBtn = document.getElementById('btn-nav-chat') || document.querySelector('[aria-label="Volver al chat"]');
                         if (chatBtn) {
-                             await voiceOrbRef.current?.clickElement(chatBtn.id || 'chat-header-btn');
+                             await ghostCursorRef.current?.click(chatBtn.id || 'chat-header-btn');
                              setActiveView('chat');
-                             await new Promise(r => setTimeout(r, 400)); // Wait for view transition
+                             await new Promise(r => setTimeout(r, 400));
                         } else {
-                             setActiveView('chat'); // Force it
+                             setActiveView('chat');
                              await new Promise(r => setTimeout(r, 400));
                         }
                     }
 
-                    // 2. Open Plus Menu if not open. 
-                    // IMPORTANT: Use the ref to check status, but always click the button to trigger the UI change.
                     if (!isPlusMenuOpenRef.current) {
-                        await voiceOrbRef.current?.clickElement('btn-plus-menu');
-                        // Wait longer for the menu to physically appear and animate
+                        await ghostCursorRef.current?.click('btn-plus-menu');
                         await new Promise(r => setTimeout(r, 800)); 
                     }
                     
-                    // 3. Wait for specific button (Essential fix for timing issue)
                     const btnId = `btn-mode-${mode}`;
-                    // Wait for the element to be present AND effectively visible
                     const btn = await waitForElement(btnId, 5000); 
 
                     if (btn) {
-                        await new Promise(r => setTimeout(r, 300)); // Visual delay for realism
-                        await voiceOrbRef.current?.clickElement(btnId);
+                        await new Promise(r => setTimeout(r, 300));
+                        await ghostCursorRef.current?.click(btnId);
                     } else {
-                        console.error(`Ghost Agent: Button ${btnId} not found.`);
-                        // If failed to find button, try to close menu to reset state
                         if (isPlusMenuOpenRef.current) {
-                             await voiceOrbRef.current?.clickElement('btn-plus-menu');
+                             await ghostCursorRef.current?.click('btn-plus-menu');
                         }
                         throw new Error(`No pude encontrar el botón para el modo ${mode}.`);
                     }
                 },
                 navigateToView: async (view: ViewID) => {
-                    // Ensure Sidebar is open for navigation if on mobile
                     if (window.innerWidth < 768 && !sidebarOpenRef.current) {
-                         await voiceOrbRef.current?.clickElement('btn-toggle-sidebar');
+                         await ghostCursorRef.current?.click('btn-toggle-sidebar');
                          setSidebarOpen(true);
                          await new Promise(r => setTimeout(r, 300));
                     }
-                    
                     const viewBtnId = `btn-nav-${view}`;
-                    // Check if we are already there
                     if(activeViewRef.current !== view) {
-                         await voiceOrbRef.current?.clickElement(viewBtnId);
-                         // Click triggers setActiveView
+                         await ghostCursorRef.current?.click(viewBtnId);
                     }
                 },
                 toggleSettings: async (isOpen: boolean) => {
                      if (isOpen) {
-                        // Ensure Sidebar is open
                         if (window.innerWidth < 768 && !sidebarOpenRef.current) {
-                            await voiceOrbRef.current?.clickElement('btn-toggle-sidebar');
+                            await ghostCursorRef.current?.click('btn-toggle-sidebar');
                             setSidebarOpen(true);
                             await new Promise(r => setTimeout(r, 300));
                         }
-                        await voiceOrbRef.current?.clickElement('btn-settings');
+                        await ghostCursorRef.current?.click('btn-settings');
                      } else {
-                        // Close settings
-                        await voiceOrbRef.current?.clickElement('btn-close-settings');
+                        await ghostCursorRef.current?.click('btn-close-settings');
                      }
                 },
                 toggleUpdates: async (isOpen: boolean) => {
                      if (isOpen) {
-                        // Ensure Sidebar is open
                         if (window.innerWidth < 768 && !sidebarOpenRef.current) {
-                             await voiceOrbRef.current?.clickElement('btn-toggle-sidebar');
+                             await ghostCursorRef.current?.click('btn-toggle-sidebar');
                              setSidebarOpen(true);
                              await new Promise(r => setTimeout(r, 300));
                         }
-                        await voiceOrbRef.current?.clickElement('btn-updates');
+                        await ghostCursorRef.current?.click('btn-updates');
                      } else {
-                        await voiceOrbRef.current?.clickElement('btn-close-updates');
+                        await ghostCursorRef.current?.click('btn-close-updates');
                      }
                 },
                 toggleCreators: async () => {
-                    // Ensure Sidebar is open
                     if (window.innerWidth < 768 && !sidebarOpenRef.current) {
-                         await voiceOrbRef.current?.clickElement('btn-toggle-sidebar');
+                         await ghostCursorRef.current?.click('btn-toggle-sidebar');
                          setSidebarOpen(true);
                          await new Promise(r => setTimeout(r, 300));
                     }
-                    await voiceOrbRef.current?.clickElement('btn-creators');
+                    await ghostCursorRef.current?.click('btn-creators');
                 },
                 toggleCollaborators: async () => {
-                    // Ensure Sidebar is open
                     if (window.innerWidth < 768 && !sidebarOpenRef.current) {
-                         await voiceOrbRef.current?.clickElement('btn-toggle-sidebar');
+                         await ghostCursorRef.current?.click('btn-toggle-sidebar');
                          setSidebarOpen(true);
                          await new Promise(r => setTimeout(r, 300));
                     }
-                    await voiceOrbRef.current?.clickElement('btn-collaborators');
+                    await ghostCursorRef.current?.click('btn-collaborators');
                 },
                 scrollUi: async (target: string, direction: 'up' | 'down') => {
                     let selectorId = '';
@@ -871,21 +820,18 @@ const App: React.FC = () => {
                     if (target === 'settings_menu') selectorId = 'settings-menu';
                     
                     if (selectorId) {
-                         // Use VoiceOrb to simulate physical scroll
-                         await voiceOrbRef.current?.scroll(selectorId, direction);
+                         await ghostCursorRef.current?.scroll(selectorId, direction);
                     }
                 },
                 pointAtElement: async (elementId: string) => {
-                    await voiceOrbRef.current?.pointAtElement(elementId);
+                    // This functionality is part of the cursor's movement now.
                 }
             };
             
             startActiveConversation(
                 generateSystemInstruction('voice', settings),
                 (isUser, text) => setLiveTranscription(text),
-                (userInput, samOutput) => {
-                     // Do NOT add to chat history as requested. Ephemeral voice interaction.
-                },
+                (userInput, samOutput) => {},
                 (error) => { console.error("Voice error:", error); handleEndVoiceSession(); },
                 (state) => setActiveConversationState(state),
                 (volume) => setVoiceVolume(volume),
@@ -899,7 +845,6 @@ const App: React.FC = () => {
         }
     };
     
-    // Listener for voice-triggered send
     useEffect(() => {
         const handleVoiceSend = () => {
             if (chatInputText.trim()) {
@@ -916,13 +861,10 @@ const App: React.FC = () => {
         activeConversationRef.current = null;
         setVoiceModeState('inactive');
         setLiveTranscription('');
-        // Reset Orb position
-        voiceOrbRef.current?.resetPosition();
     }
     
     const handleSaveEssay = (essay: Essay) => {
         if (editingEssay) {
-            // Update existing message
             setChats(prev => prev.map(chat => {
                 if (chat.id === currentChatId) {
                     return {
@@ -934,7 +876,6 @@ const App: React.FC = () => {
             }));
             setEditingEssay(null);
         } else {
-            // Create new messages
             const userMessage: ChatMessage = {id: uuidv4(), author: MessageAuthor.USER, text: `He creado un ensayo sobre "${essay.topic}".`, timestamp: Date.now()};
             const samMessage: ChatMessage = {id: uuidv4(), author: MessageAuthor.SAM, text: `¡Excelente! Aquí está el ensayo que compusimos juntos.`, timestamp: Date.now(), essayContent: essay };
             
@@ -961,7 +902,6 @@ const App: React.FC = () => {
             setChats(prev => [newChat, ...prev]);
             setCurrentChatId(newChat.id);
             setActiveView('chat');
-            // Use a timeout to ensure the state update has propagated before sending the message
             setTimeout(() => handleSendMessage(prompt), 0);
         }
     };
@@ -977,12 +917,12 @@ const App: React.FC = () => {
             'sam_ia_usage',
             'st_theme_activated',
             'st_notification_shown',
-            'canvas-dev-pro-history', // Also clear canvas dev pro history
+            'sam_ia_preregistered_sml3.9',
+            'sam_ia_prereg_email'
         ];
         
         keysToRemove.forEach(key => localStorage.removeItem(key));
         
-        // Force reload to start fresh
         window.location.reload();
     }, []);
 
@@ -999,29 +939,21 @@ const App: React.FC = () => {
     const handleDeactivateStTheme = () => {
         handleSaveSettings({ ...settings, stThemeEnabled: false });
         setShowStThemeNotification(false);
-        localStorage.setItem('st_notification_shown', 'true'); // Also mark as shown
+        localStorage.setItem('st_notification_shown', 'true');
     };
     
-    const handleShareToCanvasDevPro = (title: string, code: string) => {
-        const artifact: Artifact = {
-            id: uuidv4(),
-            title: title,
-            filepath: `${title.replace(/\s+/g, '-')}.html`,
-            code: code,
-            language: 'html',
-        };
-
+    const handleShareFromPhotosam = (prompt: string, image: Attachment) => {
         const samMessage: ChatMessage = {
             id: uuidv4(),
             author: MessageAuthor.SAM,
-            text: `Aquí está el proyecto *${title}* compartido desde Canvas Dev Pro. Puedes abrirlo para verlo y editarlo.`,
+            text: `Aquí está la imagen generada en *Photosam* con el prompt: "${prompt}"`,
             timestamp: Date.now(),
-            artifacts: [artifact],
+            attachment: image,
         };
 
         let tempChatId = currentChatId;
         if (!tempChatId) {
-            const newChat: Chat = { id: uuidv4(), title: `Proyecto: ${title}`, messages: [samMessage] };
+            const newChat: Chat = { id: uuidv4(), title: `Imagen: ${prompt.substring(0, 20)}`, messages: [samMessage] };
             setChats(prev => [newChat, ...prev]);
             setCurrentChatId(newChat.id);
         } else {
@@ -1029,6 +961,11 @@ const App: React.FC = () => {
         }
 
         setActiveView('chat');
+    };
+
+    const handlePreregistrationSuccess = () => {
+        localStorage.setItem('sam_ia_preregistered_sml3.9', 'true');
+        setIsPreregisteredForSML3_9(true);
     };
 
 
@@ -1070,7 +1007,6 @@ const App: React.FC = () => {
         const viewConfig = secondaryViews[activeView];
 
         if (viewConfig) {
-            // Special handling for SamStudios which provides its own layout/header
             if(activeView === 'sam_studios') {
                  return viewConfig.component;
             }
@@ -1087,7 +1023,7 @@ const App: React.FC = () => {
                             <Bars3Icon className="w-6 h-6" />
                         </button>
                         <button
-                            id={`btn-nav-chat`} // Add ID for targeting back button
+                            id={`btn-nav-chat`}
                             onClick={() => setActiveView('chat')}
                             className="p-2 text-text-secondary hover:text-text-main"
                             aria-label="Volver al chat"
@@ -1117,7 +1053,6 @@ const App: React.FC = () => {
                                     }
                                 }}
                                 onPreviewImage={(attachment) => setPreviewImage(attachment)}
-                                pinnedArtifactIds={pinnedArtifactIds}
                                 onOpenEssay={handleOpenEssay}
                             />
                         ))}
@@ -1134,8 +1069,8 @@ const App: React.FC = () => {
                         <p className="text-text-secondary mt-2">Tu asistente de IA amigable y servicial.</p>
                     </div>
                 );
-            case 'canvas_dev_pro':
-                return <CanvasDevPro onNavigateBack={() => setActiveView('chat')} onShareToChat={handleShareToCanvasDevPro} />;
+            case 'photosam':
+                return <Photosam onNavigateBack={() => setActiveView('chat')} onShareToChat={handleShareFromPhotosam} />;
             default:
                 return null;
         }
@@ -1143,11 +1078,8 @@ const App: React.FC = () => {
 
     return (
         <div className={`flex h-screen bg-bg-main font-sans text-text-main ${settings.theme}`}>
-            {/* GhostCursor preserved for potential future use or fallbacks, but VoiceOrb takes lead in voice mode */}
-            <GhostCursor ref={ghostCursorRef} />
-            
-            <VoiceOrb 
-                ref={voiceOrbRef}
+            <GhostCursor
+                ref={ghostCursorRef}
                 isActive={voiceModeState === 'activeConversation'}
                 state={activeConversationState}
                 volume={voiceVolume}
@@ -1229,6 +1161,8 @@ const App: React.FC = () => {
                             onInputTextChange={setChatInputText}
                             isPlusMenuOpen={isPlusMenuOpen}
                             onSetPlusMenuOpen={setIsPlusMenuOpen}
+                            isPreregisteredForSML3_9={isPreregisteredForSML3_9}
+                            onOpenPreregistrationModal={() => setIsPreregistrationModalOpen(true)}
                         />
                     </div>
                 )}
@@ -1240,55 +1174,125 @@ const App: React.FC = () => {
                     onClose={() => setIsSettingsModalOpen(false)}
                     settings={settings}
                     onSave={handleSaveSettings}
-                    onClearHistory={() => { setChats([]); setCurrentChatId(null); setPinnedArtifacts([]); }}
-                    onExportHistory={() => { /* export logic */ }}
-                    installPromptEvent={installPromptEvent}
-                    onInstallApp={() => installPromptEvent?.prompt()}
-                    onResetApp={handleResetApp}
-                />
-            )}
-            {isUpdatesModalOpen && <UpdatesModal isOpen={isUpdatesModalOpen} onClose={() => setIsUpdatesModalOpen(false)} />}
-            {contextMenu && (
-                <ContextMenu
-                    {...contextMenu}
-                    onClose={() => setContextMenu(null)}
-                    onRename={() => { /* rename logic */ }}
-                    onDelete={() => {
-                        setChats(prev => prev.filter(c => c.id !== contextMenu.chatId));
-                        if (currentChatId === contextMenu.chatId) {
-                            setCurrentChatId(chats.length > 1 ? chats[0].id : null);
+                    onClearHistory={() => setChats([])}
+                    onExportHistory={() => {
+                         const data = JSON.stringify(chats, null, 2);
+                         const blob = new Blob([data], { type: 'application/json' });
+                         const url = URL.createObjectURL(blob);
+                         const link = document.createElement('a');
+                         link.href = url;
+                         link.download = `sam-history-${new Date().toISOString()}.json`;
+                         document.body.appendChild(link);
+                         link.click();
+                         document.body.removeChild(link);
+                    }}
+                    onInstallApp={() => {
+                        if (installPromptEvent) {
+                            installPromptEvent.prompt();
+                            installPromptEvent.userChoice.then((choiceResult: any) => {
+                                if (choiceResult.outcome === 'accepted') {
+                                    setInstallPromptEvent(null);
+                                }
+                            });
                         }
                     }}
+                    installPromptEvent={installPromptEvent}
+                    onResetApp={handleForcedReset}
                 />
             )}
-            {activeArtifact && <CodeCanvas artifact={activeArtifact} onClose={() => setActiveArtifact(null)} />}
-            {(isEssayComposerOpen || editingEssay) && (
+            
+            {isUpdatesModalOpen && (
+                <UpdatesModal 
+                    isOpen={isUpdatesModalOpen} 
+                    onClose={() => setIsUpdatesModalOpen(false)} 
+                />
+            )}
+
+            {isEssayComposerOpen && (
                 <EssayComposer
-                    initialEssay={editingEssay ? editingEssay.essay : defaultEssay}
+                    initialEssay={editingEssay?.essay || defaultEssay}
                     onClose={() => { setIsEssayComposerOpen(false); setEditingEssay(null); }}
                     onSave={handleSaveEssay}
                     systemInstruction={generateSystemInstruction('essay', settings)}
                     modelName={settings.defaultModel}
                 />
             )}
+            
+            {contextMenu && (
+                <ContextMenu
+                    x={contextMenu.x}
+                    y={contextMenu.y}
+                    onClose={() => setContextMenu(null)}
+                    onRename={() => {
+                         const newTitle = prompt("Nuevo nombre para el chat:");
+                         if (newTitle) {
+                             setChats(prev => prev.map(c => c.id === contextMenu.chatId ? { ...c, title: newTitle } : c));
+                         }
+                    }}
+                    onDelete={() => {
+                         if (window.confirm("¿Eliminar este chat?")) {
+                            setChats(prev => prev.filter(c => c.id !== contextMenu.chatId));
+                            if (currentChatId === contextMenu.chatId) {
+                                handleNewChat();
+                            }
+                        }
+                    }}
+                />
+            )}
+            
              {isCameraOpen && (
                 <CameraCaptureModal
-                    initialFacingMode={cameraFacingMode}
                     onClose={() => setIsCameraOpen(false)}
                     onCapture={(dataUrl) => {
                         if (dataUrl) {
-                             setAttachment({
-                                name: `capture-${Date.now()}.jpg`,
-                                type: 'image/jpeg',
-                                data: dataUrl,
-                            });
+                            setAttachment({ name: `camera_capture_${Date.now()}.jpg`, type: 'image/jpeg', data: dataUrl });
                             setCurrentMode('image');
                         }
                         setIsCameraOpen(false);
                     }}
+                    initialFacingMode={cameraFacingMode}
                 />
             )}
-            {previewImage && <ImagePreviewModal image={previewImage} onClose={() => setPreviewImage(null)} />}
+            
+            {previewImage && (
+                <ImagePreviewModal
+                    image={previewImage}
+                    onClose={() => setPreviewImage(null)}
+                />
+            )}
+            
+             {showInstallNotification && (
+                <div className="fixed bottom-4 right-4 z-50">
+                    <InstallNotification 
+                        onDismiss={() => {
+                            setShowInstallNotification(false);
+                            localStorage.setItem('sam-install-notif-dismissed', 'true');
+                        }}
+                        onInstall={() => {
+                            if (installPromptEvent) {
+                                installPromptEvent.prompt();
+                                installPromptEvent.userChoice.then((choiceResult: any) => {
+                                    if (choiceResult.outcome === 'accepted') {
+                                        setShowInstallNotification(false);
+                                    }
+                                    setInstallPromptEvent(null);
+                                });
+                            }
+                        }}
+                    />
+                </div>
+            )}
+            
+             {activeView === 'chat' && <WelcomeTutorial step={0} targetRect={null} />} 
+
+            {isPreregistrationModalOpen && (
+                <PreregistrationModal
+                    isOpen={isPreregistrationModalOpen}
+                    onClose={() => setIsPreregistrationModalOpen(false)}
+                    onSuccess={handlePreregistrationSuccess}
+                />
+            )}
+
         </div>
     );
 };

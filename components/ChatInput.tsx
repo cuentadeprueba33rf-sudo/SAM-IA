@@ -3,7 +3,7 @@ import PlusMenu from '../PlusMenu';
 import FilePreview from './FilePreview';
 import type { Attachment, ModeID, Settings, UsageTracker } from '../types';
 import { MODES } from '../constants';
-import { ArrowUpIcon, XMarkIcon, ChevronDownIcon, SparklesIcon, PlusIcon, AdjustmentsHorizontalIcon, PhotoIcon, Bars3Icon, MicrophoneIcon, BoltIcon, LockClosedIcon, GiftIcon } from './icons';
+import { ArrowUpIcon, XMarkIcon, ChevronDownIcon, SparklesIcon, PlusIcon, AdjustmentsHorizontalIcon, PhotoIcon, Bars3Icon, MicrophoneIcon, BoltIcon, LockClosedIcon, GiftIcon, CheckBadgeIcon } from './icons';
 
 type VoiceModeState = 'inactive' | 'activeConversation';
 type ActiveConversationState = 'LISTENING' | 'RESPONDING' | 'THINKING';
@@ -30,6 +30,8 @@ interface ChatInputProps {
     onInputTextChange: (text: string) => void;
     isPlusMenuOpen: boolean;
     onSetPlusMenuOpen: (isOpen: boolean | ((prev: boolean) => boolean)) => void;
+    isPreregisteredForSML3_9: boolean;
+    onOpenPreregistrationModal: () => void;
 }
 
 const ActiveConversationUI: React.FC<{
@@ -75,7 +77,9 @@ const ModelSelector: React.FC<{
     onSaveSettings: (s: Settings) => void;
     usage: UsageTracker;
     isChristmasModelUnlocked: boolean;
-}> = ({ settings, onSaveSettings, usage, isChristmasModelUnlocked }) => {
+    isPreregisteredForSML3_9: boolean;
+    onOpenPreregistrationModal: () => void;
+}> = ({ settings, onSaveSettings, usage, isChristmasModelUnlocked, isPreregisteredForSML3_9, onOpenPreregistrationModal }) => {
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const limit = usage.hasAttachment ? 15 : 20;
@@ -104,7 +108,7 @@ const ModelSelector: React.FC<{
                 ) : settings.defaultModel === 'sm-i3' ? (
                     <span className="flex items-center gap-1"><SparklesIcon className="w-3 h-3 text-yellow-400"/>SM-I3</span>
                 ) : (
-                    <span className="flex items-center gap-1"><GiftIcon className="w-3 h-3 text-red-400" />SM-L3.9</span>
+                    <span className="flex items-center gap-1"><GiftIcon className="w-3 h-3 text-red-400" />SM-l3.9</span>
                 )}
                 <ChevronDownIcon className="w-3 h-3" />
             </button>
@@ -138,24 +142,33 @@ const ModelSelector: React.FC<{
                             </div>
                         </button>
 
-                        {/* SM-L3.9 */}
+                        {/* SM-l3.9 */}
                             <button
-                            disabled={!isChristmasModelUnlocked}
+                            disabled={!isChristmasModelUnlocked && isPreregisteredForSML3_9}
                             onClick={() => { 
                                 if(isChristmasModelUnlocked) {
                                     onSaveSettings({...settings, defaultModel: 'sm-l3.9'}); 
                                     setIsOpen(false); 
+                                } else if (!isPreregisteredForSML3_9) {
+                                    onOpenPreregistrationModal();
+                                    setIsOpen(false);
                                 }
                             }}
-                            className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-border-subtle transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-border-subtle transition-colors disabled:opacity-50 disabled:cursor-default"
                         >
                             <div className="flex items-center gap-2 font-medium text-text-main">
                                 <GiftIcon className="w-4 h-4 text-red-400"/>
-                                <span>SM-L3.9</span>
-                                {!isChristmasModelUnlocked && <LockClosedIcon className="w-3 h-3 text-text-secondary ml-auto" />}
+                                <span>SM-l3.9</span>
+                                {!isChristmasModelUnlocked && (
+                                    isPreregisteredForSML3_9 ? (
+                                         <CheckBadgeIcon className="w-4 h-4 text-green-400 ml-auto" fill="currentColor" />
+                                    ) : (
+                                         <LockClosedIcon className="w-3 h-3 text-text-secondary ml-auto" />
+                                    )
+                                )}
                             </div>
                             <p className="text-xs text-text-secondary mt-0.5">
-                                {isChristmasModelUnlocked ? 'Máxima potencia' : 'Disponible 2 Dic'}
+                                {isChristmasModelUnlocked ? 'Máxima potencia' : (isPreregisteredForSML3_9 ? 'Pre-inscrito' : 'Inscríbete para el 2 Dic')}
                             </p>
                         </button>
                     </div>
@@ -177,7 +190,9 @@ const ImageGenInput: React.FC<{
     onSaveSettings: (settings: Settings) => void;
     usage: UsageTracker;
     isChristmasModelUnlocked: boolean;
-}> = ({ onSend, disabled, attachment, onRemoveAttachment, onModeAction, onResetMode, settings, onSaveSettings, usage, isChristmasModelUnlocked }) => {
+    isPreregisteredForSML3_9: boolean;
+    onOpenPreregistrationModal: () => void;
+}> = ({ onSend, disabled, attachment, onRemoveAttachment, onModeAction, onResetMode, settings, onSaveSettings, usage, isChristmasModelUnlocked, isPreregisteredForSML3_9, onOpenPreregistrationModal }) => {
     const [prompt, setPrompt] = useState('');
 
     const handleSendClick = () => {
@@ -211,7 +226,9 @@ const ImageGenInput: React.FC<{
                             settings={settings} 
                             onSaveSettings={onSaveSettings} 
                             usage={usage} 
-                            isChristmasModelUnlocked={isChristmasModelUnlocked} 
+                            isChristmasModelUnlocked={isChristmasModelUnlocked}
+                            isPreregisteredForSML3_9={isPreregisteredForSML3_9}
+                            onOpenPreregistrationModal={onOpenPreregistrationModal}
                          />
                      </div>
                 </div>
@@ -278,7 +295,9 @@ const ChatInput: React.FC<ChatInputProps> = ({
     inputText,
     onInputTextChange,
     isPlusMenuOpen,
-    onSetPlusMenuOpen
+    onSetPlusMenuOpen,
+    isPreregisteredForSML3_9,
+    onOpenPreregistrationModal,
 }) => {
     const [placeholder, setPlaceholder] = useState('Pregunta a SAM');
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -366,15 +385,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
         }
     }, [disabled, voiceModeState]);
 
-    if (voiceModeState === 'activeConversation' && !isPlusMenuOpen) {
-         return <ActiveConversationUI 
-            onEndSession={onEndVoiceSession} 
-            conversationState={activeConversationState}
-            transcription={liveTranscription} 
-        />;
-    }
-
-
     if (currentMode === 'image_generation') {
         return (
             <ImageGenInput 
@@ -388,132 +398,145 @@ const ChatInput: React.FC<ChatInputProps> = ({
                 onSaveSettings={onSaveSettings}
                 usage={usage}
                 isChristmasModelUnlocked={isChristmasModelUnlocked}
+                isPreregisteredForSML3_9={isPreregisteredForSML3_9}
+                onOpenPreregistrationModal={onOpenPreregistrationModal}
             />
         );
     }
     
     return (
-        <div className="w-full relative">
-            {isPlusMenuOpen && <PlusMenu onAction={(mode, accept, capture) => {
-                onModeAction(mode, accept, capture);
-                onSetPlusMenuOpen(false);
-            }} settings={settings} />}
-            
-            {attachment && (
-                <div className="mb-2 transition-all ml-4">
-                    <FilePreview attachment={attachment} onRemove={onRemoveAttachment} />
-                </div>
+        <>
+            {voiceModeState === 'activeConversation' && !isPlusMenuOpen && (
+                <ActiveConversationUI 
+                    onEndSession={onEndVoiceSession} 
+                    conversationState={activeConversationState}
+                    transcription={liveTranscription} 
+                />
             )}
-            
-            <div className="flex items-end bg-surface-primary dark:bg-[#1E1F20] rounded-[2rem] p-3 gap-3 shadow-2xl border border-border-subtle st-border relative z-20">
+            <div className="w-full relative">
+                {isPlusMenuOpen && <PlusMenu onAction={(mode, accept, capture) => {
+                    onModeAction(mode, accept, capture);
+                    onSetPlusMenuOpen(false);
+                }} settings={settings} />}
                 
-                {/* Left Actions (Grouped: Sidebar Toggle & Plus Menu) */}
-                <div className="flex items-center gap-2 mb-1">
-                    <button 
-                        id="btn-toggle-sidebar"
-                        onClick={onToggleSidebar}
-                        className="flex-shrink-0 p-2.5 bg-surface-secondary dark:bg-[#2C2C2E] text-text-main hover:bg-border-subtle transition-colors rounded-full focus:outline-none focus:ring-2 focus:ring-accent"
-                        aria-label="Toggle sidebar"
-                    >
-                        <Bars3Icon className="w-5 h-5 st-icon" />
-                    </button>
-
-                    <button 
-                        id="btn-plus-menu"
-                        onClick={() => onSetPlusMenuOpen((prev: boolean) => !prev)}
-                        className="flex-shrink-0 p-2.5 bg-surface-secondary dark:bg-[#2C2C2E] text-text-main hover:bg-border-subtle transition-colors rounded-full focus:outline-none focus:ring-2 focus:ring-accent"
-                        aria-label="More options"
-                        disabled={disabled}
-                    >
-                        <PlusIcon className="w-5 h-5 st-icon transform transition-transform" style={{ transform: isPlusMenuOpen ? 'rotate(45deg)' : 'none' }} />
-                    </button>
-
-                     {currentMode !== 'normal' && currentModeData && (
-                        <div 
-                            title={`Modo activo: ${currentModeData.title}`} 
-                            className="relative flex-shrink-0 self-center animate-fade-in"
-                        >
-                            <div className="p-2.5 bg-accent/10 rounded-full flex items-center justify-center">
-                                <currentModeData.icon className="w-5 h-5 text-accent st-icon" />
-                            </div>
-                            <button 
-                                onClick={onResetMode} 
-                                className="absolute -top-1 -right-1 bg-surface-primary rounded-full p-0.5 shadow hover:scale-110 transition-transform border border-border-subtle" 
-                                aria-label={`Desactivar modo ${currentModeData.title}`}
-                            >
-                                <XMarkIcon className="w-3 h-3 text-text-secondary st-icon" />
-                            </button>
-                        </div>
-                    )}
-                </div>
-
-                {/* Input Area */}
-                <div className="relative flex-1 flex flex-col justify-center min-h-[3rem]">
-                     {/* Model Selector (Floating Inside Input) */}
-                     <div className="absolute -top-1 left-0 right-0 flex justify-start z-10">
-                         <ModelSelector 
-                            settings={settings} 
-                            onSaveSettings={onSaveSettings} 
-                            usage={usage} 
-                            isChristmasModelUnlocked={isChristmasModelUnlocked} 
-                         />
-                     </div>
-
-                    <textarea
-                        ref={textareaRef}
-                        id="chat-textarea"
-                        value={inputText}
-                        onChange={(e) => onInputTextChange(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder={placeholder}
-                        className="w-full bg-transparent resize-none outline-none text-text-main max-h-48 py-2 px-2 mt-4 text-base leading-relaxed placeholder:text-text-secondary/60"
-                        rows={1}
-                        disabled={disabled}
-                    />
-                </div>
-
-                {/* Right Actions */}
-                <div className="flex items-center gap-2 mb-1">
-                    {inputText.trim() || attachment ? (
+                {attachment && (
+                    <div className="mb-2 transition-all ml-4">
+                        <FilePreview attachment={attachment} onRemove={onRemoveAttachment} />
+                    </div>
+                )}
+                
+                <div className="flex items-end bg-surface-primary dark:bg-[#1E1F20] rounded-[2rem] p-3 gap-3 shadow-2xl border border-border-subtle st-border relative z-20">
+                    
+                    {/* Left Actions (Grouped: Sidebar Toggle & Plus Menu) */}
+                    <div className="flex items-center gap-2 mb-1">
                         <button 
-                            id="btn-send-message"
-                            onClick={handleSend}
-                            disabled={disabled}
-                            className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors bg-white text-black hover:bg-gray-200 disabled:bg-surface-secondary disabled:text-text-secondary st-mic-button"
-                            aria-label="Send message"
+                            id="btn-toggle-sidebar"
+                            onClick={onToggleSidebar}
+                            className="flex-shrink-0 p-2.5 bg-surface-secondary dark:bg-[#2C2C2E] text-text-main hover:bg-border-subtle transition-colors rounded-full focus:outline-none focus:ring-2 focus:ring-accent"
+                            aria-label="Toggle sidebar"
                         >
-                            <ArrowUpIcon className="w-5 h-5 st-icon" />
+                            <Bars3Icon className="w-5 h-5 st-icon" />
                         </button>
-                    ) : (
-                        <button
-                            id="btn-mode-voice-input" 
-                            onClick={() => onModeAction('voice')}
+
+                        <button 
+                            id="btn-plus-menu"
+                            onClick={() => onSetPlusMenuOpen((prev: boolean) => !prev)}
+                            className="flex-shrink-0 p-2.5 bg-surface-secondary dark:bg-[#2C2C2E] text-text-main hover:bg-border-subtle transition-colors rounded-full focus:outline-none focus:ring-2 focus:ring-accent"
+                            aria-label="More options"
                             disabled={disabled}
-                            className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors text-text-main hover:bg-white/10 disabled:opacity-50 st-mic-button"
-                            aria-label="Use voice"
                         >
-                            <MicrophoneIcon className="w-6 h-6 st-icon"/>
+                            <PlusIcon className="w-5 h-5 st-icon transform transition-transform" style={{ transform: isPlusMenuOpen ? 'rotate(45deg)' : 'none' }} />
                         </button>
-                    )}
+
+                        {currentMode !== 'normal' && currentModeData && (
+                            <div 
+                                title={`Modo activo: ${currentModeData.title}`} 
+                                className="relative flex-shrink-0 self-center animate-fade-in"
+                            >
+                                <div className="p-2.5 bg-accent/10 rounded-full flex items-center justify-center">
+                                    <currentModeData.icon className="w-5 h-5 text-accent st-icon" />
+                                </div>
+                                <button 
+                                    onClick={onResetMode} 
+                                    className="absolute -top-1 -right-1 bg-surface-primary rounded-full p-0.5 shadow hover:scale-110 transition-transform border border-border-subtle" 
+                                    aria-label={`Desactivar modo ${currentModeData.title}`}
+                                >
+                                    <XMarkIcon className="w-3 h-3 text-text-secondary st-icon" />
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Input Area */}
+                    <div className="relative flex-1 flex flex-col justify-center min-h-[3rem]">
+                        {/* Model Selector (Floating Inside Input) */}
+                        <div className="absolute -top-1 left-0 right-0 flex justify-start z-10">
+                            <ModelSelector 
+                                settings={settings} 
+                                onSaveSettings={onSaveSettings} 
+                                usage={usage} 
+                                isChristmasModelUnlocked={isChristmasModelUnlocked} 
+                                isPreregisteredForSML3_9={isPreregisteredForSML3_9}
+                                onOpenPreregistrationModal={onOpenPreregistrationModal}
+                            />
+                        </div>
+
+                        <textarea
+                            ref={textareaRef}
+                            id="chat-textarea"
+                            value={inputText}
+                            onChange={(e) => onInputTextChange(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder={placeholder}
+                            className="w-full bg-transparent resize-none outline-none text-text-main max-h-48 py-2 px-2 mt-4 text-base leading-relaxed placeholder:text-text-secondary/60"
+                            rows={1}
+                            disabled={disabled}
+                        />
+                    </div>
+
+                    {/* Right Actions */}
+                    <div className="flex items-center gap-2 mb-1">
+                        {inputText.trim() || attachment ? (
+                            <button 
+                                id="btn-send-message"
+                                onClick={handleSend}
+                                disabled={disabled}
+                                className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors bg-white text-black hover:bg-gray-200 disabled:bg-surface-secondary disabled:text-text-secondary st-mic-button"
+                                aria-label="Send message"
+                            >
+                                <ArrowUpIcon className="w-5 h-5 st-icon" />
+                            </button>
+                        ) : (
+                            <button
+                                id="btn-mode-voice-input" 
+                                onClick={() => onModeAction('voice')}
+                                disabled={disabled}
+                                className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors text-text-main hover:bg-white/10 disabled:opacity-50 st-mic-button"
+                                aria-label="Use voice"
+                            >
+                                <MicrophoneIcon className="w-6 h-6 st-icon"/>
+                            </button>
+                        )}
+                    </div>
                 </div>
+                <style>{`
+                    @keyframes fade-in {
+                        from { opacity: 0; transform: scale(0.9); }
+                        to { opacity: 1; transform: scale(1); }
+                    }
+                    .animate-fade-in {
+                        animation: fade-in 0.2s ease-out;
+                    }
+                    @keyframes fade-in-up-sm {
+                        from { opacity: 0; transform: translateY(5px); }
+                        to { opacity: 1; transform: translateY(0); }
+                    }
+                    .animate-fade-in-up-sm {
+                        animation: fade-in-up-sm 0.15s ease-out;
+                    }
+                `}</style>
             </div>
-             <style>{`
-                @keyframes fade-in {
-                    from { opacity: 0; transform: scale(0.9); }
-                    to { opacity: 1; transform: scale(1); }
-                }
-                .animate-fade-in {
-                    animation: fade-in 0.2s ease-out;
-                }
-                @keyframes fade-in-up-sm {
-                    from { opacity: 0; transform: translateY(5px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-                .animate-fade-in-up-sm {
-                    animation: fade-in-up-sm 0.15s ease-out;
-                }
-            `}</style>
-        </div>
+        </>
     );
 };
 

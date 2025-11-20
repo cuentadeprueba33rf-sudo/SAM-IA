@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { MessageAuthor } from '../types';
-import type { ChatMessage, Attachment, Artifact, Essay } from '../types';
+import type { ChatMessage, Attachment, Essay } from '../types';
 import MessageActions from './MessageActions';
 import { DocumentTextIcon, GlobeAltIcon, CodeBracketIcon, AcademicCapIcon, SparklesIcon, ShareIcon } from './icons';
 
@@ -209,14 +209,11 @@ const CognitiveArchitect: React.FC<{ mapData: { nodes: any[], edges: any[] } }> 
 interface ChatMessageItemProps {
     message: ChatMessage;
     isStreaming: boolean;
-    onOpenArtifact: (artifact: Artifact) => void;
-    onPinArtifact: (artifact: Artifact) => void;
     onPreviewImage: (attachment: Attachment) => void;
-    pinnedArtifactIds: string[];
     onOpenEssay: (essay: Essay, messageId: string) => void;
 }
 
-const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, isStreaming, onOpenArtifact, onPinArtifact, onPreviewImage, pinnedArtifactIds, onOpenEssay }) => {
+const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, isStreaming, onPreviewImage, onOpenEssay }) => {
     
     const contentRef = useRef<HTMLDivElement>(null);
     
@@ -264,16 +261,7 @@ const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, isStreaming,
         };
     }, [message.text, message.mode, isStreaming]);
 
-
-    // If there are artifacts, we assume it's a canvasdev response and hide the code block.
-    const textToDisplay = useMemo(() => {
-        if (message.artifacts && message.artifacts.length > 0) {
-            const codeBlockRegex = /```[\s\S]*?```/g;
-            return message.text.replace(codeBlockRegex, '').trim();
-        }
-        return message.text;
-    }, [message.text, message.artifacts]);
-    
+    const textToDisplay = message.text;
     const parsedContent = useMemo(() => parseMarkdown(textToDisplay), [textToDisplay]);
     const parsedArchitectContent = useMemo(() => parseMarkdown(architectText), [architectText]);
 
@@ -312,8 +300,6 @@ const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, isStreaming,
     }
 
     const isUser = message.author === MessageAuthor.USER;
-    const firstArtifact = message.artifacts?.[0];
-    const isArtifactPinned = firstArtifact ? pinnedArtifactIds.includes(firstArtifact.id) : false;
     
     return (
         <div className={`py-4 flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -381,19 +367,6 @@ const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, isStreaming,
                     ) : textToDisplay && !message.essayContent ? (
                         <div ref={contentRef} className={`prose prose-sm dark:prose-invert max-w-none break-words ${isStreaming ? 'streaming-message' : ''}`} dangerouslySetInnerHTML={parsedContent} />
                     ) : null}
-
-                    
-                    {message.artifacts && message.artifacts.map(artifact => (
-                         <div key={artifact.id} className="mt-2 p-3 bg-surface-primary dark:bg-surface-secondary rounded-lg border border-border-subtle">
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <p className="font-semibold text-sm text-text-main">{artifact.title}</p>
-                                    <p className="text-xs text-text-secondary">{artifact.language}</p>
-                                </div>
-                                <button onClick={() => onOpenArtifact(artifact)} className="text-sm bg-accent text-white px-3 py-1.5 rounded-lg hover:opacity-90 transition-opacity">Ver</button>
-                            </div>
-                        </div>
-                    ))}
                     
                     {message.generatingArtifact && (
                         <div className="flex items-center gap-2 text-text-secondary mt-2 text-sm">
@@ -408,12 +381,8 @@ const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, isStreaming,
                         message={message}
                         text={isArchitectMode ? architectText : message.text}
                         groundingMetadata={message.groundingMetadata}
-                        onPin={() => {
-                            if (firstArtifact && !isArtifactPinned) {
-                                onPinArtifact(firstArtifact);
-                            }
-                        }}
-                        isPinned={isArtifactPinned}
+                        onPin={() => {}}
+                        isPinned={false}
                     />
                 )}
             </div>

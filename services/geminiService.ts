@@ -1,4 +1,6 @@
 
+
+
 // FIX: Add missing imports for new functions
 import { GoogleGenAI, Modality, LiveServerMessage, Blob, Type, FunctionDeclaration, GenerateContentResponse, Tool } from "@google/genai";
 import type { Attachment, ChatMessage, ModeID, ModelType, EssaySection, Settings, ViewID } from '../types';
@@ -12,6 +14,7 @@ const MODEL_MAP: Record<ModelType, string> = {
     'sm-i1': 'gemini-2.5-flash',
     'sm-i3': 'gemini-2.5-pro',
     'sm-l3': 'gemini-2.5-pro',
+    'sm-l3.9': 'gemini-2.5-pro',
 };
 
 const translateError = (error: any): Error => {
@@ -183,7 +186,7 @@ const appTools: Tool[] = [
                 parameters: {
                     type: Type.OBJECT,
                     properties: {
-                        view: { type: Type.STRING, description: 'El ID de la vista: "chat", "canvas", "insights", "documentation", "usage", "canvas_dev_pro".' }
+                        view: { type: Type.STRING, description: 'El ID del vista: "chat", "canvas", "insights", "documentation", "usage", "canvas_dev_pro".' }
                     },
                     required: ['view']
                 }
@@ -642,6 +645,7 @@ export const generateImage = async ({ prompt, attachment, modelName }: { prompt:
     if (!API_KEY) throw new Error("API key not configured.");
     const ai = new GoogleGenAI({ apiKey: API_KEY });
 
+    // CORRECTED LOGIC: Only SM-L3 (the one with purple icon) is premium and gets no watermark.
     const isPremium = modelName === 'sm-l3';
 
     // Try premium generation first if selected
@@ -657,6 +661,7 @@ export const generateImage = async ({ prompt, attachment, modelName }: { prompt:
                 },
             });
             const base64ImageBytes = response.generatedImages[0].image.imageBytes;
+            // NO WATERMARK FOR SM-L3
             return {
                 name: `generated-imagen-${Date.now()}.jpg`,
                 type: 'image/jpeg',
@@ -664,7 +669,7 @@ export const generateImage = async ({ prompt, attachment, modelName }: { prompt:
             };
         } catch (e) {
              console.warn("Imagen generation failed, falling back to Flash Image", e);
-             // Fall through to standard generation
+             // Fall through to standard generation, but still no watermark if it was supposed to be premium
         }
     }
 
@@ -688,11 +693,10 @@ export const generateImage = async ({ prompt, attachment, modelName }: { prompt:
 
         for (const part of response.candidates[0].content.parts) {
             if (part.inlineData) {
-                let base64ImageBytes = part.inlineData.data;
                 let mimeType = part.inlineData.mimeType || 'image/png';
-                let dataUrl = `data:${mimeType};base64,${base64ImageBytes}`;
+                let dataUrl = `data:${mimeType};base64,${part.inlineData.data}`;
 
-                // Apply Watermark if NOT premium
+                // Apply Watermark ONLY if NOT premium (e.g., SM-I1, SM-I3)
                 if (!isPremium) {
                     dataUrl = await applyWatermark(dataUrl);
                 }
@@ -709,6 +713,81 @@ export const generateImage = async ({ prompt, attachment, modelName }: { prompt:
         throw translateError(error);
     }
 };
+
+export const generatePhotosamImage = async ({
+    prompt,
+    style,
+    mainImage,
+    ingredients
+}: {
+    prompt: string;
+    style: string;
+    mainImage: Attachment | null;
+    ingredients: (Attachment | null)[];
+}): Promise<Attachment> => {
+    // Implementation using gemini-2.5-flash-image or imagen
+    // Since it involves editing/mixing, flash-image is appropriate as per guidelines for "General Image Generation and Editing Tasks".
+    // Guidelines say: Edit Images -> gemini-2.5-flash-image.
+    // Prompt should combine style, user prompt, and handle images.
+    
+    if (!API_KEY) throw new Error("API key not configured.");
+    const ai = new GoogleGenAI({ apiKey: API_KEY });
+    
+    const parts: any[] = [];
+    
+    // Add main image
+    if (mainImage) {
+        parts.push(await fileToGenerativePart(mainImage));
+    }
+    
+    // Add ingredients
+    for (const ing of ingredients) {
+        if (ing) {
+             parts.push(await fileToGenerativePart(ing));
+        }
+    }
+    
+    // Construct prompt
+    let fullPrompt = `Generate an image based on the following instructions: ${prompt}. Style: ${style}.`;
+    if (mainImage) {
+        fullPrompt = `Edit the first image provided based on this instruction: ${prompt}. Style: ${style}.`;
+        if (ingredients.some(i => i !== null)) {
+            fullPrompt += " Use the other provided images as visual references/ingredients.";
+        }
+    } else if (ingredients.some(i => i !== null)) {
+        fullPrompt += " Use the provided images as reference.";
+    }
+    
+    parts.push({ text: fullPrompt });
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-image',
+            contents: { parts },
+            config: {
+                responseModalities: [Modality.IMAGE],
+            },
+        });
+        
+        const part = response.candidates?.[0]?.content?.parts?.[0];
+         if (part && part.inlineData) {
+            let mimeType = part.inlineData.mimeType || 'image/png';
+            let dataUrl = `data:${mimeType};base64,${part.inlineData.data}`;
+            
+             // Watermark if needed (reusing logic from existing service if accessible, or just return)
+             dataUrl = await applyWatermark(dataUrl);
+
+            return {
+                name: `photosam-${Date.now()}.${mimeType.split('/')[1]}`,
+                type: mimeType,
+                data: dataUrl,
+            };
+        }
+        throw new Error("No image generated.");
+    } catch (error) {
+         throw translateError(error);
+    }
+}
 
 export const detectMode = async (prompt: string, systemInstruction: string): Promise<{ newMode: ModeID, reasoning: string } | null> => {
     try {
