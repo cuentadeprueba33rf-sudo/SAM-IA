@@ -1,3 +1,10 @@
+
+
+
+
+
+
+
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import Sidebar from './components/Sidebar';
@@ -17,7 +24,7 @@ import VoiceErrorNotification from './components/VoiceErrorNotification';
 import ForcedResetModal from './components/ForcedResetModal';
 import PreregistrationModal from './components/PreregistrationModal';
 import ChatMessageItem from './components/ChatMessage';
-import GhostCursor, { GhostCursorHandle } from './components/GhostCursor';
+import VoiceOrb from './components/VoiceOrb';
 import SamStudios from './components/SamStudios';
 import { streamGenerateContent, generateImage, startActiveConversation, detectMode, AppToolExecutors } from './services/geminiService';
 import {
@@ -163,19 +170,15 @@ const DocumentationView: React.FC = () => (
             <div className="space-y-4">
                 <h2 className="text-lg font-semibold text-text-main px-1">Características Exclusivas</h2>
                 
-                <DocItem title="Agente Físico de Voz (El Cursor)" icon={MicrophoneIcon}>
+                <DocItem title="Modo de Voz Pro (El Orbe)" icon={MicrophoneIcon}>
                     <p className="mb-2">
-                        SAM v1.5 introduce una interfaz de voz revolucionaria. Al pulsar el micrófono, aparecerá un <strong>Cursor Fantasma</strong> que es la manifestación física de la IA en tu pantalla.
+                        SAM v1.5 reintroduce el <strong>Orbe Pro</strong>, una interfaz de voz inmersiva y centralizada.
                     </p>
                     <ul className="list-disc pl-5 space-y-1 mb-2">
-                        <li><strong>Control Total de la UI:</strong> Pídele que abra menús, cierre ventanas, o cambie de modo. El cursor viajará físicamente hasta el botón y lo pulsará.</li>
-                        <li><strong>Navegación y Scroll:</strong> Di "baja un poco" o "sube al principio" y el cursor desplazará el contenido por ti.</li>
-                        <li><strong>Dictado Inteligente:</strong> Di "escribe esto..." para que SAM escriba en el chat sin enviar, o "envía el mensaje" para confirmar.</li>
-                        <li><strong>Interacción Natural:</strong> SAM ahora entiende comandos coloquiales como "cierra eso" o "muéstrame el modo matemático".</li>
+                        <li><strong>Visualización Reactiva:</strong> El orbe cambia de color y pulsa en respuesta al volumen de tu voz y a los estados de la IA (escuchando, pensando, respondiendo).</li>
+                        <li><strong>Control de la UI:</strong> Aunque ya no es un cursor físico, SAM sigue teniendo control total. Puedes pedirle que abra menús, cambie de modo o ajuste configuraciones, y lo hará instantáneamente.</li>
+                        <li><strong>Dictado Inteligente:</strong> Di "escribe esto..." para dictar texto en el chat.</li>
                     </ul>
-                    <p className="text-xs bg-surface-secondary p-2 rounded border border-border-subtle mt-2">
-                        <strong>Pruébalo:</strong> Di "Abre la configuración", "Pon el tema oscuro", o "Activa Photosam".
-                    </p>
                 </DocItem>
 
                 <DocItem title="Photosam" icon={PhotoIcon}>
@@ -239,22 +242,6 @@ const UsageView: React.FC = () => (
     </div>
 );
 
-// Helper to wait for DOM elements to appear
-const waitForElement = (id: string, timeout = 4000): Promise<HTMLElement | null> => {
-    return new Promise((resolve) => {
-        const start = Date.now();
-        const check = () => {
-            const el = document.getElementById(id);
-            // Check if element exists and has dimensions (is visible)
-            if (el && (el.offsetParent !== null || el.getBoundingClientRect().width > 0)) {
-                return resolve(el);
-            }
-            if (Date.now() - start > timeout) return resolve(null);
-            requestAnimationFrame(check);
-        };
-        check();
-    });
-};
 
 const normalizeMode = (input: string): ModeID | undefined => {
     const lower = input.toLowerCase().trim();
@@ -321,6 +308,9 @@ const App: React.FC = () => {
     const [activeConversationState, setActiveConversationState] = useState<ActiveConversationState>('LISTENING');
     const [liveTranscription, setLiveTranscription] = useState<string>('');
     const [voiceVolume, setVoiceVolume] = useState(0);
+    const [voiceOrbMode, setVoiceOrbMode] = useState<'default' | 'explaining'>('default');
+    // UPDATED: explanationData now supports descriptions
+    const [explanationData, setExplanationData] = useState<{topic: string, points: {title: string, description: string}[]} | null>(null);
     
     const [chatInputText, setChatInputText] = useState('');
     const chatInputTextRef = useRef(chatInputText);
@@ -337,11 +327,21 @@ const App: React.FC = () => {
     const creditsRef = useRef<HTMLDivElement>(null);
     const verificationPanelRef = useRef<HTMLDivElement>(null);
     
-    const ghostCursorRef = useRef<GhostCursorHandle>(null);
-    
     const isPlusMenuOpenRef = useRef(isPlusMenuOpen);
     const activeViewRef = useRef(activeView);
     const sidebarOpenRef = useRef(sidebarOpen);
+    
+    // Refs to access latest state in voice tool executors
+    const chatsRef = useRef(chats);
+    const currentChatIdRef = useRef(currentChatId);
+
+    useEffect(() => {
+        chatsRef.current = chats;
+    }, [chats]);
+    
+    useEffect(() => {
+        currentChatIdRef.current = currentChatId;
+    }, [currentChatId]);
 
     useEffect(() => {
         isPlusMenuOpenRef.current = isPlusMenuOpen;
@@ -707,124 +707,78 @@ const App: React.FC = () => {
             playActivationSound();
             setVoiceModeState('activeConversation');
             setLiveTranscription('');
+            setVoiceOrbMode('default');
+            setExplanationData(null);
 
             const toolExecutors: AppToolExecutors = {
                 setInputText: (text: string) => {
                     setChatInputText(prev => prev + (prev ? ' ' : '') + text);
                 },
                 sendMessage: () => {
+                    // Trigger send message action directly without cursor animation
                      if (chatInputTextRef.current.trim()) {
-                         ghostCursorRef.current?.click('btn-send-message');
+                         // We need a way to trigger the send function from here
+                         const sendButton = document.getElementById('btn-send-message');
+                         if(sendButton) sendButton.click();
                      }
                 },
-                toggleSidebar: async (isOpen: boolean) => {
-                    const isCurrentlyOpen = sidebarOpenRef.current;
-                    if (isOpen && !isCurrentlyOpen) {
-                         await ghostCursorRef.current?.click('btn-toggle-sidebar');
-                         setSidebarOpen(true);
-                    } else if (!isOpen && isCurrentlyOpen) {
-                        await ghostCursorRef.current?.click('btn-close-sidebar');
-                        setSidebarOpen(false);
-                    }
+                toggleSidebar: (isOpen: boolean) => {
+                    setSidebarOpen(isOpen);
                 },
-                changeMode: async (modeRaw: string) => {
+                changeMode: (modeRaw: string) => {
                     const mode = normalizeMode(modeRaw);
                     if (!mode) return;
 
                     if (activeViewRef.current !== 'chat') {
-                        const chatBtn = document.getElementById('btn-nav-chat') || document.querySelector('[aria-label="Volver al chat"]');
-                        if (chatBtn) {
-                             await ghostCursorRef.current?.click(chatBtn.id || 'chat-header-btn');
-                             setActiveView('chat');
-                             await new Promise(r => setTimeout(r, 400));
-                        } else {
-                             setActiveView('chat');
-                             await new Promise(r => setTimeout(r, 400));
-                        }
+                         setActiveView('chat');
                     }
-
-                    if (!isPlusMenuOpenRef.current) {
-                        await ghostCursorRef.current?.click('btn-plus-menu');
-                        await new Promise(r => setTimeout(r, 800)); 
-                    }
-                    
-                    const btnId = `btn-mode-${mode}`;
-                    const btn = await waitForElement(btnId, 5000); 
-
-                    if (btn) {
-                        await new Promise(r => setTimeout(r, 300));
-                        await ghostCursorRef.current?.click(btnId);
-                    } else {
-                        if (isPlusMenuOpenRef.current) {
-                             await ghostCursorRef.current?.click('btn-plus-menu');
-                        }
-                        throw new Error(`No pude encontrar el botón para el modo ${mode}.`);
-                    }
+                    setCurrentMode(mode);
                 },
-                navigateToView: async (view: ViewID) => {
-                    if (window.innerWidth < 768 && !sidebarOpenRef.current) {
-                         await ghostCursorRef.current?.click('btn-toggle-sidebar');
-                         setSidebarOpen(true);
-                         await new Promise(r => setTimeout(r, 300));
-                    }
-                    const viewBtnId = `btn-nav-${view}`;
-                    if(activeViewRef.current !== view) {
-                         await ghostCursorRef.current?.click(viewBtnId);
-                    }
+                navigateToView: (view: ViewID) => {
+                    setActiveView(view);
                 },
-                toggleSettings: async (isOpen: boolean) => {
-                     if (isOpen) {
-                        if (window.innerWidth < 768 && !sidebarOpenRef.current) {
-                            await ghostCursorRef.current?.click('btn-toggle-sidebar');
-                            setSidebarOpen(true);
-                            await new Promise(r => setTimeout(r, 300));
-                        }
-                        await ghostCursorRef.current?.click('btn-settings');
-                     } else {
-                        await ghostCursorRef.current?.click('btn-close-settings');
-                     }
+                toggleSettings: (isOpen: boolean) => {
+                     setIsSettingsModalOpen(isOpen);
                 },
-                toggleUpdates: async (isOpen: boolean) => {
-                     if (isOpen) {
-                        if (window.innerWidth < 768 && !sidebarOpenRef.current) {
-                             await ghostCursorRef.current?.click('btn-toggle-sidebar');
-                             setSidebarOpen(true);
-                             await new Promise(r => setTimeout(r, 300));
-                        }
-                        await ghostCursorRef.current?.click('btn-updates');
-                     } else {
-                        await ghostCursorRef.current?.click('btn-close-updates');
-                     }
+                toggleUpdates: (isOpen: boolean) => {
+                     setIsUpdatesModalOpen(isOpen);
                 },
-                toggleCreators: async () => {
-                    if (window.innerWidth < 768 && !sidebarOpenRef.current) {
-                         await ghostCursorRef.current?.click('btn-toggle-sidebar');
-                         setSidebarOpen(true);
-                         await new Promise(r => setTimeout(r, 300));
-                    }
-                    await ghostCursorRef.current?.click('btn-creators');
+                toggleCreators: () => {
+                    // Functionality removed from sidebar direct toggle in this refactor context, can reopen sidebar if needed
+                    setSidebarOpen(true);
                 },
-                toggleCollaborators: async () => {
-                    if (window.innerWidth < 768 && !sidebarOpenRef.current) {
-                         await ghostCursorRef.current?.click('btn-toggle-sidebar');
-                         setSidebarOpen(true);
-                         await new Promise(r => setTimeout(r, 300));
-                    }
-                    await ghostCursorRef.current?.click('btn-collaborators');
+                toggleCollaborators: () => {
+                     setSidebarOpen(true);
                 },
-                scrollUi: async (target: string, direction: 'up' | 'down') => {
+                scrollUi: (target: string, direction: 'up' | 'down') => {
                     let selectorId = '';
                     if (target === 'sidebar') selectorId = 'sidebar-content';
                     if (target === 'chat') selectorId = 'chat-container';
                     if (target === 'settings_content') selectorId = 'settings-content';
                     if (target === 'settings_menu') selectorId = 'settings-menu';
                     
-                    if (selectorId) {
-                         await ghostCursorRef.current?.scroll(selectorId, direction);
+                    const element = document.getElementById(selectorId);
+                    if (element) {
+                         element.scrollBy({
+                            top: direction === 'down' ? 300 : -300,
+                            behavior: 'smooth'
+                        });
                     }
                 },
-                pointAtElement: async (elementId: string) => {
-                    // This functionality is part of the cursor's movement now.
+                readLastMessage: () => {
+                    const currentChat = chatsRef.current.find(c => c.id === currentChatIdRef.current);
+                    if (!currentChat || currentChat.messages.length === 0) return "No hay mensajes en este chat.";
+                    
+                    const lastSamMsg = [...currentChat.messages].reverse().find(m => m.author === 'sam');
+                    return lastSamMsg ? lastSamMsg.text : "SAM no ha dicho nada aún.";
+                },
+                visualExplain: (topic: string, points: {title: string, description: string}[]) => {
+                    setVoiceOrbMode('explaining');
+                    setExplanationData({ topic, points });
+                },
+                closeVisualExplanation: () => {
+                    setVoiceOrbMode('default');
+                    setExplanationData(null);
                 }
             };
             
@@ -861,7 +815,17 @@ const App: React.FC = () => {
         activeConversationRef.current = null;
         setVoiceModeState('inactive');
         setLiveTranscription('');
+        setVoiceOrbMode('default');
+        setExplanationData(null);
     }
+
+    const handleCloseVisualExplanation = () => {
+        setVoiceOrbMode('default');
+        setExplanationData(null);
+        // Optional: If we want to inform the AI that the user closed it manually, we could send a tool response, 
+        // but since we are triggering this from UI, we just update state. 
+        // The AI session remains active.
+    };
     
     const handleSaveEssay = (essay: Essay) => {
         if (editingEssay) {
@@ -1078,13 +1042,16 @@ const App: React.FC = () => {
 
     return (
         <div className={`flex h-screen bg-bg-main font-sans text-text-main ${settings.theme}`}>
-            <GhostCursor
-                ref={ghostCursorRef}
+            {/* Updated Voice Interface - The Orb */}
+            <VoiceOrb
                 isActive={voiceModeState === 'activeConversation'}
                 state={activeConversationState}
                 volume={voiceVolume}
                 onClose={handleEndVoiceSession}
+                onCloseExplanation={handleCloseVisualExplanation}
                 transcription={liveTranscription}
+                mode={voiceOrbMode}
+                explanationData={explanationData}
             />
             
             <Sidebar 

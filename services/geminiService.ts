@@ -1,6 +1,3 @@
-
-
-
 // FIX: Add missing imports for new functions
 import { GoogleGenAI, Modality, LiveServerMessage, Blob, Type, FunctionDeclaration, GenerateContentResponse, Tool } from "@google/genai";
 import type { Attachment, ChatMessage, ModeID, ModelType, EssaySection, Settings, ViewID } from '../types';
@@ -8,7 +5,7 @@ import { MessageAuthor } from '../types';
 import { generateSystemInstruction } from '../constants';
 
 // ¡IMPORTANTE! Clave API interna para el uso de la aplicación.
-const API_KEY = "AIzaSyD7XyzwMKSHYnyLqU--z5fp20oM9_en1rc";
+const API_KEY = process.env.API_KEY;
 
 const MODEL_MAP: Record<ModelType, string> = {
     'sm-i1': 'gemini-2.5-flash',
@@ -214,16 +211,6 @@ const appTools: Tool[] = [
                 }
             },
             {
-                name: 'toggle_creators',
-                description: 'Abre o cierra el panel de Creadores Principales en el sidebar.',
-                parameters: { type: Type.OBJECT, properties: {} }
-            },
-            {
-                name: 'toggle_collaborators',
-                description: 'Abre o cierra el panel de Colaboradores en el sidebar.',
-                parameters: { type: Type.OBJECT, properties: {} }
-            },
-            {
                 name: 'scroll_ui',
                 description: 'Hace scroll en una sección específica.',
                 parameters: {
@@ -236,15 +223,37 @@ const appTools: Tool[] = [
                 }
             },
             {
-                name: 'point_at_element',
-                description: 'Mueve tu orbe (tu cuerpo físico) para señalar un elemento en la pantalla sin hacer clic. Úsalo para explicar cosas o llamar la atención sobre un botón o área.',
+                name: 'read_last_message',
+                description: 'Lee el contenido del último mensaje del chat para entender el contexto o explicar algo que ya se dijo. Úsalo cuando el usuario diga "explica eso" o "qué quisiste decir".',
+                parameters: { type: Type.OBJECT, properties: {} }
+            },
+            {
+                name: 'visual_explain',
+                description: 'Genera un panel visual detallado para explicar un tema complejo. Úsalo cuando el usuario pida una explicación, resumen o "muéstramelo". Debes proporcionar 4 puntos con TÍTULO y DESCRIPCIÓN detallada para cada uno.',
                 parameters: {
                     type: Type.OBJECT,
                     properties: {
-                        elementId: { type: Type.STRING, description: 'El ID del elemento (ej: btn-settings, btn-mode-voice).' }
+                        topic: { type: Type.STRING, description: 'El tema central de la explicación.' },
+                        points: { 
+                            type: Type.ARRAY, 
+                            items: { 
+                                type: Type.OBJECT,
+                                properties: {
+                                    title: { type: Type.STRING, description: 'Título corto del punto clave (max 5 palabras).' },
+                                    description: { type: Type.STRING, description: 'Explicación clara y detallada del punto (20-40 palabras). Debe ser informativa.' }
+                                },
+                                required: ['title', 'description']
+                            },
+                            description: 'Array de exactamente 4 puntos clave detallados.' 
+                        }
                     },
-                    required: ['elementId']
+                    required: ['topic', 'points']
                 }
+            },
+            {
+                name: 'close_visual_explanation',
+                description: 'Cierra el modo de explicación visual y devuelve el orbe a la esquina.',
+                parameters: { type: Type.OBJECT, properties: {} }
             }
         ]
     }
@@ -261,7 +270,9 @@ export interface AppToolExecutors {
     toggleCreators: () => void;
     toggleCollaborators: () => void;
     scrollUi: (target: string, direction: 'up' | 'down') => void;
-    pointAtElement: (elementId: string) => void;
+    readLastMessage: () => string;
+    visualExplain: (topic: string, points: {title: string, description: string}[]) => void;
+    closeVisualExplanation: () => void;
 }
 
 
@@ -346,12 +357,13 @@ export const startActiveConversation = async (
     // Updated instruction to be aware of tools
     const fullSystemInstruction = `${systemInstruction}
     
-    IMPORTANT: You are an intelligent, physical "Agent" living in the interface.
-    - **BE INTELLIGENT & NATURAL**: Stop acting like a robot describing every step ("I am moving my orb to click the button now"). Instead, act naturally like a helpful human. Say things like "Sure, closing that for you", "Opening settings", "Here is the sidebar".
-    - **YOUR BODY IS THE ORB**: You physically exist on the screen. To interact, you MUST use your tools to move your orb.
-    - **SIDEBAR CONTROL**: To CLOSE the sidebar, you must use \`toggle_sidebar(false)\`. To OPEN it, use \`toggle_sidebar(true)\`.
-    - **CONTEXT AWARE**: If the user is typing, offer to help dictate. If they are looking at code, offer to debug.
-    - **PERSONALITY**: Be charming, smart, and slightly witty. You are not just a tool, you are a companion.
+    IMPORTANT: You are SAM, an intelligent voice assistant fully integrated into this application.
+    - **NATURAL CONTROL**: You can control the UI directly using your tools. No need to explain how you do it, just do it naturally.
+    - **CONTEXT AWARE**: Use \`read_last_message\` if the user asks to explain the previous chat response or says "explain that".
+    - **VISUAL EXPLANATION**: If the user asks for an explanation, a summary, or to "explain visually", use \`visual_explain\` to move to the center and show a dashboard. 
+    - **CRITICAL**: When using \`visual_explain\`, you MUST provide a \`description\` for each point that is informative and roughly 20-40 words long. The user relies on these descriptions to understand the topic.
+    - **SIDEBAR CONTROL**: To CLOSE the sidebar, use \`toggle_sidebar(false)\`. To OPEN it, use \`toggle_sidebar(true)\`.
+    - **PERSONALITY**: Be charming, smart, and helpful. You are the central brain of the app.
     `;
 
     const sessionPromise = ai.live.connect({
@@ -413,7 +425,7 @@ export const startActiveConversation = async (
                     
                     for (const fc of message.toolCall.functionCalls) {
                         console.log("Executing tool:", fc.name, fc.args);
-                        let result = { result: "ok" };
+                        let result: any = { result: "ok" };
                         
                         try {
                             // Wrap in async to handle the UI delays
@@ -449,8 +461,15 @@ export const startActiveConversation = async (
                                     case 'scroll_ui':
                                         toolExecutors.scrollUi((fc.args as any).target, (fc.args as any).direction);
                                         break;
-                                    case 'point_at_element':
-                                        toolExecutors.pointAtElement((fc.args as any).elementId);
+                                    case 'read_last_message':
+                                        const lastMsg = toolExecutors.readLastMessage();
+                                        result = { last_message_content: lastMsg };
+                                        break;
+                                    case 'visual_explain':
+                                        toolExecutors.visualExplain((fc.args as any).topic, (fc.args as any).points);
+                                        break;
+                                    case 'close_visual_explanation':
+                                        toolExecutors.closeVisualExplanation();
                                         break;
                                     default:
                                         console.warn("Unknown tool call:", fc.name);

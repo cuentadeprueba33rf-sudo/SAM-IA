@@ -1,9 +1,10 @@
+
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import PlusMenu from '../PlusMenu';
 import FilePreview from './FilePreview';
 import type { Attachment, ModeID, Settings, UsageTracker } from '../types';
 import { MODES } from '../constants';
-import { ArrowUpIcon, XMarkIcon, ChevronDownIcon, SparklesIcon, PlusIcon, AdjustmentsHorizontalIcon, PhotoIcon, Bars3Icon, MicrophoneIcon, BoltIcon, LockClosedIcon, GiftIcon, CheckBadgeIcon } from './icons';
+import { ArrowUpIcon, XMarkIcon, ChevronDownIcon, SparklesIcon, PlusIcon, AdjustmentsHorizontalIcon, PhotoIcon, Bars3Icon, MicrophoneIcon, BoltIcon, LockClosedIcon, GiftIcon, CheckBadgeIcon, SpeakerWaveIcon } from './icons';
 
 type VoiceModeState = 'inactive' | 'activeConversation';
 type ActiveConversationState = 'LISTENING' | 'RESPONDING' | 'THINKING';
@@ -33,43 +34,6 @@ interface ChatInputProps {
     isPreregisteredForSML3_9: boolean;
     onOpenPreregistrationModal: () => void;
 }
-
-const ActiveConversationUI: React.FC<{
-    onEndSession: () => void;
-    conversationState: ActiveConversationState;
-    transcription: string;
-}> = ({ onEndSession, conversationState, transcription }) => {
-    let statusText = '';
-    
-    switch (conversationState) {
-        case 'LISTENING':
-            statusText = 'Escuchando...';
-            break;
-        case 'RESPONDING':
-            statusText = 'SAM está respondiendo...';
-            break;
-        case 'THINKING':
-            statusText = 'Procesando...';
-            break;
-    }
-
-    return (
-        <div className="bg-[#1E1F20] p-4 rounded-[2rem] border border-white/10 shadow-2xl w-full transition-all flex flex-col items-center gap-4 st-border relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 opacity-50 pointer-events-none" />
-            <div className="flex items-center gap-3 text-gray-200 z-10">
-                <div className={`w-3 h-3 rounded-full shadow-[0_0_10px_currentColor] ${conversationState === 'LISTENING' ? 'bg-green-400 text-green-400' : 'bg-white text-white animate-pulse'}`}></div>
-                <span className="font-medium tracking-wide">{statusText}</span>
-            </div>
-            <p className="text-white text-center h-6 text-sm truncate w-full px-4 font-light z-10">{transcription}</p>
-            <button
-                onClick={onEndSession}
-                className="px-6 py-2 bg-red-500/20 text-red-200 border border-red-500/30 text-sm font-semibold rounded-full hover:bg-red-500/30 transition-colors z-10"
-            >
-                Finalizar
-            </button>
-        </div>
-    );
-};
 
 // Reusable Model Selector Component
 const ModelSelector: React.FC<{
@@ -379,6 +343,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
         adjustTextareaHeight();
     }, [inputText, adjustTextareaHeight]);
     
+    // Ensure focus only when enabled and not in voice mode (optionally, though user requested typing during voice)
+    // We'll keep focus management loose to allow user override
     useEffect(() => {
         if(!disabled && textareaRef.current && voiceModeState === 'inactive') {
             textareaRef.current.focus();
@@ -406,13 +372,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
     
     return (
         <>
-            {voiceModeState === 'activeConversation' && !isPlusMenuOpen && (
-                <ActiveConversationUI 
-                    onEndSession={onEndVoiceSession} 
-                    conversationState={activeConversationState}
-                    transcription={liveTranscription} 
-                />
-            )}
             <div className="w-full relative">
                 {isPlusMenuOpen && <PlusMenu onAction={(mode, accept, capture) => {
                     onModeAction(mode, accept, capture);
@@ -425,7 +384,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                     </div>
                 )}
                 
-                <div className="flex items-end bg-surface-primary dark:bg-[#1E1F20] rounded-[2rem] p-3 gap-3 shadow-2xl border border-border-subtle st-border relative z-20">
+                <div className={`flex items-end bg-surface-primary dark:bg-[#1E1F20] rounded-[2rem] p-3 gap-3 shadow-2xl border border-border-subtle st-border relative z-20 ${voiceModeState === 'activeConversation' ? 'ring-2 ring-accent/50' : ''}`}>
                     
                     {/* Left Actions (Grouped: Sidebar Toggle & Plus Menu) */}
                     <div className="flex items-center gap-2 mb-1">
@@ -487,7 +446,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                             value={inputText}
                             onChange={(e) => onInputTextChange(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder={placeholder}
+                            placeholder={voiceModeState === 'activeConversation' ? "Escuchando... (puedes escribir también)" : placeholder}
                             className="w-full bg-transparent resize-none outline-none text-text-main max-h-48 py-2 px-2 mt-4 text-base leading-relaxed placeholder:text-text-secondary/60"
                             rows={1}
                             disabled={disabled}
@@ -509,12 +468,16 @@ const ChatInput: React.FC<ChatInputProps> = ({
                         ) : (
                             <button
                                 id="btn-mode-voice-input" 
-                                onClick={() => onModeAction('voice')}
-                                disabled={disabled}
-                                className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors text-text-main hover:bg-white/10 disabled:opacity-50 st-mic-button"
-                                aria-label="Use voice"
+                                onClick={voiceModeState === 'activeConversation' ? onEndVoiceSession : () => onModeAction('voice')}
+                                disabled={disabled && voiceModeState === 'inactive'}
+                                className={`flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors disabled:opacity-50 st-mic-button ${voiceModeState === 'activeConversation' ? 'bg-red-500 text-white animate-pulse' : 'text-text-main hover:bg-white/10'}`}
+                                aria-label={voiceModeState === 'activeConversation' ? "Stop voice" : "Use voice"}
                             >
-                                <MicrophoneIcon className="w-6 h-6 st-icon"/>
+                                {voiceModeState === 'activeConversation' ? (
+                                    <div className="w-3 h-3 bg-white rounded-sm" />
+                                ) : (
+                                    <MicrophoneIcon className="w-6 h-6 st-icon"/>
+                                )}
                             </button>
                         )}
                     </div>
