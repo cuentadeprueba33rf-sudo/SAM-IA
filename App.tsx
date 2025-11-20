@@ -1,14 +1,5 @@
 
 
-
-
-
-
-
-
-
-
-
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import Sidebar from './components/Sidebar';
@@ -31,6 +22,7 @@ import PreregistrationModal from './components/PreregistrationModal';
 import ChatMessageItem from './components/ChatMessage';
 import VoiceOrb from './components/VoiceOrb';
 import SamStudios from './components/SamStudios';
+import VoxelToyBox from './components/VoxelToyBox';
 import { streamGenerateContent, generateImage, startActiveConversation, detectMode, AppToolExecutors } from './services/geminiService';
 import {
     Chat, ChatMessage, MessageAuthor, Attachment, ModeID, Settings,
@@ -929,13 +921,17 @@ const App: React.FC = () => {
                     onNavigateBack={() => setActiveView('chat')} 
                     onOpenApp={(appId) => setActiveView(appId as ViewID)} 
                 />
+            },
+            voxel_toy_box: {
+                title: 'Voxel Toy Box',
+                component: <VoxelToyBox onNavigateBack={() => setActiveView('sam_studios')} />
             }
         };
 
         const viewConfig = secondaryViews[activeView];
 
         if (viewConfig) {
-            if(activeView === 'sam_studios' || activeView === 'insights') {
+            if(activeView === 'sam_studios' || activeView === 'insights' || activeView === 'voxel_toy_box') {
                  return viewConfig.component;
             }
 

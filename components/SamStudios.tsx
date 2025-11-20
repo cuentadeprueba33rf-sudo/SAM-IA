@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { ChevronLeftIcon, MagnifyingGlassIcon, PencilSquareIcon } from './icons';
+import { ChevronLeftIcon, MagnifyingGlassIcon, PencilSquareIcon, CubeTransparentIcon } from './icons';
 
 interface SamStudiosProps {
     onNavigateBack: () => void;
@@ -32,6 +33,26 @@ const SamStudios: React.FC<SamStudiosProps> = ({ onNavigateBack, onOpenApp }) =>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {/* Voxel Toy Box Card */}
+                         <div className="bg-surface-primary border border-border-subtle rounded-xl p-4 hover:border-accent transition-colors cursor-pointer flex flex-col h-full relative group overflow-hidden" onClick={() => onOpenApp('voxel_toy_box')}>
+                             <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/20 to-blue-900/20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+                             <div className="flex items-start gap-4 mb-3 relative z-10">
+                                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center flex-shrink-0 border border-white/10 shadow-lg shadow-indigo-500/30">
+                                    <CubeTransparentIcon className="w-7 h-7 text-white" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-text-main text-lg">Voxel Toy Box</h3>
+                                    <p className="text-xs text-text-secondary mt-0.5">Por SAM Studios</p>
+                                </div>
+                            </div>
+                            <p className="text-sm text-text-secondary mb-4 flex-1 relative z-10">
+                                Construye, destruye y reconstruye modelos 3D con física. Usa la IA para generar nuevas creaciones.
+                            </p>
+                             <div className="relative z-10 text-xs font-medium text-indigo-400 bg-indigo-400/10 px-2 py-1 rounded w-fit flex items-center gap-1">
+                                <span>✨ Powered by AI</span>
+                            </div>
+                        </div>
+
                         {/* Photosam Card */}
                         <div className="bg-surface-primary border border-border-subtle rounded-xl p-4 hover:border-accent transition-colors cursor-pointer flex flex-col h-full" onClick={() => onOpenApp('photosam')}>
                             <div className="flex items-start gap-4 mb-3">
@@ -67,27 +88,6 @@ const SamStudios: React.FC<SamStudiosProps> = ({ onNavigateBack, onOpenApp }) =>
                             </p>
                              <div className="text-xs font-medium text-text-secondary bg-surface-secondary px-2 py-1 rounded w-fit">
                                 Coming Soon
-                            </div>
-                        </div>
-                        
-                        <div className="bg-surface-primary border border-border-subtle rounded-xl p-4 opacity-50 cursor-not-allowed flex flex-col h-full">
-                            <div className="flex items-start gap-4 mb-3">
-                                <div className="w-12 h-12 rounded-full bg-surface-secondary flex items-center justify-center flex-shrink-0">
-                                    <div className="w-6 h-6 bg-border-subtle rounded-sm"></div>
-                                </div>
-                                <div>
-                                    <div className="h-5 w-32 bg-surface-secondary rounded mb-1"></div>
-                                    <div className="h-3 w-20 bg-surface-secondary rounded"></div>
-                                </div>
-                            </div>
-                            <p className="text-sm text-text-secondary mb-4 flex-1">
-                                <div className="space-y-2">
-                                    <div className="h-3 w-full bg-surface-secondary rounded"></div>
-                                    <div className="h-3 w-5/6 bg-surface-secondary rounded"></div>
-                                </div>
-                            </p>
-                             <div className="text-xs font-medium text-text-secondary">
-                                Próximamente
                             </div>
                         </div>
                     </div>
