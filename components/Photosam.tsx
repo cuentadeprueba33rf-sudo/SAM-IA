@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import type { Attachment } from '../types';
 import { ChevronLeftIcon, ShareIcon, ArrowDownTrayIcon, PlusIcon, SparklesIcon, XMarkIcon, PhotoIcon } from './icons';
@@ -114,105 +115,179 @@ const Photosam: React.FC<PhotosamProps> = ({ onNavigateBack, onShareToChat }) =>
     const renderDisplay = () => {
         if (isLoading) {
             return (
-                <div className="flex flex-col items-center justify-center h-full text-center">
-                    <SparklesIcon className="w-16 h-16 text-accent animate-pulse mb-4" />
+                <div className="flex flex-col items-center justify-center h-full text-center p-6">
+                    <SparklesIcon className="w-12 h-12 md:w-16 md:h-16 text-accent animate-pulse mb-4" />
                     <p className="text-lg font-semibold text-text-main">Pensando...</p>
-                    <p className="text-text-secondary transition-opacity duration-300">{thinkingMessage}</p>
+                    <p className="text-sm text-text-secondary transition-opacity duration-300 mt-1">{thinkingMessage}</p>
                 </div>
             );
         }
         if (error) {
-            return <div className="flex items-center justify-center h-full text-center text-danger p-4">{error}</div>;
+            return <div className="flex items-center justify-center h-full text-center text-danger p-6 text-sm font-medium">{error}</div>;
         }
         if (resultImage) {
-            return <img src={resultImage.data} alt="Generated result" className="w-full h-full object-contain" />;
+            return <img src={resultImage.data} alt="Generated result" className="w-full h-full object-contain bg-black/5" />;
         }
         return (
-            <div className="flex flex-col items-center justify-center h-full text-center text-text-secondary p-4">
-                <PhotoIcon className="w-24 h-24 mb-4"/>
-                <p>Tu próxima creación aparecerá aquí.</p>
+            <div className="flex flex-col items-center justify-center h-full text-center text-text-secondary p-6">
+                <div className="w-20 h-20 bg-surface-secondary rounded-full flex items-center justify-center mb-4 border border-border-subtle">
+                     <PhotoIcon className="w-10 h-10 opacity-50"/>
+                </div>
+                <p className="text-sm font-medium">Tu creación aparecerá aquí.</p>
             </div>
         );
     };
 
     return (
-        <div className="flex flex-col h-full w-full bg-bg-main">
-            <header className="flex items-center p-4 border-b border-border-subtle flex-shrink-0">
-                <button onClick={onNavigateBack} className="p-2 rounded-full hover:bg-surface-secondary">
-                    <ChevronLeftIcon className="w-6 h-6" />
+        <div className="flex flex-col h-full w-full bg-bg-main overflow-hidden">
+            {/* Header */}
+            <header className="flex items-center p-3 md:p-4 border-b border-border-subtle flex-shrink-0 bg-surface-primary z-20">
+                <button onClick={onNavigateBack} className="p-2 rounded-full hover:bg-surface-secondary transition-colors">
+                    <ChevronLeftIcon className="w-6 h-6 text-text-secondary" />
                 </button>
-                <h1 className="text-xl font-semibold ml-4">Photosam</h1>
+                <h1 className="text-lg md:text-xl font-semibold ml-3 text-text-main">Photosam</h1>
                  {resultImage && (
                     <div className="ml-auto flex items-center gap-2">
-                        <button onClick={handleDownload} className="flex items-center gap-2 text-sm font-medium bg-surface-secondary px-3 py-1.5 rounded-lg hover:bg-border-subtle"><ArrowDownTrayIcon className="w-4 h-4" />Descargar</button>
-                        <button onClick={handleShare} className="flex items-center gap-2 text-sm font-semibold bg-accent text-white px-4 py-1.5 rounded-lg hover:opacity-90"><ShareIcon className="w-4 h-4" />Compartir</button>
+                        <button onClick={handleDownload} className="flex items-center gap-2 text-xs md:text-sm font-medium bg-surface-secondary px-3 py-2 rounded-lg hover:bg-border-subtle transition-colors">
+                            <ArrowDownTrayIcon className="w-4 h-4" />
+                            <span className="hidden sm:inline">Descargar</span>
+                        </button>
+                        <button onClick={handleShare} className="flex items-center gap-2 text-xs md:text-sm font-semibold bg-accent text-white px-3 py-2 rounded-lg hover:opacity-90 transition-opacity shadow-lg shadow-accent/20">
+                            <ShareIcon className="w-4 h-4" />
+                            <span>Compartir</span>
+                        </button>
                     </div>
                  )}
             </header>
-            <main className="flex-1 flex overflow-hidden">
-                {/* Control Panel */}
-                <div className="w-full md:w-1/3 h-full border-r border-border-subtle p-4 overflow-y-auto flex flex-col gap-4">
+
+            <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+                
+                {/* Control Panel (Sidebar on Desktop, Bottom Sheet on Mobile) */}
+                <div className="w-full md:w-80 lg:w-96 flex-1 md:flex-none border-t md:border-t-0 md:border-r border-border-subtle p-4 md:p-6 overflow-y-auto flex flex-col gap-6 order-2 md:order-1 bg-surface-primary/95 md:bg-surface-primary backdrop-blur-sm z-10 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] md:shadow-none">
+                    
                     {/* Main Image */}
-                     <div className="space-y-2">
-                        <label className="font-semibold text-sm">Imagen Principal</label>
-                        <ImageUploader onUpload={setMainImage} className="w-full">
-                            <div className="w-full h-40 bg-surface-secondary rounded-lg border-2 border-dashed border-border-subtle flex items-center justify-center text-text-secondary cursor-pointer hover:border-accent hover:text-accent transition-colors">
-                                {mainImage ? <img src={mainImage.data} alt="Main upload" className="w-full h-full object-cover rounded-md" /> : <PlusIcon className="w-8 h-8"/>}
+                     <div className="space-y-3">
+                        <label className="font-semibold text-sm text-text-main flex items-center gap-2">
+                            Imagen Principal
+                            <span className="text-xs font-normal text-text-secondary bg-surface-secondary px-2 py-0.5 rounded-full">Opcional</span>
+                        </label>
+                        <ImageUploader onUpload={setMainImage} className="w-full group">
+                            <div className="w-full h-32 md:h-40 bg-surface-secondary/50 rounded-xl border-2 border-dashed border-border-subtle flex items-center justify-center text-text-secondary cursor-pointer group-hover:border-accent group-hover:bg-accent/5 transition-all duration-200 relative overflow-hidden">
+                                {mainImage ? (
+                                    <>
+                                        <img src={mainImage.data} alt="Main upload" className="w-full h-full object-cover" />
+                                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <p className="text-white text-xs font-medium">Cambiar imagen</p>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="flex flex-col items-center gap-2">
+                                        <PlusIcon className="w-8 h-8 opacity-50 group-hover:scale-110 transition-transform"/>
+                                        <span className="text-xs font-medium">Subir foto</span>
+                                    </div>
+                                )}
                             </div>
                         </ImageUploader>
                     </div>
-                    {/* Ingredients */}
-                    <div className="flex items-center justify-between">
-                        <label className="font-semibold text-sm">Añadir ingredientes</label>
-                        <button onClick={() => setAddIngredients(!addIngredients)} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${addIngredients ? 'bg-accent' : 'bg-border-subtle'}`}>
-                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${addIngredients ? 'translate-x-6' : 'translate-x-1'}`} />
+
+                    {/* Ingredients Toggle */}
+                    <div className="flex items-center justify-between py-2">
+                        <label className="font-semibold text-sm text-text-main">Mezclar Ingredientes</label>
+                        <button 
+                            onClick={() => setAddIngredients(!addIngredients)} 
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent ${addIngredients ? 'bg-accent' : 'bg-border-subtle'}`}
+                        >
+                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ease-in-out ${addIngredients ? 'translate-x-6' : 'translate-x-1'}`} />
                         </button>
                     </div>
+
+                    {/* Ingredients Grid */}
                     {addIngredients && (
-                        <div className="grid grid-cols-4 gap-2">
+                        <div className="grid grid-cols-4 gap-3 animate-fade-in">
                             {ingredients.map((ing, i) => (
-                                <div key={i} className="relative">
-                                    <ImageUploader onUpload={(att) => handleIngredientUpload(att, i)} className="w-full">
-                                        <div className="aspect-square bg-surface-secondary rounded-md border-2 border-dashed border-border-subtle flex items-center justify-center text-text-secondary cursor-pointer hover:border-accent hover:text-accent">
-                                            {ing ? <img src={ing.data} alt={`Ingredient ${i}`} className="w-full h-full object-cover rounded-sm" /> : <PlusIcon className="w-5 h-5"/>}
+                                <div key={i} className="relative group aspect-square">
+                                    <ImageUploader onUpload={(att) => handleIngredientUpload(att, i)} className="w-full h-full">
+                                        <div className="w-full h-full bg-surface-secondary/50 rounded-xl border-2 border-dashed border-border-subtle flex items-center justify-center text-text-secondary cursor-pointer hover:border-accent hover:bg-accent/5 transition-all relative overflow-hidden">
+                                            {ing ? <img src={ing.data} alt={`Ingredient ${i}`} className="w-full h-full object-cover" /> : <PlusIcon className="w-5 h-5 opacity-50"/>}
                                         </div>
                                     </ImageUploader>
-                                    {ing && <button onClick={() => removeIngredient(i)} className="absolute -top-1 -right-1 bg-danger text-white rounded-full p-0.5"><XMarkIcon className="w-3 h-3"/></button>}
+                                    {ing && (
+                                        <button 
+                                            onClick={() => removeIngredient(i)} 
+                                            className="absolute -top-2 -right-2 bg-danger text-white rounded-full p-1 shadow-md hover:scale-110 transition-transform z-10"
+                                        >
+                                            <XMarkIcon className="w-3 h-3"/>
+                                        </button>
+                                    )}
                                 </div>
                             ))}
                         </div>
                     )}
-                     {/* Prompt */}
-                    <div className="flex-1 flex flex-col">
-                        <label className="font-semibold text-sm mb-2">Prompt</label>
-                        <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="Describe tu visión..." className="w-full flex-1 bg-surface-secondary border border-border-subtle rounded-lg p-2 text-sm resize-none outline-none focus:ring-1 focus:ring-accent" />
+
+                    <div className="h-px bg-border-subtle w-full"></div>
+
+                     {/* Prompt Input */}
+                    <div className="flex-1 flex flex-col min-h-[100px]">
+                        <label className="font-semibold text-sm mb-2 text-text-main">Prompt Mágico</label>
+                        <textarea 
+                            value={prompt} 
+                            onChange={e => setPrompt(e.target.value)} 
+                            placeholder="¿Qué quieres crear hoy? Describe tu visión con detalle..." 
+                            className="w-full flex-1 bg-surface-secondary border border-border-subtle rounded-xl p-3 text-sm resize-none outline-none focus:ring-2 focus:ring-accent focus:bg-surface-primary transition-all placeholder:text-text-secondary/50" 
+                        />
                     </div>
-                    {/* Styles */}
+
+                    {/* Style Selector */}
                     <div>
-                        <label className="font-semibold text-sm mb-2 block">Estilo</label>
-                        <div className="grid grid-cols-2 gap-2">
+                        <label className="font-semibold text-sm mb-3 block text-text-main">Estilo Artístico</label>
+                        <div className="grid grid-cols-2 gap-3">
                             {styles.map(style => (
-                                <button key={style} onClick={() => setActiveStyle(style)} className={`px-3 py-2 text-sm rounded-lg border-2 transition-colors ${activeStyle === style ? 'bg-accent/10 border-accent text-accent font-semibold' : 'bg-surface-secondary border-transparent text-text-secondary hover:bg-border-subtle'}`}>{style}</button>
+                                <button 
+                                    key={style} 
+                                    onClick={() => setActiveStyle(style)} 
+                                    className={`px-3 py-2.5 text-sm rounded-xl border-2 transition-all duration-200 font-medium ${activeStyle === style ? 'bg-accent/10 border-accent text-accent shadow-sm' : 'bg-surface-secondary border-transparent text-text-secondary hover:bg-surface-secondary/80 hover:border-border-subtle'}`}
+                                >
+                                    {style}
+                                </button>
                             ))}
                         </div>
                     </div>
+
                     {/* Generate Button */}
-                    <button onClick={handleGenerate} disabled={isLoading} className="w-full bg-accent text-white font-semibold py-3 rounded-lg hover:opacity-90 disabled:opacity-50 mt-auto">
-                        {isLoading ? 'Generando...' : 'Generar'}
+                    <button 
+                        onClick={handleGenerate} 
+                        disabled={isLoading} 
+                        className="w-full bg-accent text-white font-bold py-3.5 rounded-xl hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed mt-auto shadow-lg shadow-accent/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                    >
+                        {isLoading ? (
+                            <>
+                                <SparklesIcon className="w-5 h-5 animate-spin"/>
+                                Generando...
+                            </>
+                        ) : (
+                            <>
+                                <SparklesIcon className="w-5 h-5"/>
+                                Generar Imagen
+                            </>
+                        )}
                     </button>
                 </div>
-                {/* Display */}
-                <div className="flex-1 h-full bg-dots flex items-center justify-center p-4">
-                    <div className="w-full h-full max-w-2xl max-h-2xl bg-surface-primary rounded-lg shadow-lg border border-border-subtle">
+
+                {/* Display Area (Top on Mobile, Right on Desktop) */}
+                <div className="w-full md:flex-1 h-[40vh] md:h-full bg-dots flex items-center justify-center p-4 md:p-8 order-1 md:order-2 flex-shrink-0 relative bg-surface-secondary/30">
+                    <div className="w-full h-full max-w-3xl max-h-full bg-surface-primary rounded-2xl shadow-xl border border-border-subtle overflow-hidden flex items-center justify-center relative">
                         {renderDisplay()}
                     </div>
                 </div>
+
             </main>
              <style>{`
                 .bg-dots {
                     background-image: radial-gradient(var(--color-border-subtle) 1px, transparent 1px);
-                    background-size: 16px 16px;
+                    background-size: 20px 20px;
                 }
+                @keyframes fade-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+                .animate-fade-in { animation: fade-in 0.3s ease-out; }
             `}</style>
         </div>
     );
