@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ChevronLeftIcon, MagnifyingGlassIcon, PencilSquareIcon, CubeTransparentIcon } from './icons';
+import { ChevronLeftIcon, MagnifyingGlassIcon, PencilSquareIcon, CubeTransparentIcon, BeakerIcon } from './icons';
 
 interface SamStudiosProps {
     onNavigateBack: () => void;
@@ -72,7 +72,26 @@ const SamStudios: React.FC<SamStudiosProps> = ({ onNavigateBack, onOpenApp }) =>
                             </div>
                         </div>
                         
-                        {/* Image Editor AI Card */}
+                        {/* Logic Lab Card */}
+                        <div className="bg-surface-primary border border-border-subtle rounded-xl p-4 hover:border-teal-500 transition-colors cursor-pointer flex flex-col h-full" onClick={() => onOpenApp('logic_lab')}>
+                           <div className="flex items-start gap-4 mb-3">
+                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center flex-shrink-0 border border-white/10">
+                                    <BeakerIcon className="w-7 h-7 text-white" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-text-main text-lg">Logic Lab</h3>
+                                    <p className="text-xs text-text-secondary mt-0.5">Por SAM Studios</p>
+                                </div>
+                            </div>
+                            <p className="text-sm text-text-secondary mb-4 flex-1">
+                                Laboratorio de ingeniería de prompts. Diseña, prueba y calibra tus propios agentes de IA.
+                            </p>
+                             <div className="text-xs font-medium text-teal-500 bg-teal-500/10 px-2 py-1 rounded w-fit">
+                                Developer Tool
+                            </div>
+                        </div>
+
+                        {/* Image Editor AI Card (Coming Soon) */}
                         <div className="bg-surface-primary border border-border-subtle rounded-xl p-4 opacity-50 cursor-not-allowed flex flex-col h-full">
                            <div className="flex items-start gap-4 mb-3">
                                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-teal-600 flex items-center justify-center flex-shrink-0 border border-white/10">

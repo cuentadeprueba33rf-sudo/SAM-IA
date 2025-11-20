@@ -1,3 +1,4 @@
+
 // FIX: Add missing imports for new functions
 import { GoogleGenAI, Modality, LiveServerMessage, Blob, Type, FunctionDeclaration, GenerateContentResponse, Tool } from "@google/genai";
 import type { Attachment, ChatMessage, ModeID, ModelType, EssaySection, Settings, ViewID } from '../types';
@@ -5,7 +6,7 @@ import { MessageAuthor } from '../types';
 import { generateSystemInstruction } from '../constants';
 
 // ¡IMPORTANTE! Clave API interna para el uso de la aplicación.
-const API_KEY = process.env.API_KEY;
+const API_KEY = 'AIzaSyD7XyzwMKSHYnyLqU--z5fp20oM9_en1rc';
 
 const MODEL_MAP: Record<ModelType, string> = {
     'sm-i1': 'gemini-2.5-flash',
@@ -183,7 +184,7 @@ const appTools: Tool[] = [
                 parameters: {
                     type: Type.OBJECT,
                     properties: {
-                        view: { type: Type.STRING, description: 'El ID del vista: "chat", "canvas", "insights", "documentation", "usage", "canvas_dev_pro".' }
+                        view: { type: Type.STRING, description: 'El ID del vista: "chat", "canvas", "insights", "documentation", "usage", "canvas_dev_pro", "sam_studios", "voxel_toy_box", "logic_lab".' }
                     },
                     required: ['view']
                 }
@@ -564,6 +565,7 @@ export const streamGenerateContent = async ({
     onLogUpdate,
     onComplete,
     onError,
+    generationConfig,
 }: {
     prompt: string;
     systemInstruction: string;
@@ -576,6 +578,12 @@ export const streamGenerateContent = async ({
     onLogUpdate: (logs: string[]) => void;
     onComplete: (fullText: string, groundingChunks?: any[], consoleLogs?: string[]) => void;
     onError: (error: Error) => void;
+    generationConfig?: {
+        temperature?: number;
+        topK?: number;
+        topP?: number;
+        maxOutputTokens?: number;
+    };
 }) => {
     try {
         if (!API_KEY) throw new Error("API key not configured.");
@@ -612,6 +620,7 @@ export const streamGenerateContent = async ({
             config: {
                 systemInstruction: systemInstruction,
                 tools: (mode === 'search' || mode === 'architect') ? [{googleSearch: {}}] : undefined,
+                ...generationConfig // Spread the optional generation config here
             },
         };
 
