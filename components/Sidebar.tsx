@@ -9,7 +9,8 @@ import {
     BookOpenIcon,
     MegaphoneIcon,
     ViewColumnsIcon,
-    CheckBadgeIcon
+    CheckBadgeIcon,
+    ShieldCheckIcon
 } from './icons';
 import type { ViewID } from '../types';
 import { signInWithGoogle, logout } from '../services/firebase';
@@ -35,6 +36,7 @@ interface SidebarProps {
     activeView: ViewID;
     onSelectView: (view: ViewID) => void;
     currentUser?: any;
+    onOpenAdmin?: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
@@ -49,7 +51,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     onShowContextMenu,
     activeView,
     onSelectView,
-    currentUser
+    currentUser,
+    onOpenAdmin
 }) => {
     const [localUserName, setLocalUserName] = useState('');
     
@@ -161,6 +164,19 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 </button>
                             </li>
                         ))}
+                        
+                        {/* Admin Panel Button (Only for admin) */}
+                        {isAdmin && onOpenAdmin && (
+                            <li key="admin">
+                                <button 
+                                    onClick={onOpenAdmin}
+                                    className="w-full flex items-center gap-4 px-3 py-2.5 rounded-lg text-left text-sm font-bold transition-colors bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 mt-2"
+                                >
+                                    <ShieldCheckIcon className="w-6 h-6" />
+                                    <span>Admin Panel</span>
+                                </button>
+                            </li>
+                        )}
                     </ul>
                 </nav>
 

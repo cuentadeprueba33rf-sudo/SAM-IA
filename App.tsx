@@ -26,8 +26,10 @@ import LogicLab from './components/LogicLab';
 import EchoRealms from './components/EchoRealms';
 import ChronoLense from './components/ChronoLense';
 import RealityScanner from './components/RealityScanner';
+import AdminBroadcast from './components/AdminBroadcast';
+import GlobalNotification from './components/GlobalNotification';
 import { streamGenerateContent, generateImage, startActiveConversation, detectMode, AppToolExecutors } from './services/geminiService';
-import { auth, onAuthStateChanged, signInWithGoogle, logout } from './services/firebase';
+import { auth, onAuthStateChanged, signInWithGoogle, logout, subscribeToAnnouncements, GlobalMessage } from './services/firebase';
 import {
     Chat, ChatMessage, MessageAuthor, Attachment, ModeID, Settings,
     ModelType, Artifact, ViewID, Essay, Insight, UsageTracker
@@ -290,6 +292,8 @@ const App: React.FC = () => {
     const [isPreregistrationModalOpen, setIsPreregistrationModalOpen] = useState(false);
     const [isPreregisteredForSML3_9, setIsPreregisteredForSML3_9] = useState(false);
     const [currentUser, setCurrentUser] = useState<any>(null);
+    const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
+    const [globalAnnouncement, setGlobalAnnouncement] = useState<GlobalMessage | null>(null);
     
     const [usage, setUsage] = useState<UsageTracker>({ date: new Date().toISOString().split('T')[0], count: 0, hasAttachment: false });
 
@@ -327,6 +331,14 @@ const App: React.FC = () => {
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             setCurrentUser(user);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    // Listen for Global Announcements
+    useEffect(() => {
+        const unsubscribe = subscribeToAnnouncements((message) => {
+            setGlobalAnnouncement(message);
         });
         return () => unsubscribe();
     }, []);
@@ -1094,6 +1106,14 @@ const App: React.FC = () => {
             
             <AmbientBackground view={activeView} mode={currentMode} isVoiceActive={voiceModeState === 'activeConversation'} />
 
+            {/* Global Notification Banner */}
+            {globalAnnouncement && (
+                <GlobalNotification 
+                    message={globalAnnouncement} 
+                    onDismiss={() => setGlobalAnnouncement(null)} 
+                />
+            )}
+
             {/* Updated Voice Interface - The Orb */}
             <VoiceOrb
                 isActive={voiceModeState === 'activeConversation'}
@@ -1122,6 +1142,7 @@ const App: React.FC = () => {
                 activeView={activeView}
                 onSelectView={setActiveView}
                 currentUser={currentUser}
+                onOpenAdmin={() => setIsAdminPanelOpen(true)}
             />
             
             <main className="flex-1 flex flex-col relative overflow-hidden z-10">
@@ -1292,6 +1313,13 @@ const App: React.FC = () => {
                     isOpen={isPreregistrationModalOpen}
                     onClose={() => setIsPreregistrationModalOpen(false)}
                     onSuccess={handlePreregistrationSuccess}
+                />
+            )}
+
+            {isAdminPanelOpen && currentUser && (
+                <AdminBroadcast 
+                    onClose={() => setIsAdminPanelOpen(false)} 
+                    userEmail={currentUser.email}
                 />
             )}
 

@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
+import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDeHUgCl3Iw7EKXz3miAKaBRcF_dQNoLPw",
@@ -17,6 +18,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const analytics = getAnalytics(app);
+export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 
 export { onAuthStateChanged };
@@ -38,4 +40,46 @@ export const logout = async () => {
     console.error("Error signing out", error);
     throw error;
   }
+};
+
+// --- Broadcast System ---
+
+export interface GlobalMessage {
+    id?: string;
+    title: string;
+    message: string;
+    type: 'info' | 'warning' | 'urgent' | 'success';
+    timestamp: any;
+    authorEmail?: string;
+}
+
+export const sendGlobalAnnouncement = async (title: string, message: string, type: GlobalMessage['type'], authorEmail: string) => {
+    try {
+        await addDoc(collection(db, "announcements"), {
+            title,
+            message,
+            type,
+            timestamp: serverTimestamp(),
+            authorEmail
+        });
+        return true;
+    } catch (e) {
+        console.error("Error sending announcement:", e);
+        throw e;
+    }
+};
+
+export const subscribeToAnnouncements = (callback: (message: GlobalMessage) => void) => {
+    const q = query(collection(db, "announcements"), orderBy("timestamp", "desc"), limit(1));
+    return onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+            if (change.type === "added") {
+                const data = change.doc.data();
+                // Only trigger if the message is recent (e.g., within last 5 minutes) to avoid showing old alerts on refresh
+                // However, for simplicity in this demo, we show the latest.
+                // In prod, compare serverTimestamp with local time.
+                callback({ id: change.doc.id, ...data } as GlobalMessage);
+            }
+        });
+    });
 };
