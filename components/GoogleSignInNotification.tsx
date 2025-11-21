@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { SparklesIcon, UsersIcon } from './icons';
+import { SparklesIcon } from './icons';
 
 interface GoogleSignInNotificationProps {
     onDismiss: () => void;
@@ -24,13 +23,13 @@ const GoogleSignInNotification: React.FC<GoogleSignInNotificationProps> = ({ onD
                         </div>
                     </div>
                     <div className="flex items-center justify-end gap-2 mt-4">
-                         <button 
+                         <button
                             onClick={onDismiss}
                             className="text-sm font-medium text-text-secondary px-3 py-1.5 rounded-lg hover:bg-surface-secondary"
                         >
                             Ahora no
                         </button>
-                        <button 
+                        <button
                             onClick={onSignIn}
                             className="text-sm font-semibold text-white bg-blue-600 px-4 py-1.5 rounded-lg hover:opacity-90 shadow-lg shadow-blue-500/20"
                         >

@@ -1,4 +1,5 @@
 
+
 // FIX: Add missing imports for new functions
 import { GoogleGenAI, Modality, LiveServerMessage, Blob, Type, FunctionDeclaration, GenerateContentResponse, Tool } from "@google/genai";
 import type { Attachment, ChatMessage, ModeID, ModelType, EssaySection, Settings, ViewID } from '../types';
@@ -21,9 +22,9 @@ const getApiKey = (): string => {
 
 const MODEL_MAP: Record<ModelType, string> = {
     'sm-i1': 'gemini-2.5-flash',
-    'sm-i3': 'gemini-2.5-pro',
-    'sm-l3': 'gemini-2.5-pro',
-    'sm-l3.9': 'gemini-2.5-pro',
+    'sm-i3': 'gemini-3-pro-preview',
+    'sm-l3': 'gemini-3-pro-preview',
+    'sm-l3.9': 'gemini-3-pro-preview',
 };
 
 const translateError = (error: any): Error => {
@@ -649,6 +650,7 @@ export const streamGenerateContent = async ({
                 return;
             }
             finalChunk = chunk;
+            // FIX: Incorrectly calling .text() as a function. It should be a property access.
             const chunkText = chunk.text;
             if (chunkText) {
                 if (mode === 'math') {
@@ -728,7 +730,7 @@ export const generateImage = async ({ prompt, attachment, modelName }: { prompt:
             model: 'gemini-2.5-flash-image',
             contents: contents,
             config: {
-                responseModalities: [Modality.IMAGE],
+                // responseModalities: [Modality.IMAGE],
             },
         });
 
@@ -807,14 +809,14 @@ export const generatePhotosamImage = async ({
             model: 'gemini-2.5-flash-image',
             contents: { parts },
             config: {
-                responseModalities: [Modality.IMAGE],
+                // responseModalities: [Modality.IMAGE],
             },
         });
         
-        const part = response.candidates?.[0]?.content?.parts?.[0];
-         if (part && part.inlineData) {
-            let mimeType = part.inlineData.mimeType || 'image/png';
-            let dataUrl = `data:${mimeType};base64,${part.inlineData.data}`;
+        const imagePart = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+         if (imagePart && imagePart.inlineData) {
+            let mimeType = imagePart.inlineData.mimeType || 'image/png';
+            let dataUrl = `data:${mimeType};base64,${imagePart.inlineData.data}`;
             
              // Watermark if needed (reusing logic from existing service if accessible, or just return)
              dataUrl = await applyWatermark(dataUrl);
@@ -854,7 +856,7 @@ User prompt: "${prompt}"
             }
         });
 
-        const jsonText = response.text.trim();
+        const jsonText = response.text?.trim() ?? "null";
         if (jsonText.toLowerCase() === 'null') return null;
 
         const result = JSON.parse(jsonText);
@@ -884,7 +886,7 @@ export const improvePrompt = async (userPrompt: string): Promise<string> => {
             }
         });
 
-        return response.text.trim();
+        return response.text?.trim() ?? '';
     } catch (error) {
         throw translateError(error);
     }
@@ -897,7 +899,7 @@ export const generateCanvasDevCode = async (prompt: string): Promise<string> => 
     }
     const ai = new GoogleGenAI({ apiKey });
 
-    const model = 'gemini-2.5-pro'; 
+    const model = 'gemini-3-pro-preview'; 
     const systemInstruction = generateSystemInstruction('canvasdev', { 
         theme: 'dark', 
         personality: 'default', 
@@ -916,7 +918,7 @@ export const generateCanvasDevCode = async (prompt: string): Promise<string> => 
             },
         });
 
-        const fullText = response.text;
+        const fullText = response.text ?? '';
         const codeBlockRegex = /```(?:\w+)?\n([\s\S]*?)```/;
         const match = fullText.match(codeBlockRegex);
 
@@ -964,7 +966,8 @@ export const generateEssayOutline = async ({ prompt, systemInstruction, modelNam
             }
         });
 
-        const jsonText = response.text.trim();
+        const jsonText = response.text?.trim();
+        if(!jsonText) throw new Error("Failed to generate essay outline: Empty response.");
         const result = JSON.parse(jsonText);
         if (result && result.outline) {
             return result.outline;
@@ -1005,7 +1008,7 @@ export const streamEssaySection = async ({
             if (abortSignal.aborted) {
                 return;
             }
-            onUpdate(chunk.text);
+            onUpdate(chunk.text ?? '');
         }
     } catch (e: any) {
         if (e.name !== 'AbortError') {
@@ -1032,7 +1035,8 @@ export const generateEssayReferences = async ({ prompt, systemInstruction, model
             }
         });
 
-        const jsonText = response.text.trim();
+        const jsonText = response.text?.trim();
+        if(!jsonText) throw new Error("Failed to generate essay references: Empty response.");
         const result = JSON.parse(jsonText);
         if (result && result.references) {
             return result.references;
@@ -1167,7 +1171,7 @@ export const generateVoxelData = async (
         throw new Error("API Key Missing");
     }
     const ai = new GoogleGenAI({ apiKey });
-    const model = 'gemini-2.5-pro';
+    const model = 'gemini-3-pro-preview';
 
     let systemContext = "";
     if (mode === 'morph') {
