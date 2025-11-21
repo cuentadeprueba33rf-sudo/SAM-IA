@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ChevronLeftIcon, MagnifyingGlassIcon, PencilSquareIcon, CubeTransparentIcon, BeakerIcon } from './icons';
+import { ChevronLeftIcon, MagnifyingGlassIcon, PencilSquareIcon, CubeTransparentIcon, BeakerIcon, MapIcon } from './icons';
 
 interface SamStudiosProps {
     onNavigateBack: () => void;
@@ -27,9 +27,34 @@ const SamStudios: React.FC<SamStudiosProps> = ({ onNavigateBack, onOpenApp }) =>
 
             <div className="flex-1 overflow-y-auto p-6">
                 <div className="max-w-5xl mx-auto">
-                    <div className="mb-8">
-                        <h2 className="text-2xl font-bold text-text-main mb-2">Featured</h2>
-                        <p className="text-text-secondary">Selecciones principales de esta semana</p>
+                    
+                    {/* Hero / Featured App */}
+                    <div 
+                        onClick={() => onOpenApp('echo_realms')}
+                        className="mb-12 relative w-full h-64 md:h-80 rounded-3xl overflow-hidden cursor-pointer group shadow-2xl border border-border-subtle"
+                    >
+                        <div className="absolute inset-0 bg-gradient-to-r from-cyan-900 via-purple-900 to-black transition-transform duration-700 group-hover:scale-105"></div>
+                        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30"></div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80"></div>
+                        
+                        <div className="absolute bottom-0 left-0 p-8 md:p-10 z-10">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-bold uppercase tracking-widest mb-4">
+                                <MapIcon className="w-4 h-4" /> Nueva Experiencia
+                            </div>
+                            <h2 className="text-4xl md:text-5xl font-black text-white mb-2 tracking-tight drop-shadow-lg">
+                                ECHO REALMS
+                            </h2>
+                            <p className="text-gray-200 text-lg max-w-xl font-medium drop-shadow-md">
+                                Sumérgete en una narrativa infinita donde cada decisión genera un nuevo mundo visual. El juego de rol definitivo potenciado por IA.
+                            </p>
+                        </div>
+                        <div className="absolute top-6 right-6 bg-white text-black font-bold px-4 py-2 rounded-full text-sm opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0 duration-300">
+                            Jugar Ahora →
+                        </div>
+                    </div>
+
+                    <div className="mb-6 flex items-center justify-between">
+                        <h2 className="text-xl font-bold text-text-main">Herramientas Creativas</h2>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -42,15 +67,12 @@ const SamStudios: React.FC<SamStudiosProps> = ({ onNavigateBack, onOpenApp }) =>
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-text-main text-lg">Voxel Toy Box</h3>
-                                    <p className="text-xs text-text-secondary mt-0.5">Por SAM Studios</p>
+                                    <p className="text-xs text-text-secondary mt-0.5">3D & Física</p>
                                 </div>
                             </div>
                             <p className="text-sm text-text-secondary mb-4 flex-1 relative z-10">
-                                Construye, destruye y reconstruye modelos 3D con física. Usa la IA para generar nuevas creaciones.
+                                Construye, destruye y reconstruye modelos 3D.
                             </p>
-                             <div className="relative z-10 text-xs font-medium text-indigo-400 bg-indigo-400/10 px-2 py-1 rounded w-fit flex items-center gap-1">
-                                <span>✨ Powered by AI</span>
-                            </div>
                         </div>
 
                         {/* Photosam Card */}
@@ -61,15 +83,12 @@ const SamStudios: React.FC<SamStudiosProps> = ({ onNavigateBack, onOpenApp }) =>
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-text-main text-lg">Photosam</h3>
-                                    <p className="text-xs text-text-secondary mt-0.5">Por SAM Studios</p>
+                                    <p className="text-xs text-text-secondary mt-0.5">Estudio de Imagen</p>
                                 </div>
                             </div>
                             <p className="text-sm text-text-secondary mb-4 flex-1">
-                                Un editor y generador de imágenes avanzado con IA para dar vida a tus ideas.
+                                Generación y edición de imágenes avanzada.
                             </p>
-                             <div className="text-xs font-medium text-accent bg-accent/10 px-2 py-1 rounded w-fit">
-                                5.0 ★ - Creative Tool
-                            </div>
                         </div>
                         
                         {/* Logic Lab Card */}
@@ -80,34 +99,12 @@ const SamStudios: React.FC<SamStudiosProps> = ({ onNavigateBack, onOpenApp }) =>
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-text-main text-lg">Logic Lab</h3>
-                                    <p className="text-xs text-text-secondary mt-0.5">Por SAM Studios</p>
+                                    <p className="text-xs text-text-secondary mt-0.5">Prompt Engineering</p>
                                 </div>
                             </div>
                             <p className="text-sm text-text-secondary mb-4 flex-1">
-                                Laboratorio de ingeniería de prompts. Diseña, prueba y calibra tus propios agentes de IA.
+                                Diseña y calibra tus propios agentes de IA.
                             </p>
-                             <div className="text-xs font-medium text-teal-500 bg-teal-500/10 px-2 py-1 rounded w-fit">
-                                Developer Tool
-                            </div>
-                        </div>
-
-                        {/* Image Editor AI Card (Coming Soon) */}
-                        <div className="bg-surface-primary border border-border-subtle rounded-xl p-4 opacity-50 cursor-not-allowed flex flex-col h-full">
-                           <div className="flex items-start gap-4 mb-3">
-                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-teal-600 flex items-center justify-center flex-shrink-0 border border-white/10">
-                                    <PencilSquareIcon className="w-7 h-7 text-white" />
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-text-main text-lg">Image Editor AI</h3>
-                                    <p className="text-xs text-text-secondary mt-0.5">Por SAM Studios</p>
-                                </div>
-                            </div>
-                            <p className="text-sm text-text-secondary mb-4 flex-1">
-                                Potente editor de imágenes con herramientas de IA para retoques profesionales.
-                            </p>
-                             <div className="text-xs font-medium text-text-secondary bg-surface-secondary px-2 py-1 rounded w-fit">
-                                Coming Soon
-                            </div>
                         </div>
                     </div>
                 </div>

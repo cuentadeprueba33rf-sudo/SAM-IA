@@ -23,6 +23,7 @@ import VoiceOrb from './components/VoiceOrb';
 import SamStudios from './components/SamStudios';
 import VoxelToyBox from './components/VoxelToyBox';
 import LogicLab from './components/LogicLab';
+import EchoRealms from './components/EchoRealms';
 import { streamGenerateContent, generateImage, startActiveConversation, detectMode, AppToolExecutors } from './services/geminiService';
 import {
     Chat, ChatMessage, MessageAuthor, Attachment, ModeID, Settings,
@@ -34,7 +35,7 @@ import {
     ChatBubbleLeftRightIcon, UsersIcon, ExclamationTriangleIcon, 
     XMarkIcon, ChartBarIcon, Bars3Icon, ChevronLeftIcon, 
     MicrophoneIcon, CodeBracketIcon, CalculatorIcon, PhotoIcon,
-    ShareIcon, ChevronDownIcon, SparklesIcon
+    ShareIcon, ChevronDownIcon, SparklesIcon, DocumentTextIcon
 } from './components/icons';
 
 type VoiceModeState = 'inactive' | 'activeConversation';
@@ -893,6 +894,13 @@ const App: React.FC = () => {
     const pinnedArtifactIds = useMemo(() => pinnedArtifacts.map(a => a.id), [pinnedArtifacts]);
     const lastMessage = currentChat?.messages.slice(-1)[0];
 
+    const suggestions = [
+        { icon: PhotoIcon, label: 'Generar Imagen', prompt: 'Crea una imagen futurista de una ciudad cyberpunk con luces de neón.' },
+        { icon: CodeBracketIcon, label: 'Escribir Código', prompt: 'Escribe un componente de React para una tarjeta de producto con Tailwind CSS.' },
+        { icon: AcademicCapIcon, label: 'Aprender', prompt: 'Explícame la teoría de la relatividad general de Einstein de forma sencilla.' },
+        { icon: DocumentTextIcon, label: 'Redactar', prompt: 'Escribe un correo formal para solicitar una reunión de negocios.' },
+    ];
+
     if (showForcedResetModal) {
         return <ForcedResetModal onConfirm={handleForcedReset} />;
     }
@@ -929,13 +937,17 @@ const App: React.FC = () => {
             logic_lab: {
                 title: 'Logic Lab',
                 component: <LogicLab onNavigateBack={() => setActiveView('sam_studios')} />
+            },
+            echo_realms: {
+                title: 'Echo Realms',
+                component: <EchoRealms onNavigateBack={() => setActiveView('sam_studios')} />
             }
         };
 
         const viewConfig = secondaryViews[activeView];
 
         if (viewConfig) {
-            if(activeView === 'sam_studios' || activeView === 'insights' || activeView === 'voxel_toy_box' || activeView === 'logic_lab') {
+            if(activeView === 'sam_studios' || activeView === 'insights' || activeView === 'voxel_toy_box' || activeView === 'logic_lab' || activeView === 'echo_realms') {
                  return viewConfig.component;
             }
 
@@ -987,14 +999,41 @@ const App: React.FC = () => {
                          <div ref={chatEndRef} />
                     </div>
                 ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
-                        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-24 h-24 mb-4 text-text-secondary">
-                            <path d="M30 20 L70 20 L70 50 L30 50 L30 80 L70 80" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
-                            <path d="M10 60 L50 10 L90 60 M25 45 L75 45" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
-                            <path d="M50 10 L50 90 M30 30 L50 50 L70 30" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
-                        </svg>
-                        <h1 className="text-3xl font-bold">SAM</h1>
-                        <p className="text-text-secondary mt-2">Tu asistente de IA amigable y servicial.</p>
+                    <div className="flex-1 flex flex-col items-center justify-center p-4 w-full max-w-4xl mx-auto animate-fade-in">
+                        <div className="relative flex flex-col items-center mb-12">
+                            <div className="absolute inset-0 bg-accent/5 blur-3xl rounded-full transform scale-150 pointer-events-none"></div>
+                            <div className="relative z-10 mb-6 p-4 bg-surface-primary rounded-3xl shadow-2xl border border-border-subtle">
+                                 <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-16 h-16 text-text-main">
+                                    <path d="M30 20 L70 20 L70 50 L30 50 L30 80 L70 80" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+                                    <path d="M10 60 L50 10 L90 60 M25 45 L75 45" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+                                    <path d="M50 10 L50 90 M30 30 L50 50 L70 30" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+                                </svg>
+                            </div>
+                            <h1 className="text-4xl md:text-5xl font-black tracking-tight text-text-main mb-3 text-center">SAM</h1>
+                            <p className="text-lg text-text-secondary font-medium max-w-md text-center leading-relaxed">
+                                Tu asistente de IA amigable y servicial.
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl px-4">
+                            {suggestions.map((s, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => setChatInputText(s.prompt)}
+                                    className="flex items-center gap-4 p-4 rounded-2xl bg-surface-secondary/50 hover:bg-surface-secondary border border-transparent hover:border-border-subtle transition-all group text-left"
+                                >
+                                    <div className="p-3 bg-surface-primary rounded-xl text-accent group-hover:scale-110 transition-transform shadow-sm">
+                                        <s.icon className="w-6 h-6" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <span className="block font-bold text-text-main text-sm mb-0.5">{s.label}</span>
+                                        <span className="block text-xs text-text-secondary group-hover:text-text-main transition-colors truncate">
+                                            {s.prompt}
+                                        </span>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 );
             case 'photosam':

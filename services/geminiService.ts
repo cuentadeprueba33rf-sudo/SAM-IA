@@ -1021,3 +1021,43 @@ export const generateEssayReferences = async ({ prompt, systemInstruction, model
         throw translateError(error);
     }
 };
+
+export const generateStoryTurn = async (
+    world: string,
+    history: { role: string, text: string }[],
+    userAction: string
+): Promise<{ narrative: string, choices: string[], visualPrompt: string }> => {
+    if (!API_KEY) throw new Error("API Key Missing");
+    const ai = new GoogleGenAI({ apiKey: API_KEY });
+
+    const context = `
+        You are the Game Master of a text-based RPG called "Echo Realms".
+        Genre: ${world}.
+        Your goal is to generate the next turn of the story based on the user's action.
+        
+        Output Format: JSON only.
+        Structure:
+        {
+            "narrative": "The detailed story text (approx 60-80 words). Immersive and descriptive.",
+            "choices": ["Action A", "Action B", "Action C"],
+            "visualPrompt": "A concise, artistic description of the current scene for an image generator. No text in image. High quality, ${world} style."
+        }
+    `;
+
+    // Build history for prompt
+    const fullPrompt = `
+        History: ${history.map(h => `${h.role}: ${h.text}`).join('\n')}
+        User Action: ${userAction}
+    `;
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: fullPrompt,
+        config: {
+            systemInstruction: context,
+            responseMimeType: 'application/json'
+        }
+    });
+
+    return JSON.parse(response.text || '{}');
+};
