@@ -1,6 +1,6 @@
 
 import React, { useRef, useState } from 'react';
-import { ChevronLeftIcon, MagnifyingGlassIcon, PencilSquareIcon, CubeTransparentIcon, BeakerIcon, MapIcon, FilmIcon, SparklesIcon } from './icons';
+import { ChevronLeftIcon, MagnifyingGlassIcon, PencilSquareIcon, CubeTransparentIcon, BeakerIcon, MapIcon, FilmIcon, SparklesIcon, ViewfinderCircleIcon } from './icons';
 
 interface SamStudiosProps {
     onNavigateBack: () => void;
@@ -118,13 +118,26 @@ const SamStudios: React.FC<SamStudiosProps> = ({ onNavigateBack, onOpenApp }) =>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 pb-20">
-                        {/* ChronoLense Card */}
-                        <TiltCard onClick={() => onOpenApp('chrono_lense')} className="bg-surface-primary border border-border-subtle rounded-[2rem] p-8 hover:border-cyan-500/50 transition-colors cursor-pointer flex flex-col h-[320px] shadow-xl hover:shadow-cyan-500/20 group">
-                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-gray-800 to-black flex items-center justify-center mb-6 border border-white/10 shadow-2xl group-hover:scale-110 transition-transform duration-300">
-                                <FilmIcon className="w-8 h-8 text-cyan-400" />
+                        
+                        {/* Reality Scanner Card (NEW) */}
+                        <TiltCard onClick={() => onOpenApp('reality_scanner')} className="bg-surface-primary border border-border-subtle rounded-[2rem] p-8 hover:border-cyan-400/50 transition-colors cursor-pointer flex flex-col h-[320px] shadow-xl hover:shadow-cyan-400/20 group">
+                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-800 to-blue-900 flex items-center justify-center mb-6 border border-white/10 shadow-2xl group-hover:scale-110 transition-transform duration-300">
+                                <ViewfinderCircleIcon className="w-8 h-8 text-cyan-300" />
                             </div>
-                            <h3 className="font-black text-text-main text-2xl mb-2 group-hover:text-cyan-500 transition-colors">ChronoLense</h3>
-                            <p className="text-xs font-bold text-cyan-500/80 uppercase tracking-wider mb-4">Simulador Temporal</p>
+                            <h3 className="font-black text-text-main text-2xl mb-2 group-hover:text-cyan-400 transition-colors">Reality Scanner</h3>
+                            <p className="text-xs font-bold text-cyan-400/80 uppercase tracking-wider mb-4">Realidad Aumentada</p>
+                            <p className="text-base text-text-secondary leading-relaxed">
+                                HUD en tiempo real. Escanea tu entorno y detecta objetos con visión artificial.
+                            </p>
+                        </TiltCard>
+
+                        {/* ChronoLense Card */}
+                        <TiltCard onClick={() => onOpenApp('chrono_lense')} className="bg-surface-primary border border-border-subtle rounded-[2rem] p-8 hover:border-amber-500/50 transition-colors cursor-pointer flex flex-col h-[320px] shadow-xl hover:shadow-amber-500/20 group">
+                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-800 to-orange-900 flex items-center justify-center mb-6 border border-white/10 shadow-2xl group-hover:scale-110 transition-transform duration-300">
+                                <FilmIcon className="w-8 h-8 text-amber-400" />
+                            </div>
+                            <h3 className="font-black text-text-main text-2xl mb-2 group-hover:text-amber-500 transition-colors">ChronoLense</h3>
+                            <p className="text-xs font-bold text-amber-500/80 uppercase tracking-wider mb-4">Simulador Temporal</p>
                             <p className="text-base text-text-secondary leading-relaxed">
                                 Viaja a cualquier época. Visualiza el pasado o el futuro con fidelidad histórica.
                             </p>

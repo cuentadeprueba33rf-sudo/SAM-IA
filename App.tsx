@@ -25,6 +25,7 @@ import VoxelToyBox from './components/VoxelToyBox';
 import LogicLab from './components/LogicLab';
 import EchoRealms from './components/EchoRealms';
 import ChronoLense from './components/ChronoLense';
+import RealityScanner from './components/RealityScanner';
 import { streamGenerateContent, generateImage, startActiveConversation, detectMode, AppToolExecutors } from './services/geminiService';
 import {
     Chat, ChatMessage, MessageAuthor, Attachment, ModeID, Settings,
@@ -973,13 +974,17 @@ const App: React.FC = () => {
             chrono_lense: {
                 title: 'ChronoLense',
                 component: <ChronoLense onNavigateBack={() => setActiveView('sam_studios')} />
+            },
+            reality_scanner: {
+                title: 'Reality Scanner',
+                component: <RealityScanner onNavigateBack={() => setActiveView('sam_studios')} />
             }
         };
 
         const viewConfig = secondaryViews[activeView];
 
         if (viewConfig) {
-            if(activeView === 'sam_studios' || activeView === 'insights' || activeView === 'voxel_toy_box' || activeView === 'logic_lab' || activeView === 'echo_realms' || activeView === 'chrono_lense') {
+            if(activeView === 'sam_studios' || activeView === 'insights' || activeView === 'voxel_toy_box' || activeView === 'logic_lab' || activeView === 'echo_realms' || activeView === 'chrono_lense' || activeView === 'reality_scanner') {
                  return viewConfig.component;
             }
 

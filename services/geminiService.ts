@@ -194,7 +194,7 @@ const appTools: Tool[] = [
                 parameters: {
                     type: Type.OBJECT,
                     properties: {
-                        view: { type: Type.STRING, description: 'El ID del vista: "chat", "canvas", "insights", "documentation", "usage", "canvas_dev_pro", "sam_studios", "voxel_toy_box", "logic_lab", "echo_realms", "chrono_lense".' }
+                        view: { type: Type.STRING, description: 'El ID del vista: "chat", "canvas", "insights", "documentation", "usage", "canvas_dev_pro", "sam_studios", "voxel_toy_box", "logic_lab", "echo_realms", "chrono_lense", "reality_scanner".' }
                     },
                     required: ['view']
                 }
@@ -1116,4 +1116,41 @@ export const generateTimeTravelData = async (
     });
 
     return JSON.parse(response.text || '{}');
+};
+
+export const detectObjectsInFrame = async (base64Frame: string): Promise<Array<{ box_2d: number[], label: string }>> => {
+    const apiKey = getApiKey();
+    if (!apiKey) throw new Error("API Key Missing");
+    const ai = new GoogleGenAI({ apiKey });
+
+    const prompt = `
+    Detect key objects in this image.
+    Return a strictly valid JSON array of objects. 
+    Each object must have:
+    - 'label': A short string name of the object (in Spanish).
+    - 'box_2d': An array of 4 integers [ymin, xmin, ymax, xmax] normalized to 1000x1000 coordinate space.
+    
+    Example: [{"label": "Laptop", "box_2d": [200, 300, 600, 800]}]
+    `;
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: {
+            parts: [
+                { inlineData: { mimeType: 'image/jpeg', data: base64Frame } },
+                { text: prompt }
+            ]
+        },
+        config: {
+            responseMimeType: 'application/json'
+        }
+    });
+
+    const text = response.text || '[]';
+    try {
+        return JSON.parse(text);
+    } catch (e) {
+        console.error("Failed to parse detection JSON", e);
+        return [];
+    }
 };
