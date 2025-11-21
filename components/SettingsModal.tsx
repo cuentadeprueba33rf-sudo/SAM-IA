@@ -1,11 +1,10 @@
-
-import React, { useState, ReactNode } from 'react';
-import type { Settings } from '../types';
+import React, { useState, ReactNode, useMemo } from 'react';
+import type { Settings } from './types';
 import { 
     XMarkIcon, SunIcon, UsersIcon, TrashIcon, CheckIcon, SparklesIcon, 
-    ArrowDownTrayIcon, ShieldCheckIcon, BoltIcon
-} from './icons';
-import { PERSONALITIES } from '../constants';
+    ArrowDownTrayIcon, ShieldCheckIcon, BoltIcon, ExclamationTriangleIcon
+} from './components/icons';
+import { PERSONALITIES } from './constants';
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -16,37 +15,25 @@ interface SettingsModalProps {
     onExportHistory: () => void;
     onInstallApp: () => void;
     installPromptEvent: any;
-    onResetApp: () => void;
 }
 
-// Styled Components for the new look
-const SectionHeader: React.FC<{title: string, description: string}> = ({title, description}) => (
-    <div className="mb-6 animate-fade-in">
-        <h2 className="text-2xl font-bold text-text-main tracking-tight">{title}</h2>
-        <p className="text-text-secondary text-sm mt-1">{description}</p>
-    </div>
-);
-
-const SettingRow: React.FC<{label: string, subLabel?: string, children: ReactNode}> = ({label, subLabel, children}) => (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between py-4 border-b border-border-subtle last:border-0 gap-4 animate-fade-in">
-        <div className="flex-1">
-            <div className="font-medium text-text-main">{label}</div>
-            {subLabel && <div className="text-xs text-text-secondary mt-0.5">{subLabel}</div>}
-        </div>
-        <div className="flex-shrink-0">
+// Helper components for structure and styling
+const Section: React.FC<{title: string, description: string, children: ReactNode}> = ({title, description, children}) => (
+    <div className="animate-fade-in">
+        <h2 className="text-2xl font-bold text-text-main mb-1">{title}</h2>
+        <p className="text-text-secondary mb-8">{description}</p>
+        <div className="space-y-6">
             {children}
         </div>
     </div>
 );
 
-const CustomToggle: React.FC<{checked: boolean, onChange: () => void, colorClass?: string}> = ({checked, onChange, colorClass = 'bg-accent'}) => (
-    <button 
-        onClick={onChange} 
-        className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-surface-primary focus:ring-accent ${checked ? colorClass : 'bg-border-subtle'}`}
-    >
-        <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform duration-200 ease-in-out ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
-    </button>
+const Card: React.FC<{children: ReactNode, className?: string}> = ({children, className = ''}) => (
+    <div className={`bg-surface-secondary p-4 rounded-xl border border-border-subtle ${className}`}>
+        {children}
+    </div>
 );
+
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ 
     isOpen, 
@@ -57,7 +44,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     onExportHistory, 
     onInstallApp,
     installPromptEvent,
-    onResetApp,
 }) => {
     const [activeSection, setActiveSection] = useState('account');
 
@@ -67,237 +53,199 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         onSave({ ...settings, [key]: value });
     };
     
-    const handleReset = () => {
-        if (window.confirm("¿Estás seguro de que quieres restablecer SAM? Se borrarán todos tus chats, configuraciones y tu nombre. La aplicación se recargará.")) {
-            onResetApp();
-        }
+    const sections = {
+        account: { title: 'Perfil', icon: UsersIcon },
+        personalization: { title: 'Personalización de IA', icon: SparklesIcon },
+        appearance: { title: 'Apariencia', icon: SunIcon },
+        application: { title: 'Aplicación', icon: ArrowDownTrayIcon },
+        data: { title: 'Gestión de Datos', icon: TrashIcon },
+        support: { title: 'Soporte y Ayuda', icon: ShieldCheckIcon },
     };
-
-    const sections = [
-        { id: 'account', title: 'Perfil', icon: UsersIcon },
-        { id: 'personalization', title: 'Inteligencia', icon: SparklesIcon },
-        { id: 'appearance', title: 'Apariencia', icon: SunIcon },
-        { id: 'application', title: 'Sistema', icon: ArrowDownTrayIcon },
-        { id: 'data', title: 'Datos', icon: TrashIcon },
-        { id: 'support', title: 'Ayuda', icon: ShieldCheckIcon },
-    ];
     
-    const renderContent = () => {
+    const renderSectionContent = () => {
         switch (activeSection) {
             case 'account':
                 return (
-                    <div>
-                        <SectionHeader title="Perfil de Usuario" description="Personaliza tu identidad para que SAM te conozca mejor." />
-                        <div className="bg-surface-secondary/50 rounded-2xl p-1 border border-border-subtle">
-                            <div className="bg-surface-primary rounded-xl p-4 shadow-sm">
-                                <label htmlFor="profession-input" className="block text-sm font-semibold text-text-main mb-2">Profesión / Rol</label>
-                                <input
-                                    type="text"
-                                    id="profession-input"
-                                    value={settings.profession}
-                                    onChange={(e) => handleSettingChange('profession', e.target.value)}
-                                    placeholder="Ej: Ingeniero de Software, Estudiante de Arte..."
-                                    className="w-full bg-surface-secondary border-transparent focus:bg-surface-primary focus:border-accent focus:ring-0 rounded-lg px-4 py-3 text-text-main placeholder:text-text-secondary/50 transition-all outline-none border-2"
-                                />
-                                <p className="text-xs text-text-secondary mt-2 px-1">
-                                    SAM adaptará el tono y la complejidad de sus respuestas basándose en esto.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+                    <Section title="Perfil de Usuario" description="Ayuda a SAM a entender mejor tu contexto profesional para adaptar sus respuestas.">
+                        <Card>
+                            <label htmlFor="profession-input" className="block text-sm font-medium text-text-secondary mb-2">¿A qué te dedicas?</label>
+                            <input
+                                type="text"
+                                id="profession-input"
+                                value={settings.profession}
+                                onChange={(e) => handleSettingChange('profession', e.target.value)}
+                                placeholder="Ej: Desarrollador, Diseñador, Estudiante..."
+                                className="w-full bg-surface-primary border border-border-subtle rounded-lg px-3 py-2 text-text-main placeholder:text-text-secondary focus:ring-accent focus:border-accent outline-none"
+                            />
+                            <p className="text-xs text-text-secondary mt-2">SAM usará esta información para darte ejemplos y explicaciones más relevantes.</p>
+                        </Card>
+                    </Section>
                 );
             case 'personalization':
                 return (
-                    <div>
-                        <SectionHeader title="Personalización de IA" description="Define el comportamiento y la capacidad del motor de IA." />
-                        
-                        <div className="space-y-6">
-                            <div className="bg-surface-primary border border-border-subtle rounded-2xl overflow-hidden">
-                                <div className="p-4 border-b border-border-subtle bg-surface-secondary/30">
-                                    <h3 className="font-semibold text-text-main text-sm uppercase tracking-wider">Modelo Principal</h3>
-                                </div>
-                                <div className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                    {[
-                                        { id: 'sm-i1', label: 'SM-I1', desc: 'Rápido', icon: null },
-                                        { id: 'sm-i3', label: 'SM-I3', desc: 'Balanceado', icon: <SparklesIcon className="w-4 h-4 text-yellow-400"/> },
-                                        { id: 'sm-l3', label: 'SM-L3', desc: 'Potente', icon: <SparklesIcon className="w-4 h-4 text-purple-400"/> }
-                                    ].map((model) => (
-                                        <button 
-                                            key={model.id}
-                                            onClick={() => handleSettingChange('defaultModel', model.id as any)}
-                                            className={`relative flex flex-col items-start p-3 rounded-xl border-2 transition-all duration-200 ${settings.defaultModel === model.id ? 'border-accent bg-accent/5' : 'border-transparent bg-surface-secondary hover:bg-surface-secondary/80'}`}
-                                        >
-                                            <div className="flex items-center justify-between w-full mb-1">
-                                                <div className="flex items-center gap-1.5 font-bold text-text-main text-sm">
-                                                    {model.icon} {model.label}
-                                                </div>
-                                                {settings.defaultModel === model.id && <div className="w-2 h-2 rounded-full bg-accent"></div>}
-                                            </div>
-                                            <span className="text-xs text-text-secondary">{model.desc}</span>
-                                        </button>
-                                    ))}
-                                </div>
+                    <Section title="Personalización de IA" description="Ajusta cómo SAM interactúa y responde para que se adapte mejor a ti.">
+                        <Card>
+                            <label htmlFor="personality-select" className="block text-sm font-medium text-text-secondary mb-2">Personalidad de SAM</label>
+                            <select
+                                id="personality-select"
+                                value={settings.personality}
+                                onChange={(e) => handleSettingChange('personality', e.target.value as Settings['personality'])}
+                                className="w-full bg-surface-primary border border-border-subtle rounded-lg px-3 py-2 text-text-main focus:ring-accent focus:border-accent outline-none"
+                            >
+                                {PERSONALITIES.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                            </select>
+                        </Card>
+                         <Card>
+                            <label className="block text-sm font-medium text-text-secondary mb-3">Modelo por Defecto</label>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <button onClick={() => handleSettingChange('defaultModel', 'sm-i1')} className={`relative text-left p-3 rounded-lg border-2 transition-all ${settings.defaultModel === 'sm-i1' ? 'border-accent ring-2 ring-accent/20' : 'border-border-subtle hover:border-text-secondary/50'}`}>
+                                    {settings.defaultModel === 'sm-i1' && <CheckIcon className="absolute top-2 right-2 w-4 h-4 text-accent" />}
+                                    <div className="font-semibold text-text-main">SM-I1</div>
+                                    <p className="text-xs text-text-secondary mt-1">Rápido y eficiente para tareas diarias.</p>
+                                </button>
+                                <button onClick={() => handleSettingChange('defaultModel', 'sm-i3')} className={`relative text-left p-3 rounded-lg border-2 transition-all ${settings.defaultModel === 'sm-i3' ? 'border-accent ring-2 ring-accent/20' : 'border-border-subtle hover:border-text-secondary/50'}`}>
+                                    {settings.defaultModel === 'sm-i3' && <CheckIcon className="absolute top-2 right-2 w-4 h-4 text-accent" />}
+                                    <div className="flex items-center gap-2 font-semibold text-text-main"><SparklesIcon className="w-5 h-5 text-yellow-400" /> SM-I3</div>
+                                    <p className="text-xs text-text-secondary mt-1">Más potente para tareas complejas.</p>
+                                </button>
+                                <button onClick={() => handleSettingChange('defaultModel', 'sm-l3')} className={`relative text-left p-3 rounded-lg border-2 transition-all ${settings.defaultModel === 'sm-l3' ? 'border-accent ring-2 ring-accent/20' : 'border-border-subtle hover:border-text-secondary/50'}`}>
+                                    {settings.defaultModel === 'sm-l3' && <CheckIcon className="absolute top-2 right-2 w-4 h-4 text-accent" />}
+                                    <div className="flex items-center gap-2 font-semibold text-text-main"><SparklesIcon className="w-5 h-5 text-purple-400" /> SM-L3</div>
+                                    <p className="text-xs text-text-secondary mt-1">El mejor para generar imágenes.</p>
+                                </button>
                             </div>
-
-                            <div className="bg-surface-primary border border-border-subtle rounded-2xl p-4 space-y-2">
-                                <SettingRow label="Modo Rápido (Turbo)" subLabel="Fuerza el uso de modelos ligeros para respuestas instantáneas.">
-                                    <CustomToggle checked={settings.quickMode} onChange={() => handleSettingChange('quickMode', !settings.quickMode)} colorClass="bg-yellow-500" />
-                                </SettingRow>
-                                
-                                <div className="pt-4 mt-4 border-t border-border-subtle">
-                                    <label className="block text-sm font-semibold text-text-main mb-3">Personalidad</label>
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                        {PERSONALITIES.map(p => (
-                                            <button
-                                                key={p.id}
-                                                onClick={() => handleSettingChange('personality', p.id)}
-                                                className={`px-3 py-2 rounded-lg text-xs font-medium transition-all border ${settings.personality === p.id ? 'bg-accent text-white border-accent shadow-md' : 'bg-surface-secondary text-text-secondary border-transparent hover:border-border-subtle'}`}
-                                            >
-                                                {p.name}
-                                            </button>
-                                        ))}
-                                    </div>
+                        </Card>
+                        <Card>
+                             <div className="flex items-center justify-between">
+                                <div>
+                                    <div className="font-semibold text-text-main flex items-center gap-2"><BoltIcon className="w-5 h-5"/>Modo Rápido</div>
+                                    <p className="text-xs text-text-secondary mt-1 pr-4">Prioriza la velocidad usando siempre el modelo SM-I1.</p>
                                 </div>
+                                <button onClick={() => handleSettingChange('quickMode', !settings.quickMode)} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.quickMode ? 'bg-accent' : 'bg-border-subtle'}`}>
+                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.quickMode ? 'translate-x-6' : 'translate-x-1'}`} />
+                                </button>
                             </div>
-                        </div>
-                    </div>
+                        </Card>
+                    </Section>
                 );
             case 'appearance':
                 return (
-                    <div>
-                        <SectionHeader title="Apariencia" description="Haz que SAM se vea como tú quieras." />
-                        
-                        <div className="grid grid-cols-2 gap-4 mb-6">
-                            <button 
-                                onClick={() => handleSettingChange('theme', 'light')}
-                                className={`group relative rounded-2xl border-2 p-1 transition-all ${settings.theme === 'light' ? 'border-accent ring-2 ring-accent/20' : 'border-transparent hover:border-border-subtle'}`}
-                            >
-                                <div className="bg-gray-100 rounded-xl p-4 h-32 flex flex-col justify-between overflow-hidden relative">
-                                    <div className="absolute top-0 left-0 w-full h-8 bg-white shadow-sm z-10"></div>
-                                    <div className="space-y-2 mt-10">
-                                        <div className="w-3/4 h-2 bg-gray-300 rounded-full"></div>
-                                        <div className="w-1/2 h-2 bg-gray-300 rounded-full"></div>
+                    <Section title="Apariencia" description="Personaliza el aspecto de la interfaz a tu gusto.">
+                        <Card>
+                            <label className="block text-sm font-medium text-text-secondary mb-3">Tema de Color</label>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <button onClick={() => handleSettingChange('theme', 'light')} className={`relative border-2 rounded-xl p-3 text-left transition-all ${settings.theme === 'light' ? 'border-accent ring-2 ring-accent/20' : 'border-transparent hover:border-border-subtle'}`}>
+                                    {settings.theme === 'light' && <CheckIcon className="absolute top-3 right-3 w-5 h-5 text-accent" />}
+                                    <div className="w-full h-24 bg-white rounded-lg mb-3 border border-gray-200 flex items-center justify-center">
+                                      <div className="w-3/4 h-3/4 bg-gray-100 rounded p-2 space-y-2">
+                                        <div className="h-2 bg-gray-300 rounded w-1/2"></div>
+                                        <div className="h-2 bg-blue-200 rounded w-1/3"></div>
+                                      </div>
                                     </div>
-                                    <div className="self-end bg-blue-500 text-white text-[10px] px-2 py-1 rounded-lg shadow-sm">Hola</div>
-                                </div>
-                                <div className="mt-2 text-center text-sm font-medium text-text-main">Claro</div>
-                                {settings.theme === 'light' && <div className="absolute top-3 right-3 bg-accent text-white rounded-full p-1"><CheckIcon className="w-3 h-3"/></div>}
-                            </button>
-
-                            <button 
-                                onClick={() => handleSettingChange('theme', 'dark')}
-                                className={`group relative rounded-2xl border-2 p-1 transition-all ${settings.theme === 'dark' ? 'border-accent ring-2 ring-accent/20' : 'border-transparent hover:border-border-subtle'}`}
-                            >
-                                <div className="bg-[#1E1E1E] rounded-xl p-4 h-32 flex flex-col justify-between overflow-hidden relative">
-                                    <div className="absolute top-0 left-0 w-full h-8 bg-[#252525] shadow-sm z-10"></div>
-                                    <div className="space-y-2 mt-10">
-                                        <div className="w-3/4 h-2 bg-gray-700 rounded-full"></div>
-                                        <div className="w-1/2 h-2 bg-gray-700 rounded-full"></div>
+                                    <span className="font-semibold text-sm text-text-main">Claro</span>
+                                </button>
+                                <button onClick={() => handleSettingChange('theme', 'dark')} className={`relative border-2 rounded-xl p-3 text-left transition-all ${settings.theme === 'dark' ? 'border-accent ring-2 ring-accent/20' : 'border-transparent hover:border-border-subtle'}`}>
+                                    {settings.theme === 'dark' && <CheckIcon className="absolute top-3 right-3 w-5 h-5 text-accent" />}
+                                    <div className="w-full h-24 bg-[#1E1F20] rounded-lg mb-3 border border-gray-700 flex items-center justify-center">
+                                       <div className="w-3/4 h-3/4 bg-[#2C2C2E] rounded p-2 space-y-2">
+                                        <div className="h-2 bg-gray-600 rounded w-1/2"></div>
+                                        <div className="h-2 bg-blue-800 rounded w-1/3"></div>
+                                      </div>
                                     </div>
-                                    <div className="self-end bg-blue-600 text-white text-[10px] px-2 py-1 rounded-lg shadow-sm">Hola</div>
+                                    <span className="font-semibold text-sm text-text-main">Oscuro</span>
+                                </button>
+                            </div>
+                        </Card>
+                        <Card>
+                             <div className="flex items-center justify-between">
+                                <div>
+                                    <div className="font-semibold text-text-main flex items-center gap-2">Tema de Stranger Things</div>
+                                    <p className="text-xs text-text-secondary mt-1 pr-4">Activa un efecto de neón rojo en el cuadro de chat.</p>
                                 </div>
-                                <div className="mt-2 text-center text-sm font-medium text-text-main">Oscuro</div>
-                                {settings.theme === 'dark' && <div className="absolute top-3 right-3 bg-accent text-white rounded-full p-1"><CheckIcon className="w-3 h-3"/></div>}
-                            </button>
-                        </div>
-
-                        <div className="bg-surface-primary border border-border-subtle rounded-2xl p-4">
-                            <SettingRow label="Tema Stranger Things" subLabel="Efectos de neón rojo y tipografía retro.">
-                                <CustomToggle checked={settings.stThemeEnabled} onChange={() => handleSettingChange('stThemeEnabled', !settings.stThemeEnabled)} colorClass="bg-[#E50914]" />
-                            </SettingRow>
-                        </div>
-                    </div>
+                                <button onClick={() => handleSettingChange('stThemeEnabled', !settings.stThemeEnabled)} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.stThemeEnabled ? 'bg-[#E50914]' : 'bg-border-subtle'}`}>
+                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.stThemeEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                                </button>
+                            </div>
+                        </Card>
+                    </Section>
                 );
             case 'application':
                  return (
-                    <div>
-                        <SectionHeader title="Sistema" description="Versión de la aplicación y estado de instalación." />
-                         <div className="bg-surface-primary border border-border-subtle rounded-2xl overflow-hidden">
-                            <div className="p-6 flex flex-col items-center text-center">
-                                <div className="w-16 h-16 bg-surface-secondary rounded-2xl flex items-center justify-center mb-4 text-3xl">🚀</div>
-                                <h3 className="text-lg font-bold text-text-main">SAM IA v1.5.0</h3>
-                                <p className="text-text-secondary text-sm mt-1 mb-6">Build 2024.07.23 - Christmas Edition</p>
-                                
-                                {installPromptEvent ? (
-                                    <button
-                                        onClick={onInstallApp}
-                                        className="w-full bg-accent text-white font-semibold py-3 rounded-xl hover:opacity-90 transition-opacity shadow-lg shadow-accent/20 flex items-center justify-center gap-2"
-                                    >
-                                        <ArrowDownTrayIcon className="w-5 h-5" />
-                                        Instalar App
-                                    </button>
-                                ) : (
-                                    <div className="w-full bg-surface-secondary text-text-secondary font-medium py-3 rounded-xl flex items-center justify-center gap-2 cursor-default">
-                                        <CheckIcon className="w-5 h-5" />
-                                        Instalada / No disponible
-                                    </div>
-                                )}
+                    <Section title="Aplicación" description="Instala SAM en tu dispositivo para un acceso rápido y una experiencia integrada.">
+                        <Card>
+                        {installPromptEvent ? (
+                            <button
+                                onClick={onInstallApp}
+                                className="w-full flex items-center justify-center gap-3 text-left text-sm font-semibold text-text-main bg-surface-primary hover:bg-border-subtle/50 px-4 py-3 rounded-lg transition-colors border border-border-subtle"
+                            >
+                                <ArrowDownTrayIcon className="w-5 h-5" />
+                                <span>Instalar SAM en el dispositivo</span>
+                            </button>
+                        ) : (
+                            <div>
+                                <h4 className="font-semibold text-text-main">Aplicación ya instalada o no soportada</h4>
+                                <p className="text-sm text-text-secondary mt-2">
+                                    Puedes instalar SAM desde el menú de tu navegador buscando la opción "Instalar aplicación" o "Añadir a la pantalla de inicio".
+                                </p>
                             </div>
-                         </div>
-                    </div>
+                        )}
+                        </Card>
+                    </Section>
                 );
              case 'data':
                 return (
-                    <div>
-                        <SectionHeader title="Datos y Privacidad" description="Tus datos te pertenecen. Adminístralos aquí." />
-                        
-                        <div className="space-y-4">
-                            <button 
-                                onClick={onExportHistory}
-                                className="w-full flex items-center justify-between p-4 bg-surface-primary border border-border-subtle rounded-xl hover:border-accent transition-colors group"
-                            >
-                                <div className="text-left">
-                                    <div className="font-semibold text-text-main group-hover:text-accent transition-colors">Exportar Chats</div>
-                                    <div className="text-xs text-text-secondary">Descarga un archivo JSON con tu historial.</div>
+                    <Section title="Gestión de Datos" description="Maneja tus datos guardados en la aplicación.">
+                        <Card>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h4 className="font-semibold text-text-main">Exportar Historial</h4>
+                                    <p className="text-sm text-text-secondary">Guarda una copia de todos tus chats.</p>
                                 </div>
-                                <ArrowDownTrayIcon className="w-5 h-5 text-text-secondary group-hover:text-accent" />
-                            </button>
-
-                            <div className="border-t border-border-subtle my-6"></div>
-
-                            <h3 className="text-danger font-bold text-sm uppercase tracking-wider mb-3">Zona de Peligro</h3>
-                            
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <button 
-                                    onClick={onClearHistory}
-                                    className="flex flex-col items-center justify-center p-4 bg-danger/5 border border-danger/20 rounded-xl hover:bg-danger/10 transition-colors text-danger"
+                                <button
+                                    onClick={onExportHistory}
+                                    className="text-sm font-semibold bg-surface-primary border border-border-subtle text-text-main px-4 py-2 rounded-lg hover:bg-border-subtle/50"
                                 >
-                                    <TrashIcon className="w-6 h-6 mb-2" />
-                                    <span className="font-semibold text-sm">Borrar Chats</span>
-                                </button>
-                                <button 
-                                    onClick={handleReset}
-                                    className="flex flex-col items-center justify-center p-4 bg-danger/5 border border-danger/20 rounded-xl hover:bg-danger/10 transition-colors text-danger"
-                                >
-                                    <BoltIcon className="w-6 h-6 mb-2" />
-                                    <span className="font-semibold text-sm">Reset Total</span>
+                                    Exportar
                                 </button>
                             </div>
-                        </div>
-                    </div>
+                        </Card>
+                        <Card className="border-danger/30">
+                            <h3 className="font-bold text-danger text-lg mb-2">Zona de Peligro</h3>
+                            <p className="text-sm text-text-secondary mb-4">Esta acción es irreversible. Por favor, procede con cautela.</p>
+                            <div className="space-y-4">
+                               <div className="flex items-center justify-between">
+                                    <div>
+                                        <h4 className="font-semibold text-text-main">Borrar Historial</h4>
+                                        <p className="text-sm text-text-secondary">Elimina permanentemente todos tus chats.</p>
+                                    </div>
+                                    <button
+                                        onClick={onClearHistory}
+                                        className="text-sm font-semibold bg-danger/10 text-danger px-4 py-2 rounded-lg hover:bg-danger/20"
+                                    >
+                                        Borrar
+                                    </button>
+                                </div>
+                            </div>
+                        </Card>
+                    </Section>
                 );
             case 'support':
                  return (
-                    <div>
-                        <SectionHeader title="Soporte" description="Estamos aquí para ayudarte." />
-                        <a
-                            href="mailto:samuelcassb@gmail.com,helpsamia@gmail.com?subject=Soporte%20SAM%20IA"
-                            className="block bg-gradient-to-br from-accent to-accent-blue p-1 rounded-2xl shadow-lg hover:shadow-xl transition-shadow group"
-                        >
-                            <div className="bg-surface-primary rounded-xl p-6 flex items-center gap-4 h-full">
-                                <div className="bg-accent/10 p-3 rounded-full">
-                                    <ShieldCheckIcon className="w-8 h-8 text-accent" />
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-lg text-text-main group-hover:text-accent transition-colors">Contactar al Equipo</h3>
-                                    <p className="text-text-secondary text-sm">Envíanos un correo con tus dudas o reportes de errores.</p>
-                                </div>
+                    <Section title="Soporte y Ayuda" description="Contacta con el equipo si encuentras un problema o necesitas ayuda.">
+                        <Card>
+                             <div>
+                                <h4 className="font-semibold text-text-main">Contactar a Soporte</h4>
+                                <p className="text-sm text-text-secondary mt-2 mb-4">Usa el siguiente enlace para enviar un correo electrónico al equipo de soporte. Incluye tantos detalles como sea posible sobre tu problema.</p>
+                                <a
+                                    href="mailto:samuelcassb@gmail.com,helpsamia@gmail.com?subject=Soporte%20SAM%20IA"
+                                    className="w-full flex items-center justify-center gap-2 text-left text-sm font-semibold text-text-main bg-surface-primary hover:bg-border-subtle/50 px-4 py-3 rounded-lg transition-colors border border-border-subtle"
+                                >
+                                    <ShieldCheckIcon className="w-5 h-5 text-accent" />
+                                    <span>Enviar Correo de Soporte</span>
+                                </a>
                             </div>
-                        </a>
-                        <div className="mt-6 text-center text-xs text-text-secondary">
-                            ID de Sesión: {Date.now().toString(36).toUpperCase()}
-                        </div>
-                    </div>
+                        </Card>
+                    </Section>
                 );
             default:
                 return null;
@@ -305,72 +253,55 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     };
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-0 md:p-4" onClick={onClose}>
             <div 
-                className="bg-surface-primary w-full max-w-5xl h-[85vh] rounded-3xl shadow-2xl flex overflow-hidden border border-border-subtle animate-scale-in"
+                className="bg-surface-primary rounded-none md:rounded-2xl max-w-4xl w-full h-full md:h-auto md:max-h-[700px] shadow-2xl animate-fade-in-up border border-border-subtle flex flex-col" 
                 onClick={e => e.stopPropagation()}
             >
-                {/* Sidebar */}
-                <aside className="w-64 bg-surface-secondary/50 border-r border-border-subtle flex flex-col hidden md:flex">
-                    <div className="p-6 border-b border-border-subtle/50">
-                        <h3 className="text-xl font-black text-text-main tracking-tight">Ajustes</h3>
-                    </div>
-                    <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-                        {sections.map((section) => (
-                            <button
-                                key={section.id}
-                                onClick={() => setActiveSection(section.id)}
-                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${activeSection === section.id ? 'bg-surface-primary text-accent shadow-sm ring-1 ring-border-subtle' : 'text-text-secondary hover:text-text-main hover:bg-surface-secondary'}`}
-                            >
-                                <section.icon className={`w-5 h-5 ${activeSection === section.id ? 'text-accent' : 'text-text-secondary group-hover:text-text-main'}`} />
-                                {section.title}
-                            </button>
-                        ))}
-                    </nav>
-                </aside>
-
-                {/* Mobile Header */}
-                <div className="md:hidden absolute top-0 left-0 right-0 bg-surface-primary border-b border-border-subtle z-10 flex justify-between items-center p-4">
-                    <h3 className="text-lg font-bold">Ajustes</h3>
-                    <button onClick={onClose} className="p-2 rounded-full bg-surface-secondary text-text-main"><XMarkIcon className="w-5 h-5"/></button>
-                </div>
+                <header className="flex justify-between items-center p-4 border-b border-border-subtle flex-shrink-0">
+                    <h3 className="text-xl font-bold text-text-main">Configuración</h3>
+                    <button onClick={onClose} className="p-2 rounded-full hover:bg-surface-secondary transition-colors">
+                        <XMarkIcon className="w-6 h-6 text-text-secondary" />
+                    </button>
+                </header>
                 
-                {/* Mobile Nav (Scrollable Top) */}
-                 <div className="md:hidden absolute top-16 left-0 right-0 h-14 bg-surface-secondary border-b border-border-subtle flex items-center px-4 gap-2 overflow-x-auto no-scrollbar z-10">
-                    {sections.map((section) => (
-                         <button
-                            key={section.id}
-                            onClick={() => setActiveSection(section.id)}
-                            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${activeSection === section.id ? 'bg-accent text-white' : 'bg-surface-primary text-text-secondary border border-border-subtle'}`}
-                        >
-                            {section.title}
-                        </button>
-                    ))}
-                </div>
+                <main className="flex-1 flex flex-col md:flex-row gap-0 overflow-hidden">
+                    <nav id="settings-menu" className="flex flex-row md:flex-col gap-1 border-b md:border-b-0 md:border-r border-border-subtle p-3 overflow-x-auto md:overflow-y-auto custom-scrollbar-thin">
+                       {Object.entries(sections).map(([key, { title, icon: Icon }]) => (
+                           <button 
+                                key={key} 
+                                onClick={() => setActiveSection(key)} 
+                                className={`flex items-center gap-3 p-3 rounded-lg text-left w-full md:w-56 transition-colors text-sm font-semibold ${activeSection === key ? 'bg-accent text-white' : 'text-text-secondary hover:bg-surface-secondary hover:text-text-main'}`}
+                           >
+                               <Icon className="w-5 h-5 flex-shrink-0" />
+                               <span className="whitespace-nowrap">{title}</span>
+                           </button>
+                       ))}
+                    </nav>
 
-                {/* Main Content */}
-                <main className="flex-1 flex flex-col relative w-full">
-                    <div className="hidden md:flex justify-end p-4 absolute top-0 right-0 z-10">
-                        <button onClick={onClose} className="p-2 rounded-full hover:bg-surface-secondary text-text-secondary hover:text-text-main transition-colors">
-                            <XMarkIcon className="w-6 h-6" />
-                        </button>
-                    </div>
-                    
-                    <div className="flex-1 overflow-y-auto p-6 md:p-10 pt-36 md:pt-10">
-                        <div className="max-w-2xl mx-auto">
-                            {renderContent()}
-                        </div>
+                    <div id="settings-content" className="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar">
+                        {renderSectionContent()}
                     </div>
                 </main>
             </div>
              <style>{`
-                @keyframes scale-in {
-                    from { opacity: 0; transform: scale(0.95); }
-                    to { opacity: 1; transform: scale(1); }
+                @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+                @keyframes fade-in-up {
+                    from { opacity: 0; transform: translateY(10px) scale(0.98); }
+                    to { opacity: 1; transform: translateY(0) scale(1); }
                 }
-                .animate-scale-in { animation: scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
-                .no-scrollbar::-webkit-scrollbar { display: none; }
-                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+                .animate-fade-in { animation: fade-in 0.2s ease-out; }
+                .animate-fade-in-up { animation: fade-in-up 0.2s ease-out; }
+
+                .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background-color: var(--color-border-subtle); border-radius: 20px; border: 2px solid var(--color-surface-primary); }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: var(--color-text-secondary); }
+                
+                .custom-scrollbar-thin::-webkit-scrollbar { width: 4px; }
+                .custom-scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar-thin::-webkit-scrollbar-thumb { background-color: transparent; }
+                .custom-scrollbar-thin:hover::-webkit-scrollbar-thumb { background-color: var(--color-border-subtle); border-radius: 20px; }
             `}</style>
         </div>
     );

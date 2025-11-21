@@ -16,7 +16,6 @@ import StThemeNotification from './components/StThemeNotification';
 import InstallNotification from './components/InstallNotification';
 import VoiceErrorNotification from './components/VoiceErrorNotification';
 import GoogleSignInNotification from './components/GoogleSignInNotification';
-import ForcedResetModal from './components/ForcedResetModal';
 import PreregistrationModal from './components/PreregistrationModal';
 import ChatMessageItem from './components/ChatMessage';
 import VoiceOrb from './components/VoiceOrb';
@@ -76,7 +75,6 @@ const App: React.FC = () => {
     const [showSignInNotification, setShowSignInNotification] = useState(false);
     const [installPromptEvent, setInstallPromptEvent] = useState<any>(null);
     const [activeEssay, setActiveEssay] = useState<{essay: Essay, messageId: string} | null>(null);
-    const [showForcedReset, setShowForcedReset] = useState(false);
     const [showPreregistrationModal, setShowPreregistrationModal] = useState(false);
     const [isPreregistered, setIsPreregistered] = useState(false);
     const [showAdminPanel, setShowAdminPanel] = useState(false);
@@ -119,21 +117,12 @@ const App: React.FC = () => {
     // --- LIFECYCLE & DATA PERSISTENCE ---
 
     useEffect(() => {
-        // App Version Check for Forced Reset
-        const APP_VERSION = "1.5.0";
-        const storedVersion = localStorage.getItem('sam-app-version');
-        if (storedVersion !== APP_VERSION) {
-             // A major breaking change was introduced, force a reset
-             setShowForcedReset(true);
-             localStorage.setItem('sam-app-version', APP_VERSION);
-        } else {
-             // Load data only if no reset is needed
-            loadSettings();
-            loadChats();
-            loadUsage();
-            checkPreregistration();
-        }
-
+        // Load data directly without version check
+        loadSettings();
+        loadChats();
+        loadUsage();
+        checkPreregistration();
+        
         // PWA Install Prompt
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
@@ -246,12 +235,6 @@ const App: React.FC = () => {
 
     // --- CORE HANDLERS ---
     
-    const handleForcedReset = () => {
-        localStorage.clear();
-        sessionStorage.clear();
-        window.location.reload();
-    };
-
     const handleNewChat = () => {
         const newChat: Chat = {
             id: uuidv4(),
@@ -361,7 +344,8 @@ const App: React.FC = () => {
 
     // --- MODE & ACTION HANDLERS ---
 
-    const handleModeAction = (mode: ModeID, accept?: string, capture?: 'user' | 'environment' = 'user') => {
+    // FIX: Removed '?' from 'capture' parameter as it has a default initializer, which makes it optional by default.
+    const handleModeAction = (mode: ModeID, accept?: string, capture: 'user' | 'environment' = 'user') => {
         const modeData = MODES.find(m => m.id === mode);
         if (!modeData) return;
 
@@ -624,7 +608,6 @@ const App: React.FC = () => {
 
     return (
         <div className={`h-full w-full flex overflow-hidden font-sans ${settings.stThemeEnabled ? 'stranger-things-theme' : ''}`}>
-            {showForcedReset && <ForcedResetModal onConfirm={handleForcedReset} />}
             {globalMessage && <GlobalNotification message={globalMessage} onDismiss={() => setGlobalMessage(null)} />}
 
             <Sidebar
@@ -687,7 +670,7 @@ const App: React.FC = () => {
             </main>
 
             {/* --- Modals & Overlays --- */}
-            {isSettingsOpen && <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={settings} onSave={setSettings} onClearHistory={() => setChats([])} onExportHistory={()=>{}} onInstallApp={handleInstallApp} installPromptEvent={installPromptEvent} onResetApp={handleForcedReset} />}
+            {isSettingsOpen && <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={settings} onSave={setSettings} onClearHistory={() => setChats([])} onExportHistory={()=>{}} onInstallApp={handleInstallApp} installPromptEvent={installPromptEvent} />}
             {isUpdatesOpen && <UpdatesModal isOpen={isUpdatesOpen} onClose={() => setIsUpdatesOpen(false)} />}
             {isCameraModalOpen && <CameraCaptureModal onClose={() => setIsCameraModalOpen(false)} onCapture={(data) => { if(data) { setAttachment({name: 'capture.jpg', type: 'image/jpeg', data}); setCurrentMode('image'); } setIsCameraModalOpen(false); }} initialFacingMode={cameraFacingMode} />}
             {isImagePreviewOpen && <ImagePreviewModal image={isImagePreviewOpen} onClose={() => setIsImagePreviewOpen(null)} />}
