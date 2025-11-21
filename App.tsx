@@ -24,6 +24,7 @@ import SamStudios from './components/SamStudios';
 import VoxelToyBox from './components/VoxelToyBox';
 import LogicLab from './components/LogicLab';
 import EchoRealms from './components/EchoRealms';
+import ChronoLense from './components/ChronoLense';
 import { streamGenerateContent, generateImage, startActiveConversation, detectMode, AppToolExecutors } from './services/geminiService';
 import {
     Chat, ChatMessage, MessageAuthor, Attachment, ModeID, Settings,
@@ -941,13 +942,17 @@ const App: React.FC = () => {
             echo_realms: {
                 title: 'Echo Realms',
                 component: <EchoRealms onNavigateBack={() => setActiveView('sam_studios')} />
+            },
+            chrono_lense: {
+                title: 'ChronoLense',
+                component: <ChronoLense onNavigateBack={() => setActiveView('sam_studios')} />
             }
         };
 
         const viewConfig = secondaryViews[activeView];
 
         if (viewConfig) {
-            if(activeView === 'sam_studios' || activeView === 'insights' || activeView === 'voxel_toy_box' || activeView === 'logic_lab' || activeView === 'echo_realms') {
+            if(activeView === 'sam_studios' || activeView === 'insights' || activeView === 'voxel_toy_box' || activeView === 'logic_lab' || activeView === 'echo_realms' || activeView === 'chrono_lense') {
                  return viewConfig.component;
             }
 

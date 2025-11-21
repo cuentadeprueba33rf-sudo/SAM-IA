@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ChevronLeftIcon, MagnifyingGlassIcon, PencilSquareIcon, CubeTransparentIcon, BeakerIcon, MapIcon } from './icons';
+import { ChevronLeftIcon, MagnifyingGlassIcon, PencilSquareIcon, CubeTransparentIcon, BeakerIcon, MapIcon, FilmIcon } from './icons';
 
 interface SamStudiosProps {
     onNavigateBack: () => void;
@@ -58,6 +58,22 @@ const SamStudios: React.FC<SamStudiosProps> = ({ onNavigateBack, onOpenApp }) =>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {/* ChronoLense Card */}
+                        <div className="bg-surface-primary border border-border-subtle rounded-xl p-4 hover:border-cyan-500 transition-colors cursor-pointer flex flex-col h-full" onClick={() => onOpenApp('chrono_lense')}>
+                            <div className="flex items-start gap-4 mb-3">
+                                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-800 to-black flex items-center justify-center flex-shrink-0 border border-white/10 shadow-lg">
+                                    <FilmIcon className="w-6 h-6 text-cyan-400" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-text-main text-lg">ChronoLense</h3>
+                                    <p className="text-xs text-text-secondary mt-0.5">Simulador Temporal</p>
+                                </div>
+                            </div>
+                            <p className="text-sm text-text-secondary mb-4 flex-1">
+                                Visualiza cualquier lugar en cualquier época con fidelidad histórica.
+                            </p>
+                        </div>
+
                         {/* Voxel Toy Box Card */}
                          <div className="bg-surface-primary border border-border-subtle rounded-xl p-4 hover:border-accent transition-colors cursor-pointer flex flex-col h-full relative group overflow-hidden" onClick={() => onOpenApp('voxel_toy_box')}>
                              <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/20 to-blue-900/20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>

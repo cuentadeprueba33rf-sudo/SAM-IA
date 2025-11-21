@@ -5,8 +5,18 @@ import type { Attachment, ChatMessage, ModeID, ModelType, EssaySection, Settings
 import { MessageAuthor } from '../types';
 import { generateSystemInstruction } from '../constants';
 
-// ¡IMPORTANTE! Clave API interna para el uso de la aplicación.
-const API_KEY = 'AIzaSyD7XyzwMKSHYnyLqU--z5fp20oM9_en1rc';
+// Sistema de Rotación de Claves API para balanceo de carga y estabilidad
+const API_KEYS = [
+    'AIzaSyD7XyzwMKSHYnyLqU--z5fp20oM9_en1rc',
+    'AIzaSyB0shyePxIHs0XYVLBNGEbWNYMso9RGcQg',
+    'AIzaSyBEIQwWeJN6d1_k_RVx7MdWFrFDTQQvbCI',
+    'AIzaSyBHdYTVWfwOc1gTn4y4SVYfnE54RBSWEN0'
+];
+
+const getApiKey = (): string => {
+    const randomIndex = Math.floor(Math.random() * API_KEYS.length);
+    return API_KEYS[randomIndex];
+};
 
 const MODEL_MAP: Record<ModelType, string> = {
     'sm-i1': 'gemini-2.5-flash',
@@ -184,7 +194,7 @@ const appTools: Tool[] = [
                 parameters: {
                     type: Type.OBJECT,
                     properties: {
-                        view: { type: Type.STRING, description: 'El ID del vista: "chat", "canvas", "insights", "documentation", "usage", "canvas_dev_pro", "sam_studios", "voxel_toy_box", "logic_lab".' }
+                        view: { type: Type.STRING, description: 'El ID del vista: "chat", "canvas", "insights", "documentation", "usage", "canvas_dev_pro", "sam_studios", "voxel_toy_box", "logic_lab", "echo_realms", "chrono_lense".' }
                     },
                     required: ['view']
                 }
@@ -288,12 +298,13 @@ export const startActiveConversation = async (
     onVolumeChange: (volume: number) => void,
     toolExecutors: AppToolExecutors 
 ): Promise<{ close: () => void }> => {
-    if (!API_KEY) {
+    const apiKey = getApiKey();
+    if (!apiKey) {
         const error = new Error("Error de conexión con el servicio de voz. Por favor, verifica tu conexión a internet.");
         onError(error);
         throw error;
     }
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
 
     let currentInputTranscription = '';
     let currentOutputTranscription = '';
@@ -586,8 +597,9 @@ export const streamGenerateContent = async ({
     };
 }) => {
     try {
-        if (!API_KEY) throw new Error("API key not configured.");
-        const ai = new GoogleGenAI({ apiKey: API_KEY });
+        const apiKey = getApiKey();
+        if (!apiKey) throw new Error("API key not configured.");
+        const ai = new GoogleGenAI({ apiKey });
         const model = MODEL_MAP[modelName] || 'gemini-2.5-flash';
 
         const conversationHistory = history.map(message => {
@@ -669,8 +681,9 @@ export const streamGenerateContent = async ({
 };
 
 export const generateImage = async ({ prompt, attachment, modelName }: { prompt: string; attachment?: Attachment | null; modelName: ModelType }): Promise<Attachment> => {
-    if (!API_KEY) throw new Error("API key not configured.");
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
+    const apiKey = getApiKey();
+    if (!apiKey) throw new Error("API key not configured.");
+    const ai = new GoogleGenAI({ apiKey });
 
     // CORRECTED LOGIC: Only SM-L3 (the one with purple icon) is premium and gets no watermark.
     const isPremium = modelName === 'sm-l3';
@@ -757,8 +770,9 @@ export const generatePhotosamImage = async ({
     // Guidelines say: Edit Images -> gemini-2.5-flash-image.
     // Prompt should combine style, user prompt, and handle images.
     
-    if (!API_KEY) throw new Error("API key not configured.");
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
+    const apiKey = getApiKey();
+    if (!apiKey) throw new Error("API key not configured.");
+    const ai = new GoogleGenAI({ apiKey });
     
     const parts: any[] = [];
     
@@ -818,8 +832,9 @@ export const generatePhotosamImage = async ({
 
 export const detectMode = async (prompt: string, systemInstruction: string): Promise<{ newMode: ModeID, reasoning: string } | null> => {
     try {
-        if (!API_KEY) throw new Error("API key not configured.");
-        const ai = new GoogleGenAI({ apiKey: API_KEY });
+        const apiKey = getApiKey();
+        if (!apiKey) throw new Error("API key not configured.");
+        const ai = new GoogleGenAI({ apiKey });
 
         const detectionPrompt = `
 Analyze the following user prompt and determine the most appropriate mode.
@@ -854,8 +869,9 @@ User prompt: "${prompt}"
 
 export const improvePrompt = async (userPrompt: string): Promise<string> => {
     try {
-        if (!API_KEY) throw new Error("API key not configured.");
-        const ai = new GoogleGenAI({ apiKey: API_KEY });
+        const apiKey = getApiKey();
+        if (!apiKey) throw new Error("API key not configured.");
+        const ai = new GoogleGenAI({ apiKey });
 
         const systemInstruction = `You are an expert prompt engineer specializing in generating code. Your task is to take a user's rough idea and refine it into a detailed, actionable prompt for an AI code generation model (like the 'canvasdev' mode). The user wants to build a web component or a small web application. The output MUST be only the improved prompt, with no additional text, conversation, or markdown formatting. The prompt should be in Spanish.`;
         
@@ -874,10 +890,11 @@ export const improvePrompt = async (userPrompt: string): Promise<string> => {
 };
 
 export const generateCanvasDevCode = async (prompt: string): Promise<string> => {
-    if (!API_KEY) {
+    const apiKey = getApiKey();
+    if (!apiKey) {
         throw new Error("API key not configured.");
     }
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
 
     const model = 'gemini-2.5-pro'; 
     const systemInstruction = generateSystemInstruction('canvasdev', { 
@@ -932,8 +949,9 @@ export const generateCanvasDevCode = async (prompt: string): Promise<string> => 
 
 export const generateEssayOutline = async ({ prompt, systemInstruction, modelName }: { prompt: string, systemInstruction: string, modelName: ModelType }): Promise<Omit<EssaySection, 'id'>[]> => {
     try {
-        if (!API_KEY) throw new Error("API key not configured.");
-        const ai = new GoogleGenAI({ apiKey: API_KEY });
+        const apiKey = getApiKey();
+        if (!apiKey) throw new Error("API key not configured.");
+        const ai = new GoogleGenAI({ apiKey });
         const model = MODEL_MAP[modelName] || 'gemini-2.5-flash';
 
         const response = await ai.models.generateContent({
@@ -971,8 +989,9 @@ export const streamEssaySection = async ({
     onUpdate: (chunk: string) => void;
 }) => {
     try {
-        if (!API_KEY) throw new Error("API key not configured.");
-        const ai = new GoogleGenAI({ apiKey: API_KEY });
+        const apiKey = getApiKey();
+        if (!apiKey) throw new Error("API key not configured.");
+        const ai = new GoogleGenAI({ apiKey });
         const model = MODEL_MAP[modelName] || 'gemini-2.5-flash';
         
         const responseStream = await ai.models.generateContentStream({
@@ -998,8 +1017,9 @@ export const streamEssaySection = async ({
 
 export const generateEssayReferences = async ({ prompt, systemInstruction, modelName }: { prompt: string, systemInstruction: string, modelName: ModelType }): Promise<string[]> => {
     try {
-        if (!API_KEY) throw new Error("API key not configured.");
-        const ai = new GoogleGenAI({ apiKey: API_KEY });
+        const apiKey = getApiKey();
+        if (!apiKey) throw new Error("API key not configured.");
+        const ai = new GoogleGenAI({ apiKey });
         const model = MODEL_MAP[modelName] || 'gemini-2.5-flash';
 
         const response = await ai.models.generateContent({
@@ -1027,8 +1047,9 @@ export const generateStoryTurn = async (
     history: { role: string, text: string }[],
     userAction: string
 ): Promise<{ narrative: string, choices: string[], visualPrompt: string }> => {
-    if (!API_KEY) throw new Error("API Key Missing");
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
+    const apiKey = getApiKey();
+    if (!apiKey) throw new Error("API Key Missing");
+    const ai = new GoogleGenAI({ apiKey });
 
     const context = `
         You are the Game Master of a text-based RPG called "Echo Realms".
@@ -1057,6 +1078,41 @@ export const generateStoryTurn = async (
             systemInstruction: context,
             responseMimeType: 'application/json'
         }
+    });
+
+    return JSON.parse(response.text || '{}');
+};
+
+export const generateTimeTravelData = async (
+    year: number,
+    location: string
+): Promise<{ headline: string, description: string, visualPrompt: string }> => {
+    const apiKey = getApiKey();
+    if (!apiKey) throw new Error("API Key Missing");
+    const ai = new GoogleGenAI({ apiKey });
+
+    // Determine style based on era
+    let artStyle = "Realistic digital photography";
+    if (year < 1840) artStyle = "Oil painting on canvas, fine art";
+    else if (year < 1900) artStyle = "Daguerreotype, sepia, vintage photography";
+    else if (year < 1950) artStyle = "Black and white film photography, grainy";
+    else if (year < 1990) artStyle = "Color film photography, vintage VHS aesthetic";
+    else if (year > 2050) artStyle = "Futuristic hologram, neon cyberpunk aesthetics, 8k render";
+
+    const prompt = `
+        You are "ChronoLense", a time travel simulator. 
+        Target: ${location}, Year: ${year}.
+        
+        Generate a JSON response with:
+        1. "headline": A newspaper or media headline from that specific date/era.
+        2. "description": A vivid 2-sentence description of what is happening in the location at that time.
+        3. "visualPrompt": A highly detailed image prompt for this scene. Style must be: ${artStyle}.
+    `;
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: { responseMimeType: 'application/json' }
     });
 
     return JSON.parse(response.text || '{}');
