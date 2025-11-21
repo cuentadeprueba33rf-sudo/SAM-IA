@@ -27,6 +27,7 @@ import EchoRealms from './components/EchoRealms';
 import ChronoLense from './components/ChronoLense';
 import RealityScanner from './components/RealityScanner';
 import { streamGenerateContent, generateImage, startActiveConversation, detectMode, AppToolExecutors } from './services/geminiService';
+import { auth, onAuthStateChanged, signInWithGoogle, logout } from './services/firebase';
 import {
     Chat, ChatMessage, MessageAuthor, Attachment, ModeID, Settings,
     ModelType, Artifact, ViewID, Essay, Insight, UsageTracker
@@ -288,6 +289,7 @@ const App: React.FC = () => {
     const [isPlusMenuOpen, setIsPlusMenuOpen] = useState(false);
     const [isPreregistrationModalOpen, setIsPreregistrationModalOpen] = useState(false);
     const [isPreregisteredForSML3_9, setIsPreregisteredForSML3_9] = useState(false);
+    const [currentUser, setCurrentUser] = useState<any>(null);
     
     const [usage, setUsage] = useState<UsageTracker>({ date: new Date().toISOString().split('T')[0], count: 0, hasAttachment: false });
 
@@ -321,6 +323,13 @@ const App: React.FC = () => {
     // Refs to access latest state in voice tool executors
     const chatsRef = useRef(chats);
     const currentChatIdRef = useRef(currentChatId);
+
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            setCurrentUser(user);
+        });
+        return () => unsubscribe();
+    }, []);
 
     useEffect(() => {
         chatsRef.current = chats;
@@ -1112,6 +1121,7 @@ const App: React.FC = () => {
                 forceOpenVerificationPanel={false}
                 activeView={activeView}
                 onSelectView={setActiveView}
+                currentUser={currentUser}
             />
             
             <main className="flex-1 flex flex-col relative overflow-hidden z-10">

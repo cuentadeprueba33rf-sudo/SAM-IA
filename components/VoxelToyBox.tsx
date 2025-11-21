@@ -163,6 +163,7 @@ const VoxelToyBox: React.FC<VoxelToyBoxProps> = ({ onNavigateBack }) => {
             ? engineRef.current.getUniqueColors() 
             : [];
 
+        // FIX: Use the centralized service to avoid API key issues
         const voxelData = await generateVoxelData(prompt, promptMode, existingColors);
 
         if (engineRef.current) {
@@ -181,7 +182,7 @@ const VoxelToyBox: React.FC<VoxelToyBoxProps> = ({ onNavigateBack }) => {
         }
     } catch (err) {
         console.error("Generation failed", err);
-        alert("Oops! Something went wrong generating the model.");
+        alert("Oops! Something went wrong generating the model. Please try again.");
     } finally {
         setIsGenerating(false);
     }

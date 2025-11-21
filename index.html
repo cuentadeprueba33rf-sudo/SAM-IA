@@ -69,7 +69,11 @@
     "uuid": "https://aistudiocdn.com/uuid@^13.0.0",
     "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
     "three/": "https://aistudiocdn.com/three@^0.181.2/",
-    "three": "https://aistudiocdn.com/three@^0.181.2"
+    "three": "https://aistudiocdn.com/three@^0.181.2",
+    "firebase/app": "https://esm.sh/firebase@10.8.0/app",
+    "firebase/auth": "https://esm.sh/firebase@10.8.0/auth",
+    "firebase/analytics": "https://esm.sh/firebase@10.8.0/analytics",
+    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/"
   }
 }
 </script>
@@ -263,20 +267,10 @@
             function checkUserStatus() {
                 const guestName = localStorage.getItem('sam_ia_guest_name');
                 
+                // If guest name exists OR we are just showing the app, fade out.
+                // The user can login via Firebase inside the app.
                 if (guestName) {
-                    // Existent User - Fade out
-                    setTimeout(() => {
-                        anime({
-                            targets: '#loading-screen',
-                            opacity: 0,
-                            duration: 800,
-                            easing: 'easeOutQuad',
-                            complete: () => {
-                                document.getElementById('loading-screen').style.display = 'none';
-                                window.dispatchEvent(new CustomEvent('loadingScreenHidden'));
-                            }
-                        });
-                    }, 600);
+                    fadeOutLoading();
                 } else {
                     // New User - Reveal Input
                     const inputGroup = document.getElementById('input-group');
@@ -306,25 +300,28 @@
                 }
             }
 
+            function fadeOutLoading() {
+                setTimeout(() => {
+                    anime({
+                        targets: '#loading-screen',
+                        opacity: 0,
+                        duration: 800,
+                        easing: 'easeOutQuad',
+                        complete: () => {
+                            document.getElementById('loading-screen').style.display = 'none';
+                            window.dispatchEvent(new CustomEvent('loadingScreenHidden'));
+                        }
+                    });
+                }, 600);
+            }
+
             // Button Handler
             const handleContinue = () => {
                 const nameInput = document.getElementById('name-input');
                 const name = nameInput.value.trim();
                 if (name) {
                     localStorage.setItem('sam_ia_guest_name', name);
-                    
-                    // Exit Animation
-                    anime({
-                        targets: '#loading-screen',
-                        opacity: 0,
-                        scale: 1.02,
-                        duration: 800,
-                        easing: 'easeInOutQuad',
-                        complete: () => {
-                            document.getElementById('loading-screen').style.display = 'none';
-                            window.dispatchEvent(new CustomEvent('loadingScreenHidden'));
-                        }
-                    });
+                    fadeOutLoading();
                 } else {
                     // Shake
                     anime({

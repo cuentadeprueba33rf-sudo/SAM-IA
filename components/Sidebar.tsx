@@ -1,3 +1,4 @@
+
 import React, { Fragment, useState, useEffect, RefObject } from 'react';
 import { 
     PencilSquareIcon, 
@@ -8,8 +9,10 @@ import {
     BookOpenIcon,
     MegaphoneIcon,
     ViewColumnsIcon,
+    CheckBadgeIcon
 } from './icons';
 import type { ViewID } from '../types';
+import { signInWithGoogle, logout } from '../services/firebase';
 
 type Chat = {
     id: string;
@@ -31,6 +34,7 @@ interface SidebarProps {
     forceOpenVerificationPanel: boolean;
     activeView: ViewID;
     onSelectView: (view: ViewID) => void;
+    currentUser?: any;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
@@ -45,13 +49,14 @@ const Sidebar: React.FC<SidebarProps> = ({
     onShowContextMenu,
     activeView,
     onSelectView,
+    currentUser
 }) => {
-    const [userName, setUserName] = useState('');
+    const [localUserName, setLocalUserName] = useState('');
     
     useEffect(() => {
       const name = localStorage.getItem('sam_ia_guest_name');
       if (name) {
-          setUserName(name);
+          setLocalUserName(name);
       }
     }, []);
 
@@ -86,6 +91,10 @@ const Sidebar: React.FC<SidebarProps> = ({
         { id: 'documentation', label: 'Ayuda', icon: BookOpenIcon, action: () => onSelectView('documentation') },
     ];
 
+    const displayName = currentUser ? currentUser.displayName : localUserName || 'Usuario';
+    const userInitial = displayName.charAt(0).toUpperCase();
+    const isAdmin = currentUser?.email === 'helpsamia@gmail.com';
+
     return (
         <Fragment>
             <div 
@@ -96,17 +105,42 @@ const Sidebar: React.FC<SidebarProps> = ({
                 {/* Header */}
                  <div className="p-4 flex-shrink-0 flex items-center justify-between">
                      <div className="flex items-center gap-2">
-                        <button onClick={onClose} className="p-2 -ml-2 rounded-full hover:bg-surface-secondary transition-colors">
+                        <button onClick={onClose} className="p-2 -ml-2 rounded-full hover:bg-surface-secondary transition-colors md:hidden">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-text-secondary"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
                         </button>
                         <h1 className="text-xl font-semibold text-text-main">SAM IA</h1>
                      </div>
-                     <div className="flex items-center gap-2">
-                         <div className="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center font-bold text-lg">{userName.charAt(0)}</div>
-                         <button onClick={onNewChat} className="p-2 rounded-full hover:bg-surface-secondary transition-colors" title="Nuevo chat">
-                            <PencilSquareIcon className="w-6 h-6 text-text-main" />
-                        </button>
-                     </div>
+                     <button onClick={onNewChat} className="p-2 rounded-full hover:bg-surface-secondary transition-colors" title="Nuevo chat">
+                        <PencilSquareIcon className="w-6 h-6 text-text-main" />
+                    </button>
+                </div>
+
+                {/* User Profile Section */}
+                <div className="px-4 py-2">
+                    <div className="flex items-center gap-3 p-2 rounded-xl bg-surface-secondary/50 border border-border-subtle">
+                        {currentUser?.photoURL ? (
+                            <img src={currentUser.photoURL} alt="Avatar" className="w-10 h-10 rounded-full" />
+                        ) : (
+                            <div className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center font-bold text-lg shadow-md">
+                                {userInitial}
+                            </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1">
+                                <p className="text-sm font-bold text-text-main truncate">{displayName}</p>
+                                {isAdmin && <CheckBadgeIcon className="w-3 h-3 text-blue-500" fill="currentColor" />}
+                            </div>
+                            {currentUser ? (
+                                <button onClick={logout} className="text-xs text-text-secondary hover:text-danger transition-colors">
+                                    Cerrar sesión
+                                </button>
+                            ) : (
+                                <button onClick={signInWithGoogle} className="text-xs text-accent font-semibold hover:underline">
+                                    Iniciar sesión
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
                 <nav className="p-2 flex-shrink-0">
@@ -117,7 +151,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                                     id={item.id === 'settings' ? 'btn-settings' : item.id === 'updates' ? 'btn-updates' : `btn-nav-${item.id}`}
                                     onClick={item.action}
                                     className={`w-full flex items-center gap-4 px-3 py-2.5 rounded-lg text-left text-sm font-medium transition-colors ${
-                                        // The first item 'chat' is special, it's active for any chat view.
                                         (item.id === 'chat' && activeView === 'chat') || (item.id !== 'chat' && activeView === item.id)
                                         ? 'bg-surface-secondary text-text-main' 
                                         : 'text-text-secondary hover:bg-surface-secondary hover:text-text-main'
