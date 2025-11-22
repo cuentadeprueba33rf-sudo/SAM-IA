@@ -7,9 +7,7 @@ import { VoxelData } from '../typesVoxel';
 
 // --- CONFIGURACIÓN DE CLAVES API (SISTEMA DE ALTA DISPONIBILIDAD) ---
 const API_KEYS = [
-    'AIzaSyBHdYTVWfwOc1gTn4y4SVYfnE54RBSWEN0',
-    'AIzaSyD7XyzwMKSHYnyLqU--z5fp20oM9_en1rc',
-    'AIzaSyB0shyePxIHs0XYVLBNGEbWNYMso9RGcQg'
+    'AIzaSyBHdYTVWfwOc1gTn4y4SVYfnE54RBSWEN0'
 ];
 
 const MODEL_MAP: Record<ModelType, string> = {
