@@ -1,5 +1,4 @@
 
-
 // FIX: Add missing imports for new functions
 import { GoogleGenAI, Modality, LiveServerMessage, Blob, Type, FunctionDeclaration, GenerateContentResponse, Tool } from "@google/genai";
 import type { Attachment, ChatMessage, ModeID, ModelType, EssaySection, Settings, ViewID } from '../types';
