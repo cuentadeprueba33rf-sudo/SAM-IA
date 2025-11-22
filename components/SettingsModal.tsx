@@ -1,9 +1,10 @@
+
 import React, { useState, ReactNode, useMemo } from 'react';
-import type { Settings } from './types';
+import type { Settings } from '../types';
 import { 
     XMarkIcon, SunIcon, UsersIcon, TrashIcon, CheckIcon, SparklesIcon, 
     ArrowDownTrayIcon, ShieldCheckIcon, BoltIcon, ExclamationTriangleIcon
-} from './components/icons';
+} from './icons';
 import { PERSONALITIES } from './constants';
 
 interface SettingsModalProps {
