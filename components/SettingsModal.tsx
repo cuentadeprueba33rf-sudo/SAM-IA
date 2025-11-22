@@ -5,7 +5,7 @@ import {
     XMarkIcon, SunIcon, UsersIcon, TrashIcon, CheckIcon, SparklesIcon, 
     ArrowDownTrayIcon, ShieldCheckIcon, BoltIcon, ExclamationTriangleIcon
 } from './icons';
-import { PERSONALITIES } from './constants';
+import { PERSONALITIES } from '../constants';
 
 interface SettingsModalProps {
     isOpen: boolean;

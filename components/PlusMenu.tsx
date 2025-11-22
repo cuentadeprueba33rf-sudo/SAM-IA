@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { MODES } from './constants';
+import { MODES } from '../constants';
 import type { Mode, ModeID, Settings } from '../types';
 
 interface PlusMenuProps {

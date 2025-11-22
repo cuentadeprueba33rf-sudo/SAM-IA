@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import PlusMenu from '../PlusMenu';
+import PlusMenu from './PlusMenu';
 import FilePreview from './FilePreview';
 import type { Attachment, ModeID, Settings, UsageTracker } from '../types';
 import { MODES } from '../constants';
