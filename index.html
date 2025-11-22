@@ -103,10 +103,9 @@
     50% { opacity: 0; }
   }
 
-  /* --- PREMIUM LOADING SCREEN STYLES --- */
+  /* --- MEGA PRO LOADING SCREEN --- */
   #loading-screen {
-      background-color: #030303;
-      overflow: hidden;
+      background-color: #050507;
       position: fixed;
       inset: 0;
       z-index: 9999;
@@ -115,124 +114,175 @@
       align-items: center;
       justify-content: center;
       font-family: 'Inter', sans-serif;
+      overflow: hidden;
   }
 
-  .ambient-glow {
+  /* Background Effects */
+  .cyber-aurora {
       position: absolute;
-      width: 120vw;
-      height: 120vw;
-      background: radial-gradient(circle, rgba(229, 9, 20, 0.06) 0%, rgba(0,0,0,0) 70%);
+      width: 150vw;
+      height: 150vw;
+      background: radial-gradient(circle at 50% 50%, rgba(88, 86, 214, 0.08), rgba(229, 9, 20, 0.05), transparent 60%);
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
+      animation: aurora-spin 20s linear infinite;
+      z-index: 0;
+      filter: blur(60px);
+  }
+
+  .noise-overlay {
+      position: absolute;
+      inset: 0;
+      opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
       pointer-events: none;
       z-index: 1;
   }
 
-  .grid-bg {
+  .scanline {
       position: absolute;
-      inset: 0;
-      background-image: 
-          linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-      background-size: 40px 40px;
-      transform: perspective(500px) rotateX(60deg) translateY(100px) scale(2);
-      transform-origin: center top;
-      mask-image: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 90%);
-      -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 90%);
-      opacity: 0.4;
-      z-index: 0;
-      pointer-events: none;
-  }
-
-  /* Glass Input Container */
-  .pro-input-container {
-      background: rgba(255, 255, 255, 0.03);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-      border-radius: 24px;
-      transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+      top: 0;
+      left: 0;
       width: 100%;
-      max-width: 420px;
-  }
-  
-  .pro-input-container:focus-within {
-      background: rgba(255, 255, 255, 0.05);
-      border-color: rgba(255, 255, 255, 0.2);
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 0 30px rgba(229, 9, 20, 0.15);
-      transform: translateY(-2px) scale(1.01);
+      height: 100%;
+      background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.2) 51%);
+      background-size: 100% 4px;
+      pointer-events: none;
+      z-index: 2;
+      opacity: 0.3;
   }
 
-  .st-icon-stroke { stroke: #6b7280; transition: stroke 0.4s; }
-  .pro-input-container:focus-within .st-icon-stroke { stroke: #E5E7EB; }
-  
-  .st-icon-fill { fill: #6b7280; transition: fill 0.4s; }
-  .pro-input-container:focus-within .st-icon-fill { fill: #E5E7EB; }
+  /* Logo Container */
+  .logo-stage {
+      position: relative;
+      z-index: 10;
+      margin-bottom: 3rem;
+  }
 
-  /* Logo Styles - Minimalist */
-  .sam-logo-path {
-      stroke: #FFFFFF; 
-      stroke-width: 3;
+  .logo-glow {
+      position: absolute;
+      inset: -20px;
+      background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+      filter: blur(20px);
+      opacity: 0;
+      transform: scale(0.8);
+  }
+
+  .sam-path {
+      fill: none;
+      stroke: #FFFFFF;
+      stroke-width: 4;
       stroke-linecap: round;
       stroke-linejoin: round;
-      fill: none;
-      filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
+      stroke-dasharray: 1000;
+      stroke-dashoffset: 1000;
+      filter: drop-shadow(0 0 8px rgba(255,255,255,0.5));
+  }
+
+  /* Boot Text */
+  .boot-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.4);
+      margin-top: 1rem;
+      letter-spacing: 0.1em;
+      height: 1.5rem;
+      z-index: 10;
+  }
+
+  /* Holographic Input */
+  .holo-input-wrapper {
+      position: relative;
+      z-index: 20;
+      width: 100%;
+      max-width: 380px;
+      opacity: 0;
+      transform: translateY(20px);
+      display: none; /* Hidden initially */
+  }
+
+  .holo-input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 16px 24px;
+      color: white;
+      font-size: 1.1rem;
+      outline: none;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      text-align: center;
+      letter-spacing: 0.05em;
+  }
+
+  .holo-input:focus {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.3);
+      box-shadow: 0 0 30px rgba(255, 255, 255, 0.1), 0 10px 40px rgba(0,0,0,0.6);
+      transform: scale(1.02);
+  }
+
+  .holo-btn {
+      margin-top: 20px;
+      background: white;
+      color: black;
+      font-weight: 700;
+      padding: 12px 32px;
+      border-radius: 100px;
+      border: none;
+      cursor: pointer;
+      opacity: 0;
+      transform: translateY(10px);
+      box-shadow: 0 0 20px rgba(255,255,255,0.2);
+      transition: all 0.3s ease;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+  }
+
+  .holo-btn:hover {
+      transform: translateY(10px) scale(1.05);
+      box-shadow: 0 0 30px rgba(255,255,255,0.4);
+  }
+
+  @keyframes aurora-spin {
+      from { transform: translate(-50%, -50%) rotate(0deg); }
+      to { transform: translate(-50%, -50%) rotate(360deg); }
   }
 
 </style>
 </head>
 <body class="bg-bg-main text-text-main">
     
-    <!-- PREMIUM LOADING SCREEN -->
+    <!-- MEGA PRO LOADING SCREEN -->
     <div id="loading-screen">
-        
-        <!-- Atmospherics -->
-        <div class="ambient-glow"></div>
-        <div class="grid-bg"></div>
+        <div class="cyber-aurora"></div>
+        <div class="noise-overlay"></div>
+        <div class="scanline"></div>
 
-        <div class="relative z-10 flex flex-col items-center w-full max-w-xl px-6">
-            
-            <!-- Logo -->
-            <div class="mb-16 relative">
-                <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="overflow-visible">
-                    <path class="sam-logo-path" d="M30 20 L70 20 L70 50 L30 50 L30 80 L70 80"/>
-                    <path class="sam-logo-path" d="M10 60 L50 10 L90 60 M25 45 L75 45"/>
-                    <path class="sam-logo-path" d="M50 10 L50 90 M30 30 L50 50 L70 30"/>
-                </svg>
-            </div>
-            
-            <!-- Input Flow -->
-            <div id="input-group" class="hidden w-full opacity-0 flex flex-col items-center">
-                <div class="pro-input-container flex items-center px-5 py-4 w-full">
-                    <!-- Search Icon -->
-                    <svg class="w-5 h-5 mr-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path class="st-icon-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                    
-                    <!-- Input -->
-                    <input type="text" id="name-input" class="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 text-lg font-normal tracking-wide" placeholder="Identifícate" autocomplete="off">
-                    
-                    <!-- Right Icons -->
-                    <div class="flex items-center gap-4 ml-3 pl-4 border-l border-white/10">
-                        <svg class="w-5 h-5 cursor-pointer hover:opacity-80 transition-opacity text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                             <path class="st-icon-stroke" d="M5 12h14M12 5l7 7-7 7" />
-                        </svg>
-                    </div>
-                </div>
-                
-                <!-- Action Buttons -->
-                <div class="flex justify-center gap-4 mt-8 opacity-0" id="search-buttons">
-                     <button id="continue-button" class="px-8 py-3 bg-white text-black font-semibold text-sm rounded-full hover:bg-gray-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]">
-                        Acceder
-                    </button>
-                </div>
-            </div>
+        <div class="logo-stage">
+            <div class="logo-glow"></div>
+            <svg width="120" height="120" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="overflow-visible">
+                <!-- Split paths for cooler animation -->
+                <path class="sam-path path-1" d="M30 20 L70 20 L70 50 L30 50 L30 80 L70 80"/>
+                <path class="sam-path path-2" d="M10 60 L50 10 L90 60"/>
+                <path class="sam-path path-3" d="M25 45 L75 45"/>
+                <path class="sam-path path-4" d="M50 10 L50 90"/>
+                <path class="sam-path path-5" d="M30 30 L50 50 L70 30"/>
+            </svg>
+        </div>
 
+        <div id="boot-sequence" class="boot-text">INITIALIZING...</div>
+
+        <div id="input-group" class="holo-input-wrapper flex flex-col items-center">
+            <input type="text" id="name-input" class="holo-input" placeholder="IDENTIFÍCATE" autocomplete="off" spellcheck="false">
+            <button id="continue-button" class="holo-btn">ACCEDER AL NÚCLEO</button>
         </div>
     </div>
-
 
     <script>
         // Theme init
@@ -247,90 +297,125 @@
             } catch (e) { /* ignore */ }
         })();
 
-        // Animation Logic
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof anime === 'undefined') return;
+
+            const bootText = document.getElementById('boot-sequence');
+            const messages = ["LOADING MODULES...", "CONNECTING NEURAL NET...", "OPTIMIZING CORE...", "SAM IA READY"];
             
-            // 1. Draw the Logo
-            anime({
-                targets:('.sam-logo-path'),
-                strokeDashoffset: [anime.setDashoffset, 0],
-                easing: 'easeInOutQuart',
-                duration: 2500,
-                delay: function(el, i) { return i * 150 },
-                direction: 'normal',
-                loop: false,
-                complete: () => {
-                    checkUserStatus();
+            // Text Sequence Animation
+            let msgIndex = 0;
+            const textInterval = setInterval(() => {
+                if(msgIndex < messages.length) {
+                    bootText.style.opacity = 0;
+                    setTimeout(() => {
+                        bootText.innerText = messages[msgIndex];
+                        bootText.style.opacity = 1;
+                        msgIndex++;
+                    }, 200);
+                } else {
+                    clearInterval(textInterval);
                 }
+            }, 800);
+
+            // Logo Animation Sequence
+            const timeline = anime.timeline({
+                easing: 'easeOutExpo',
             });
+
+            timeline
+            .add({
+                targets: '.sam-path',
+                strokeDashoffset: [anime.setDashoffset, 0],
+                duration: 2000,
+                delay: anime.stagger(200),
+                opacity: [0, 1]
+            })
+            .add({
+                targets: '.logo-glow',
+                opacity: [0, 0.6],
+                scale: [0.8, 1.2],
+                duration: 1500,
+                easing: 'easeInOutSine',
+                direction: 'alternate',
+                loop: true
+            }, '-=1000')
+            .add({
+                targets: '#boot-sequence',
+                opacity: 0,
+                duration: 500,
+                complete: () => checkUserStatus()
+            }, '+=500');
 
             function checkUserStatus() {
                 const guestName = localStorage.getItem('sam_ia_guest_name');
                 
-                // If guest name exists OR we are just showing the app, fade out.
-                // The user can login via Firebase inside the app.
                 if (guestName) {
                     fadeOutLoading();
                 } else {
-                    // New User - Reveal Input
+                    // Show Input UI
                     const inputGroup = document.getElementById('input-group');
-                    const buttons = document.getElementById('search-buttons');
                     inputGroup.style.display = 'flex';
                     
                     anime({
-                        targets: inputGroup,
+                        targets: '#input-group',
                         opacity: [0, 1],
-                        translateY: [40, 0],
-                        duration: 1200,
-                        easing: 'easeOutExpo'
+                        translateY: [20, 0],
+                        duration: 1000,
+                        easing: 'easeOutQuart'
                     });
-                    
+
                     anime({
-                        targets: buttons,
+                        targets: '#continue-button',
                         opacity: [0, 1],
-                        duration: 800,
-                        delay: 400,
-                        easing: 'linear'
+                        translateY: [10, 0],
+                        delay: 200,
+                        duration: 800
                     });
 
                     setTimeout(() => {
-                        const input = document.getElementById('name-input');
-                        input.focus();
+                        document.getElementById('name-input').focus();
                     }, 500);
                 }
             }
 
             function fadeOutLoading() {
-                setTimeout(() => {
-                    anime({
-                        targets: '#loading-screen',
-                        opacity: 0,
-                        duration: 800,
-                        easing: 'easeOutQuad',
-                        complete: () => {
-                            document.getElementById('loading-screen').style.display = 'none';
-                            window.dispatchEvent(new CustomEvent('loadingScreenHidden'));
-                        }
-                    });
-                }, 600);
+                anime({
+                    targets: '#loading-screen',
+                    opacity: 0,
+                    scale: 1.1,
+                    duration: 800,
+                    easing: 'easeInOutQuad',
+                    complete: () => {
+                        document.getElementById('loading-screen').style.display = 'none';
+                        window.dispatchEvent(new CustomEvent('loadingScreenHidden'));
+                    }
+                });
             }
 
-            // Button Handler
+            // Interaction Handlers
             const handleContinue = () => {
                 const nameInput = document.getElementById('name-input');
                 const name = nameInput.value.trim();
                 if (name) {
                     localStorage.setItem('sam_ia_guest_name', name);
-                    fadeOutLoading();
-                } else {
-                    // Shake
+                    // Success Animation
                     anime({
-                        targets: '.pro-input-container',
-                        translateX: [-5, 5, -5, 5, 0],
-                        borderColor: ['rgba(255,255,255,0.1)', '#EF4444', 'rgba(255,255,255,0.1)'],
+                        targets: '#input-group',
+                        scale: 0.9,
+                        opacity: 0,
+                        duration: 300,
+                        easing: 'easeInBack',
+                        complete: fadeOutLoading
+                    });
+                } else {
+                    // Error Shake
+                    anime({
+                        targets: '.holo-input',
+                        translateX: [-10, 10, -10, 10, 0],
                         duration: 400,
-                        easing: 'easeInOutSine'
+                        easing: 'easeInOutSine',
+                        borderColor: ['rgba(255,255,255,0.1)', '#EF4444', 'rgba(255,255,255,0.1)']
                     });
                     nameInput.focus();
                 }
@@ -342,7 +427,7 @@
             });
         });
     </script>
-    <!-- FIN: BLOQUE DE PANTALLA DE CARGA SAM IA -->
+    <!-- FIN: BLOQUE DE PANTALLA DE CARGA -->
     <style>
       .stranger-things-theme {
         --st-red: #E50914;
