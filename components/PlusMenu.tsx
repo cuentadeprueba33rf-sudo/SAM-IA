@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { MODES } from '../constants';
-import type { Mode, ModeID, Settings } from '../types';
+import type { ModeID, Settings } from '../types';
 
 interface PlusMenuProps {
     onAction: (mode: ModeID, accept?: string, capture?: string) => void;
@@ -9,77 +9,56 @@ interface PlusMenuProps {
 }
 
 const PlusMenu: React.FC<PlusMenuProps> = ({ onAction, settings }) => {
-    const gridModes = MODES.filter(mode => mode.id !== 'voice');
-    const [hoveredMode, setHoveredMode] = useState<Mode | null>(null);
-
-    const radius = 120; // The radius of the arc
-    const startAngle = -140; // The starting angle in degrees
-    const endAngle = -40; // The ending angle in degrees
-    const angleRange = endAngle - startAngle;
+    // Filter out voice as it has its own dedicated button in the main UI
+    const visibleModes = MODES.filter(mode => mode.id !== 'voice');
 
     return (
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 mb-20 w-80 h-40 pointer-events-none flex items-end justify-center">
-            <div className="relative w-full h-full pointer-events-auto">
-                {/* Info Display Card */}
-                <div className={`absolute bottom-[-2.5rem] left-1/2 -translate-x-1/2 w-56 p-4 bg-surface-primary/80 backdrop-blur-xl border border-border-subtle rounded-xl shadow-2xl transition-all duration-300 ease-in-out ${hoveredMode ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-                    <div className="text-center">
-                        <p className="font-bold text-text-main text-sm mb-1">{hoveredMode?.title || 'Selecciona un modo'}</p>
-                        <p className="text-text-secondary text-xs h-8">{hoveredMode?.description || 'Pasa el cursor sobre un icono'}</p>
-                    </div>
-                </div>
-
-                {/* Arc Items */}
-                {gridModes.map((mode, index) => {
-                    const totalItems = gridModes.length;
-                    const angle = startAngle + (totalItems > 1 ? (index / (totalItems - 1)) * angleRange : angleRange / 2);
-                    const radians = angle * (Math.PI / 180);
-                    const x = radius * Math.cos(radians);
-                    const y = radius * Math.sin(radians);
+        <div className="absolute bottom-full left-0 mb-3 w-72 sm:w-80 bg-surface-primary/95 backdrop-blur-xl border border-border-subtle rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] p-2 animate-scale-in z-50 origin-bottom-left overflow-hidden">
+            <div className="flex flex-col gap-1 max-h-[60vh] overflow-y-auto custom-scrollbar-thin">
+                {visibleModes.map((mode) => {
                     const Icon = mode.icon;
-
                     return (
                         <button
                             key={mode.id}
-                            id={`btn-mode-${mode.id}`}
                             onClick={() => onAction(mode.id, mode.accept, mode.capture)}
-                            onMouseEnter={() => setHoveredMode(mode)}
-                            onMouseLeave={() => setHoveredMode(null)}
-                            className={`absolute bottom-0 left-1/2 w-14 h-14 bg-surface-primary/80 backdrop-blur-md rounded-full border border-border-subtle shadow-lg flex items-center justify-center transition-all duration-300 ease-out hover:!scale-110 hover:!border-accent hover:shadow-accent/30 ${
-                                mode.disabled ? 'opacity-40 cursor-not-allowed' : ''
-                            }`}
-                            style={{
-                                transform: `translate(-50%, 0) translate(${x}px, ${y}px) scale(0)`,
-                                animation: `arc-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) ${index * 0.04}s forwards`
-                            }}
                             disabled={mode.disabled}
+                            className={`
+                                group flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200 border border-transparent
+                                ${mode.disabled 
+                                    ? 'opacity-50 cursor-not-allowed' 
+                                    : 'hover:bg-surface-secondary hover:border-border-subtle/50 hover:shadow-sm active:scale-[0.98]'
+                                }
+                            `}
                         >
-                            <Icon className="w-6 h-6 text-text-secondary group-hover:text-accent" />
+                            <div className={`
+                                w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-colors border border-border-subtle/30
+                                ${mode.disabled ? 'bg-gray-100 dark:bg-gray-800' : 'bg-surface-secondary group-hover:bg-accent/10 group-hover:border-accent/20'}
+                            `}>
+                                <Icon className={`w-5 h-5 transition-colors ${mode.disabled ? 'text-gray-400' : 'text-text-secondary group-hover:text-accent'}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="text-sm font-bold text-text-main group-hover:text-accent transition-colors truncate">
+                                    {mode.title}
+                                </div>
+                                <div className="text-[11px] text-text-secondary leading-tight truncate opacity-80 group-hover:opacity-100">
+                                    {mode.description}
+                                </div>
+                            </div>
                         </button>
                     );
                 })}
             </div>
             <style>{`
-                @keyframes arc-in {
-                    from { transform: translate(-50%, 0) translate(0, 0) scale(0); opacity: 0; }
-                    to { transform: var(--transform-result); opacity: 1; scale: 1; }
+                @keyframes scale-in {
+                    from { opacity: 0; transform: scale(0.9) translateY(10px); }
+                    to { opacity: 1; transform: scale(1) translateY(0); }
                 }
-                button {
-                    --transform-result: translate(-50%, 0) translate(var(--x), var(--y)) scale(1);
-                    --x: 0px;
-                    --y: 0px;
-                }
+                .animate-scale-in { animation: scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+                
+                .custom-scrollbar-thin::-webkit-scrollbar { width: 4px; }
+                .custom-scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar-thin::-webkit-scrollbar-thumb { background-color: var(--color-border-subtle); border-radius: 20px; }
             `}</style>
-            <script dangerouslySetInnerHTML={{__html: `
-                document.querySelectorAll('.absolute.bottom-0.left-1\\/2').forEach(btn => {
-                    const style = btn.getAttribute('style');
-                    const match = style.match(/translate\\(([^,]+), ([^)]+)\\)/);
-                    if (match) {
-                        btn.style.setProperty('--x', match[1]);
-                        btn.style.setProperty('--y', match[2]);
-                        btn.style.animation = \`arc-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) \${btn.style.animationDelay} forwards\`;
-                    }
-                });
-            `}} />
         </div>
     );
 };

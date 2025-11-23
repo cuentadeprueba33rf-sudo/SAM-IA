@@ -7,7 +7,9 @@ import { VoxelData } from '../typesVoxel';
 
 // --- CONFIGURACIÓN DE CLAVES API (SISTEMA DE ALTA DISPONIBILIDAD) ---
 const API_KEYS = [
-    'AIzaSyBHdYTVWfwOc1gTn4y4SVYfnE54RBSWEN0'
+    'AIzaSyBHdYTVWfwOc1gTn4y4SVYfnE54RBSWEN0', // PRIMARY (Index 0)
+    'AIzaSyD7XyzwMKSHYnyLqU--z5fp20oM9_en1rc', // BACKUP 1
+    'AIzaSyB0shyePxIHs0XYVLBNGEbWNYMso9RGcQg'  // BACKUP 2
 ];
 
 const MODEL_MAP: Record<ModelType, string> = {
@@ -35,22 +37,29 @@ const translateError = (error: any): Error => {
 
 /**
  * EJECUTOR MAESTRO CON ROTACIÓN DE CLAVES
- * Esta función envuelve cualquier llamada a la API. Si una clave falla, prueba la siguiente automáticamente.
+ * Esta función envuelve cualquier llamada a la API.
+ * NO ALEATORIO: Prueba en orden estricto (0 -> 1 -> 2) para priorizar la clave principal.
  */
 async function executeWithKeyRotation<T>(operation: (ai: GoogleGenAI) => Promise<T>): Promise<T> {
-    // Mezclamos las claves para no saturar siempre la primera
-    const shuffledKeys = [...API_KEYS].sort(() => Math.random() - 0.5);
+    // Usamos el orden original para priorizar la clave principal (índice 0)
+    const keys = API_KEYS;
     let lastError: any = null;
 
-    for (const apiKey of shuffledKeys) {
+    for (let i = 0; i < keys.length; i++) {
+        const apiKey = keys[i];
         try {
             const ai = new GoogleGenAI({ apiKey });
             // Intentamos la operación con la clave actual
-            return await operation(ai);
+            const result = await operation(ai);
+            
+            // Si estamos en una clave de respaldo (índice > 0), podríamos loguearlo
+            if (i > 0) console.info(`Operación completada usando Backup Node #${i}`);
+            
+            return result;
         } catch (error: any) {
-            console.warn(`Key ...${apiKey.slice(-4)} failed. Switching to next key. Reason: ${error.message}`);
+            console.warn(`Key Index ${i} (...${apiKey.slice(-4)}) failed. Switching to next key. Reason: ${error.message}`);
             lastError = error;
-            // NO lanzamos el error, continuamos al siguiente ciclo del bucle (siguiente clave)
+            // NO lanzamos el error, continuamos al siguiente ciclo del bucle
         }
     }
 
@@ -207,11 +216,12 @@ export const startActiveConversation = async (
     const fullSystemInstruction = `${systemInstruction}
     IMPORTANT: You are SAM. Control UI with tools. \`visual_explain\` for complex topics (max 20 words desc).`;
 
-    // ROTATION LOOP FOR VOICE CONNECTION
-    const shuffledKeys = [...API_KEYS].sort(() => Math.random() - 0.5);
+    // PRIORITY LOOP FOR VOICE CONNECTION (No shuffle)
+    const keys = API_KEYS;
     let sessionPromise: Promise<any> | null = null;
 
-    for (const apiKey of shuffledKeys) {
+    for (let i = 0; i < keys.length; i++) {
+        const apiKey = keys[i];
         try {
             const activeAi = new GoogleGenAI({ apiKey });
             
@@ -289,7 +299,7 @@ export const startActiveConversation = async (
             sessionPromise = p;
             break; 
         } catch (e) {
-            console.warn(`Voice connection failed with key ${apiKey.slice(-4)}. Retrying...`);
+            console.warn(`Voice connection failed with key index ${i}. Retrying...`);
         }
     }
 
@@ -313,10 +323,11 @@ export const startActiveConversation = async (
 };
 
 export const streamGenerateContent = async (params: any) => {
-    // RETRY LOOP FOR STREAM
-    const shuffledKeys = [...API_KEYS].sort(() => Math.random() - 0.5);
+    // PRIORITY LOOP FOR STREAM (No shuffle)
+    const keys = API_KEYS;
     
-    for (const apiKey of shuffledKeys) {
+    for (let i = 0; i < keys.length; i++) {
+        const apiKey = keys[i];
         try {
             const ai = new GoogleGenAI({ apiKey });
             const model = MODEL_MAP[params.modelName as ModelType] || 'gemini-2.5-flash';
@@ -357,12 +368,14 @@ export const streamGenerateContent = async (params: any) => {
             }
             
             const grounding = finalChunk?.candidates?.[0]?.groundingMetadata?.groundingChunks;
-            params.onComplete(fullText, grounding, logs);
+            // PASS BACK WHETHER IT WAS A BACKUP KEY (Index > 0)
+            const isBackup = i > 0;
+            params.onComplete(fullText, grounding, logs, isBackup);
             return; 
 
         } catch (error: any) {
             if (params.abortSignal.aborted) return;
-            console.warn(`Stream Key ${apiKey.slice(-4)} failed.`, error);
+            console.warn(`Stream Key Index ${i} failed.`, error);
         }
     }
     params.onError(new Error("SAM no responde. Todas las claves fallaron."));
@@ -474,8 +487,9 @@ export const generateEssayOutline = async (p: any) => executeWithKeyRotation(asy
 });
 
 export const streamEssaySection = async (p: any) => {
-    const shuffledKeys = [...API_KEYS].sort(() => Math.random() - 0.5);
-    for (const apiKey of shuffledKeys) {
+    const keys = API_KEYS; // No shuffle
+    for (let i = 0; i < keys.length; i++) {
+        const apiKey = keys[i];
         try {
             const ai = new GoogleGenAI({ apiKey });
             const stream = await ai.models.generateContentStream({

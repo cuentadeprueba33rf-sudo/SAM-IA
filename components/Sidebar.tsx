@@ -8,12 +8,9 @@ import {
     SparklesIcon,
     BookOpenIcon,
     MegaphoneIcon,
-    ViewColumnsIcon,
-    CheckBadgeIcon,
-    ShieldCheckIcon
+    ViewColumnsIcon
 } from './icons';
 import type { ViewID } from '../types';
-import { signInWithGoogle, logout } from '../services/firebase';
 
 type Chat = {
     id: string;
@@ -35,8 +32,6 @@ interface SidebarProps {
     forceOpenVerificationPanel: boolean;
     activeView: ViewID;
     onSelectView: (view: ViewID) => void;
-    currentUser?: any;
-    onOpenAdmin?: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
@@ -50,11 +45,9 @@ const Sidebar: React.FC<SidebarProps> = ({
     onOpenSettings, 
     onShowContextMenu,
     activeView,
-    onSelectView,
-    currentUser,
-    onOpenAdmin
+    onSelectView
 }) => {
-    const [localUserName, setLocalUserName] = useState('');
+    const [localUserName, setLocalUserName] = useState('Usuario');
     
     useEffect(() => {
       const name = localStorage.getItem('sam_ia_guest_name');
@@ -94,9 +87,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         { id: 'documentation', label: 'Ayuda', icon: BookOpenIcon, action: () => onSelectView('documentation') },
     ];
 
-    const displayName = currentUser ? currentUser.displayName : localUserName || 'Usuario';
-    const userInitial = displayName.charAt(0).toUpperCase();
-    const isAdmin = currentUser?.email === 'helpsamia@gmail.com';
+    const userInitial = localUserName.charAt(0).toUpperCase();
 
     return (
         <Fragment>
@@ -121,27 +112,12 @@ const Sidebar: React.FC<SidebarProps> = ({
                 {/* User Profile Section */}
                 <div className="px-4 py-2">
                     <div className="flex items-center gap-3 p-2 rounded-xl bg-surface-secondary/50 border border-border-subtle">
-                        {currentUser?.photoURL ? (
-                            <img src={currentUser.photoURL} alt="Avatar" className="w-10 h-10 rounded-full" />
-                        ) : (
-                            <div className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center font-bold text-lg shadow-md">
-                                {userInitial}
-                            </div>
-                        )}
+                        <div className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center font-bold text-lg shadow-md">
+                            {userInitial}
+                        </div>
                         <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1">
-                                <p className="text-sm font-bold text-text-main truncate">{displayName}</p>
-                                {isAdmin && <CheckBadgeIcon className="w-3 h-3 text-blue-500" fill="currentColor" />}
-                            </div>
-                            {currentUser ? (
-                                <button onClick={logout} className="text-xs text-text-secondary hover:text-danger transition-colors">
-                                    Cerrar sesión
-                                </button>
-                            ) : (
-                                <button onClick={signInWithGoogle} className="text-xs text-accent font-semibold hover:underline">
-                                    Iniciar sesión
-                                </button>
-                            )}
+                            <p className="text-sm font-bold text-text-main truncate">{localUserName}</p>
+                            <p className="text-xs text-text-secondary">Invitado</p>
                         </div>
                     </div>
                 </div>
@@ -164,19 +140,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 </button>
                             </li>
                         ))}
-                        
-                        {/* Admin Panel Button (Only for admin) */}
-                        {isAdmin && onOpenAdmin && (
-                            <li key="admin">
-                                <button 
-                                    onClick={onOpenAdmin}
-                                    className="w-full flex items-center gap-4 px-3 py-2.5 rounded-lg text-left text-sm font-bold transition-colors bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 mt-2"
-                                >
-                                    <ShieldCheckIcon className="w-6 h-6" />
-                                    <span>Admin Panel</span>
-                                </button>
-                            </li>
-                        )}
                     </ul>
                 </nav>
 

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import Sidebar from './components/Sidebar';
@@ -15,7 +16,6 @@ import WelcomeTutorial from './components/WelcomeTutorial';
 import StThemeNotification from './components/StThemeNotification';
 import InstallNotification from './components/InstallNotification';
 import VoiceErrorNotification from './components/VoiceErrorNotification';
-import GoogleSignInNotification from './components/GoogleSignInNotification';
 import PreregistrationModal from './components/PreregistrationModal';
 import ChatMessageItem from './components/ChatMessage';
 import VoiceOrb from './components/VoiceOrb';
@@ -25,12 +25,7 @@ import LogicLab from './components/LogicLab';
 import EchoRealms from './components/EchoRealms';
 import ChronoLense from './components/ChronoLense';
 import RealityScanner from './components/RealityScanner';
-import AdminBroadcast from './components/AdminBroadcast';
-import GlobalNotification from './components/GlobalNotification';
 import { streamGenerateContent, generateImage, startActiveConversation, detectObjectsInFrame, AppToolExecutors } from './services/geminiService';
-// FIX: import 'auth' from firebase to resolve 'Cannot find name 'auth'' error.
-import { onAuthStateChanged, signInWithGoogle, auth } from './services/firebase';
-import { subscribeToAnnouncements, GlobalMessage } from './services/firebase';
 import { MODES, generateSystemInstruction } from './constants';
 import { 
     MessageAuthor, 
@@ -72,13 +67,10 @@ const App: React.FC = () => {
     const [isMathConsoleOpen, setIsMathConsoleOpen] = useState(false);
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number, chatId: string } | null>(null);
     const [showInstallNotification, setShowInstallNotification] = useState(false);
-    const [showSignInNotification, setShowSignInNotification] = useState(false);
     const [installPromptEvent, setInstallPromptEvent] = useState<any>(null);
     const [activeEssay, setActiveEssay] = useState<{essay: Essay, messageId: string} | null>(null);
     const [showPreregistrationModal, setShowPreregistrationModal] = useState(false);
     const [isPreregistered, setIsPreregistered] = useState(false);
-    const [showAdminPanel, setShowAdminPanel] = useState(false);
-    const [globalMessage, setGlobalMessage] = useState<GlobalMessage | null>(null);
     const [inputText, setInputText] = useState("");
 
     // Voice State
@@ -90,7 +82,7 @@ const App: React.FC = () => {
     const [explanationData, setExplanationData] = useState<{ topic: string; points: {title: string, description: string}[] } | null>(null);
     const [voiceOrbVolume, setVoiceOrbVolume] = useState(0);
 
-    // Settings & User State
+    // Settings
     const [settings, setSettings] = useState<Settings>({
         theme: 'dark',
         personality: 'default',
@@ -99,7 +91,6 @@ const App: React.FC = () => {
         quickMode: false,
         stThemeEnabled: false,
     });
-    const [currentUser, setCurrentUser] = useState<any>(null);
     
     // --- REFS ---
     const abortControllerRef = useRef<AbortController | null>(null);
@@ -111,13 +102,12 @@ const App: React.FC = () => {
     const currentChat = useMemo(() => chats.find(chat => chat.id === currentChatId), [chats, currentChatId]);
     const mathLogs = useMemo(() => currentChat?.messages.flatMap(m => m.consoleLogs || []) || [], [currentChat]);
 
-    // --- USAGE TRACKER (SM-I3) ---
+    // --- USAGE TRACKER ---
     const [usage, setUsage] = useState<UsageTracker>({ date: '', count: 0, hasAttachment: false });
 
     // --- LIFECYCLE & DATA PERSISTENCE ---
 
     useEffect(() => {
-        // Load data directly without version check
         loadSettings();
         loadChats();
         loadUsage();
@@ -132,36 +122,9 @@ const App: React.FC = () => {
                 setShowInstallNotification(true);
             }
         });
-        
-        // Listen for Firebase Auth state changes
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            setCurrentUser(user);
-        });
-
-        // Listen for Global Announcements
-        const unsubAnnouncements = subscribeToAnnouncements((message) => {
-            setGlobalMessage(message);
-        });
-
-        return () => {
-            unsubscribe();
-            unsubAnnouncements();
-        };
     }, []);
 
     useEffect(() => {
-        // Sign-in notification logic
-        const notifDismissed = sessionStorage.getItem('sam_ia_signin_notif_dismissed');
-        if (!currentUser && !notifDismissed) {
-            const timer = setTimeout(() => {
-                setShowSignInNotification(true);
-            }, 10000); // 10 second delay
-            return () => clearTimeout(timer);
-        }
-    }, [currentUser]);
-
-    useEffect(() => {
-        // Refs for voice control to access latest state
         chatsRef.current = chats;
         currentChatIdRef.current = currentChatId;
     }, [chats, currentChatId]);
@@ -313,11 +276,11 @@ const App: React.FC = () => {
                     return chat;
                 }));
             },
-            onComplete: (fullText, groundingChunks, consoleLogs) => {
+            onComplete: (fullText, groundingChunks, consoleLogs, isBackup) => {
                  setIsGenerating(false);
                  setChats(prev => prev.map(chat => {
                     if (chat.id === currentChatId) {
-                        const finalMessages = chat.messages.map(msg => msg.id === samMessageId ? { ...msg, text: fullText, groundingMetadata: groundingChunks, consoleLogs: consoleLogs } : msg);
+                        const finalMessages = chat.messages.map(msg => msg.id === samMessageId ? { ...msg, text: fullText, groundingMetadata: groundingChunks, consoleLogs: consoleLogs, isBackup: isBackup } : msg);
                         // Auto-title chat
                         if (chat.title === 'Nuevo Chat' && finalMessages.length < 4) {
                             // Simple auto-titling logic
@@ -344,7 +307,6 @@ const App: React.FC = () => {
 
     // --- MODE & ACTION HANDLERS ---
 
-    // FIX: Removed '?' from 'capture' parameter as it has a default initializer, which makes it optional by default.
     const handleModeAction = (mode: ModeID, accept?: string, capture: 'user' | 'environment' = 'user') => {
         const modeData = MODES.find(m => m.id === mode);
         if (!modeData) return;
@@ -511,22 +473,6 @@ const App: React.FC = () => {
         sessionStorage.setItem('install_notif_dismissed', 'true');
     };
     
-    const handleDismissSignInNotification = () => {
-        setShowSignInNotification(false);
-        sessionStorage.setItem('sam_ia_signin_notif_dismissed', 'true');
-    };
-
-    const handleSignInFromNotification = async () => {
-        try {
-            await signInWithGoogle();
-            setShowSignInNotification(false); // Hide on successful sign-in
-            sessionStorage.setItem('sam_ia_signin_notif_dismissed', 'true'); // Prevent re-showing in this session
-        } catch (error) {
-            console.error("Sign in failed from notification:", error);
-            // Optionally show an error toast to the user
-        }
-    };
-    
     const handlePreregistrationSuccess = () => {
         setIsPreregistered(true);
         localStorage.setItem('sam_ia_preregistered', 'true');
@@ -608,8 +554,6 @@ const App: React.FC = () => {
 
     return (
         <div className={`h-full w-full flex overflow-hidden font-sans ${settings.stThemeEnabled ? 'stranger-things-theme' : ''}`}>
-            {globalMessage && <GlobalNotification message={globalMessage} onDismiss={() => setGlobalMessage(null)} />}
-
             <Sidebar
                 isOpen={isSidebarOpen}
                 onClose={() => setIsSidebarOpen(false)}
@@ -620,10 +564,11 @@ const App: React.FC = () => {
                 onShowUpdates={() => setIsUpdatesOpen(true)}
                 onOpenSettings={() => setIsSettingsOpen(true)}
                 onShowContextMenu={(chatId, coords) => setContextMenu({ ...coords, chatId })}
+                creditsRef={{ current: null }}
+                verificationPanelRef={{ current: null }}
+                forceOpenVerificationPanel={false}
                 activeView={activeView}
                 onSelectView={(view) => setActiveView(view)}
-                currentUser={currentUser}
-                onOpenAdmin={() => setShowAdminPanel(true)}
             />
 
             <main className="flex-1 flex flex-col relative bg-bg-main">
@@ -660,12 +605,6 @@ const App: React.FC = () => {
                     {showInstallNotification && (
                         <InstallNotification onDismiss={handleDismissInstall} onInstall={handleInstallApp} />
                     )}
-                    {showSignInNotification && (
-                         <GoogleSignInNotification 
-                            onDismiss={handleDismissSignInNotification} 
-                            onSignIn={handleSignInFromNotification} 
-                         />
-                    )}
                  </div>
             </main>
 
@@ -677,7 +616,6 @@ const App: React.FC = () => {
             {contextMenu && <ContextMenu {...contextMenu} onClose={() => setContextMenu(null)} onRename={()=>{}} onDelete={()=>{}} />}
             {activeEssay && <EssayComposer initialEssay={activeEssay.essay} onClose={() => setActiveEssay(null)} onSave={(essay) => handleSaveEssay(essay, activeEssay.messageId)} systemInstruction={generateSystemInstruction('essay', settings)} modelName={settings.defaultModel} />}
             {showPreregistrationModal && <PreregistrationModal isOpen={showPreregistrationModal} onClose={() => setShowPreregistrationModal(false)} onSuccess={handlePreregistrationSuccess} />}
-            {showAdminPanel && currentUser?.email === 'helpsamia@gmail.com' && <AdminBroadcast onClose={() => setShowAdminPanel(false)} userEmail={currentUser.email} />}
             <VoiceOrb 
                 isActive={voiceModeState === 'activeConversation'}
                 state={activeConversationState}

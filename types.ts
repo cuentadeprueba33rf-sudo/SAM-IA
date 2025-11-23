@@ -35,6 +35,7 @@ export interface ChatMessage {
   fromAdmin?: boolean; // Flag for admin-sent messages
   essayContent?: Essay; // The entire essay object is now part of the message
   artifacts?: Artifact[];
+  isBackup?: boolean; // Indicates if the message was generated using a backup API key
 }
 
 export interface Chat {

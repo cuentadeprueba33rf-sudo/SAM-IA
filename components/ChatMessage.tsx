@@ -1,8 +1,9 @@
+
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { MessageAuthor } from '../types';
 import type { ChatMessage, Attachment, Essay, Artifact } from '../types';
 import MessageActions from './MessageActions';
-import { DocumentTextIcon, GlobeAltIcon, CodeBracketIcon, AcademicCapIcon, SparklesIcon, ShareIcon } from './icons';
+import { DocumentTextIcon, GlobeAltIcon, CodeBracketIcon, AcademicCapIcon, SparklesIcon, ShareIcon, BoltIcon } from './icons';
 
 
 // A more robust markdown parser that handles code blocks and images separately.
@@ -313,9 +314,17 @@ const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
     return (
         <div className={`py-4 flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
             <div className="max-w-xl lg:max-w-2xl flex flex-col">
-                <p className={`font-bold text-sm mb-2 text-text-main ${isUser ? 'text-right' : 'text-left'}`}>
-                    {isUser ? 'Tú' : 'SAM'}
-                </p>
+                <div className={`flex items-center gap-2 mb-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
+                    <p className="font-bold text-sm text-text-main">
+                        {isUser ? 'Tú' : 'SAM'}
+                    </p>
+                    {message.isBackup && !isUser && (
+                        <div className="flex items-center gap-1 bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full border border-amber-500/20" title="Esta respuesta fue generada usando servidores de respaldo debido a alta demanda.">
+                            <BoltIcon className="w-3 h-3" />
+                            <span className="text-[10px] font-bold uppercase tracking-wide">Respaldo</span>
+                        </div>
+                    )}
+                </div>
                 
                 <div className={`p-4 ${isUser ? 'rounded-2xl bg-accent/10 text-text-main' : ''}`}>
                     {message.attachment && (

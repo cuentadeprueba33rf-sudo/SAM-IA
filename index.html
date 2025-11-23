@@ -69,12 +69,7 @@
     "uuid": "https://aistudiocdn.com/uuid@^13.0.0",
     "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
     "three/": "https://aistudiocdn.com/three@^0.181.2/",
-    "three": "https://aistudiocdn.com/three@^0.181.2",
-    "firebase/app": "https://esm.sh/firebase@10.13.0/app",
-    "firebase/auth": "https://esm.sh/firebase@10.13.0/auth",
-    "firebase/analytics": "https://esm.sh/firebase@10.13.0/analytics",
-    "firebase/firestore": "https://esm.sh/firebase@10.13.0/firestore",
-    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/"
+    "three": "https://aistudiocdn.com/three@^0.181.2"
   }
 }
 </script>
@@ -348,7 +343,7 @@
             }, '+=500');
 
             function checkUserStatus() {
-                const guestName = localStorage.getItem('sam_ia_guest_name');
+                const guestName = localStorage.getItem('sam-ia-guest_name');
                 
                 if (guestName) {
                     fadeOutLoading();
@@ -398,7 +393,7 @@
                 const nameInput = document.getElementById('name-input');
                 const name = nameInput.value.trim();
                 if (name) {
-                    localStorage.setItem('sam_ia_guest_name', name);
+                    localStorage.setItem('sam-ia-guest_name', name);
                     // Success Animation
                     anime({
                         targets: '#input-group',
